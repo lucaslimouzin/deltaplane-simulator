@@ -204,29 +204,67 @@ export class Deltaplane {
         this.mesh.position.set(0, 100, 0);
         this.mesh.rotation.set(Math.PI / 10, 0, 0);
         this.velocity.set(0, 0, 0);
+        this.collisionDamage = 0; // Réinitialiser les dommages
     }
     
     /**
      * Met à jour la position et la rotation du deltaplane
      * @param {number} delta - Temps écoulé depuis la dernière mise à jour
-     * @param {HTMLElement} debugElement - Élément HTML pour afficher des informations de débogage
      */
-    update(delta, debugElement) {
+    update(delta) {
         try {
             // Vitesse de rotation pour les contrôles
             const rotationSpeed = 0.8;
             
             // Application des contrôles d'orientation de la voile
-            if (this.pitchUp) this.mesh.rotation.x += rotationSpeed * delta;
-            if (this.pitchDown) this.mesh.rotation.x -= rotationSpeed * delta;
-            if (this.rollLeft) this.mesh.rotation.z += rotationSpeed * delta;
-            if (this.rollRight) this.mesh.rotation.z -= rotationSpeed * delta;
+            if (this.pitchUp) {
+                // Cabrer (lever le nez)
+                this.mesh.rotation.x += 0.5 * delta;
+            }
+            
+            if (this.pitchDown) {
+                // Piquer (baisser le nez)
+                this.mesh.rotation.x -= 0.5 * delta;
+            }
+            
+            if (this.rollLeft) {
+                // Incliner à gauche
+                this.mesh.rotation.z += 0.5 * delta;
+            }
+            
+            if (this.rollRight) {
+                // Incliner à droite
+                this.mesh.rotation.z -= 0.5 * delta;
+            }
+            
             if (this.yawLeft) this.mesh.rotation.y += rotationSpeed * delta;
             if (this.yawRight) this.mesh.rotation.y -= rotationSpeed * delta;
             
-            // Limites de rotation pour éviter les positions impossibles
-            this.mesh.rotation.x = Math.max(-Math.PI/3, Math.min(Math.PI/2, this.mesh.rotation.x));
+            // Limites strictes de rotation pour éviter les positions impossibles
+            // Limiter l'angle de tangage (pitch) entre -45° et +45°
+            this.mesh.rotation.x = Math.max(-Math.PI/4, Math.min(Math.PI/4, this.mesh.rotation.x));
+            
+            // Limiter l'angle d'inclinaison (roll) entre -45° et +45°
             this.mesh.rotation.z = Math.max(-Math.PI/4, Math.min(Math.PI/4, this.mesh.rotation.z));
+            
+            // Vérification supplémentaire pour empêcher le retournement
+            // Si le vecteur "haut" du deltaplane pointe vers le bas, corriger l'orientation
+            const upVector = new THREE.Vector3(0, 1, 0);
+            upVector.applyQuaternion(this.mesh.quaternion);
+            if (upVector.y < 0) {
+                // Le deltaplane est retourné, corriger l'orientation
+                if (this.mesh.rotation.x > 0) {
+                    this.mesh.rotation.x = Math.PI/4; // Limiter à 45 degrés
+                } else {
+                    this.mesh.rotation.x = -Math.PI/4; // Limiter à -45 degrés
+                }
+                
+                if (this.mesh.rotation.z > 0) {
+                    this.mesh.rotation.z = Math.PI/4; // Limiter à 45 degrés
+                } else {
+                    this.mesh.rotation.z = -Math.PI/4; // Limiter à -45 degrés
+                }
+            }
             
             // Calcul de la direction du deltaplane basée sur son orientation
             const direction = new THREE.Vector3(0, 0, -1);
@@ -377,62 +415,97 @@ export class Deltaplane {
             this.mesh.position.z += this.velocity.z * delta;
             
             // Détection de collision avec le terrain
-            this.checkTerrainCollision(previousPosition, delta, debugElement);
+            this.checkTerrainCollision(previousPosition, delta);
             
             // Friction pour ralentir progressivement
             this.velocity.x *= 0.995;
             this.velocity.z *= 0.995;
             
-            // Afficher l'altitude et les informations de vol
-            if (debugElement) {
-                // Création ou mise à jour des éléments d'information
-                let infoDiv = document.getElementById('flight-info');
-                if (!infoDiv) {
-                    infoDiv = document.createElement('div');
-                    infoDiv.id = 'flight-info';
-                    infoDiv.style.fontWeight = 'bold';
-                    infoDiv.style.fontSize = '1.2em';
-                    infoDiv.style.marginTop = '10px';
-                    debugElement.appendChild(infoDiv);
-                }
-                
-                // Formatage des informations de vol
-                const speedKmh = Math.round(airSpeed * 3.6); // m/s en km/h
-                const altitude = Math.round(this.mesh.position.y);
-                const terrainHeight = this.terrain ? Math.round(this.getTerrainHeightAtPosition(this.mesh.position.x, this.mesh.position.z)) : 0;
-                const heightAboveTerrain = Math.round(altitude - terrainHeight);
-                const windInfo = this.windEnabled ? 
-                    `Vent: ${Math.round(this.windSpeed * 3.6)} km/h (${this.getWindDirectionName()})` : 
-                    'Vent: désactivé';
-                const thermalInfo = this.thermalStrength > 0 ? 
-                    `Thermique: +${Math.round(this.thermalStrength * 3.6)} km/h` : 
-                    '';
-                const windEffectInfo = this.windEnabled ? 
-                    `Effet du vent: ${windAngleEffect > 0 ? 'Pousse à droite' : windAngleEffect < 0 ? 'Pousse à gauche' : 'Neutre'}, Portance: ${Math.round(windLiftEffect * 10)}` : 
-                    '';
-                const angleInfo = `Angle d'attaque: ${Math.round(angleOfAttack * 180 / Math.PI)}°, Inclinaison: ${Math.round(this.mesh.rotation.z * 180 / Math.PI)}°`;
-                const collisionInfo = this.isColliding ? 
-                    `COLLISION! Dommages: ${Math.round(this.collisionDamage)}%` : 
-                    `Hauteur au-dessus du terrain: ${heightAboveTerrain} m`;
-                
+            // Création ou mise à jour du panneau d'informations de vol (toujours visible)
+            let infoDiv = document.getElementById('flight-info');
+            if (!infoDiv) {
+                infoDiv = document.createElement('div');
+                infoDiv.id = 'flight-info';
+                infoDiv.style.position = 'absolute';
+                infoDiv.style.bottom = '250px'; // Positionné au-dessus des contrôles
+                infoDiv.style.left = '20px'; // Positionné à gauche
+                infoDiv.style.padding = '10px';
+                infoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                infoDiv.style.borderRadius = '5px';
+                infoDiv.style.color = 'white';
+                infoDiv.style.fontFamily = 'Arial, sans-serif';
+                infoDiv.style.fontSize = '14px';
+                infoDiv.style.fontWeight = 'bold';
+                infoDiv.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+                infoDiv.style.zIndex = '1000';
+                infoDiv.style.width = '200px';
+                infoDiv.style.backdropFilter = 'blur(5px)';
+                infoDiv.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                infoDiv.style.maxHeight = '60vh'; // Hauteur maximale réduite
+                infoDiv.style.overflowY = 'auto';
+                document.body.appendChild(infoDiv);
+            }
+            
+            // Formatage des informations de vol
+            const speedKmh = Math.round(airSpeed * 3.6); // m/s en km/h
+            const altitude = Math.round(this.mesh.position.y);
+            const terrainHeight = this.terrain ? Math.round(this.getTerrainHeightAtPosition(this.mesh.position.x, this.mesh.position.z)) : 0;
+            const heightAboveTerrain = Math.round(altitude - terrainHeight);
+            const windInfo = this.windEnabled ? 
+                `${Math.round(this.windSpeed * 3.6)} km/h (${this.getWindDirectionName()})` : 
+                'désactivé';
+            const thermalInfo = this.thermalStrength > 0 ? 
+                `+${Math.round(this.thermalStrength * 3.6)} km/h` : 
+                'Aucun';
+            const angleOfAttackDeg = Math.round(angleOfAttack * 180 / Math.PI);
+            const inclinaisonDeg = Math.round(this.mesh.rotation.z * 180 / Math.PI);
+            
+            // Vérifier si les valeurs sont valides (non NaN)
+            const validAltitude = isNaN(altitude) ? 0 : altitude;
+            const validHeightAboveTerrain = isNaN(heightAboveTerrain) ? 0 : heightAboveTerrain;
+            const validSpeedKmh = isNaN(speedKmh) ? 0 : speedKmh;
+            const validAngleOfAttackDeg = isNaN(angleOfAttackDeg) ? 0 : angleOfAttackDeg;
+            const validInclinaisonDeg = isNaN(inclinaisonDeg) ? 0 : inclinaisonDeg;
+            
+            // Style pour les étiquettes et les valeurs - format plus compact
+            const labelStyle = 'color: #8adbff; display: inline-block; width: 100px; font-size: 13px;';
+            const valueStyle = 'color: #ffffff; font-weight: bold; font-size: 13px;';
+            const sectionStyle = 'margin-bottom: 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 5px;';
+            
+            // Contenu HTML avec mise en forme plus compacte
+            infoDiv.innerHTML = `
+                <div style="text-align: center; font-size: 14px; margin-bottom: 8px; color: #ffcc00;">INFORMATIONS DE VOL</div>
+                <div style="${sectionStyle}">
+                    <div><span style="${labelStyle}">Altitude:</span> <span style="${valueStyle}">${validAltitude} m</span></div>
+                    <div><span style="${labelStyle}">Hauteur/terrain:</span> <span style="${valueStyle}">${validHeightAboveTerrain} m</span></div>
+                </div>
+                <div style="${sectionStyle}">
+                    <div><span style="${labelStyle}">Vitesse:</span> <span style="${valueStyle}">${validSpeedKmh} km/h</span></div>
+                    <div><span style="${labelStyle}">Angle d'attaque:</span> <span style="${valueStyle}">${validAngleOfAttackDeg}°</span></div>
+                    <div><span style="${labelStyle}">Inclinaison:</span> <span style="${valueStyle}">${validInclinaisonDeg}°</span></div>
+                </div>
+                <div style="${sectionStyle}">
+                    <div><span style="${labelStyle}">Vent:</span> <span style="${valueStyle}">${windInfo}</span></div>
+                    <div><span style="${labelStyle}">Effet du vent:</span> <span style="${valueStyle}">${windAngleEffect > 0 ? 'Pousse à droite' : windAngleEffect < 0 ? 'Pousse à gauche' : 'Neutre'}</span></div>
+                    <div><span style="${labelStyle}">Portance:</span> <span style="${valueStyle}">${Math.round(windLiftEffect * 10)}</span></div>
+                </div>
+                <div>
+                    <div><span style="${labelStyle}">Thermique:</span> <span style="${valueStyle}">${thermalInfo}</span></div>
+                </div>
+            `;
+            
+            // Changer la couleur en cas de collision
+            if (this.isColliding) {
+                infoDiv.style.backgroundColor = 'rgba(200, 0, 0, 0.8)';
                 infoDiv.innerHTML = `
-                    <div>Altitude: ${altitude} m</div>
-                    <div>${collisionInfo}</div>
-                    <div>Vitesse: ${speedKmh} km/h</div>
-                    <div>${angleInfo}</div>
-                    <div>${windInfo}</div>
-                    <div>${windEffectInfo}</div>
-                    <div>${thermalInfo}</div>
+                    <div style="text-align: center; color: #ff0000; font-size: 16px; margin-bottom: 5px;">⚠️ COLLISION! ⚠️</div>
+                    <div style="text-align: center; margin-bottom: 5px;">Dommages: ${Math.round(this.collisionDamage)}%</div>
+                    ${infoDiv.innerHTML}
                 `;
-                
-                // Changer la couleur en cas de collision
-                if (this.isColliding) {
-                    infoDiv.style.color = 'red';
-                } else if (heightAboveTerrain < 20) {
-                    infoDiv.style.color = 'orange'; // Avertissement si on est proche du sol
-                } else {
-                    infoDiv.style.color = 'white';
-                }
+            } else if (heightAboveTerrain < 20) {
+                infoDiv.style.backgroundColor = 'rgba(200, 100, 0, 0.7)'; // Avertissement si on est proche du sol
+            } else {
+                infoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
             }
         } catch (error) {
             console.error('Erreur lors de la mise à jour du deltaplane:', error);
@@ -537,59 +610,88 @@ export class Deltaplane {
      * Vérifie s'il y a une collision avec le terrain
      * @param {THREE.Vector3} previousPosition - Position avant la mise à jour
      * @param {number} delta - Temps écoulé depuis la dernière mise à jour
-     * @param {HTMLElement} debugElement - Élément HTML pour afficher des informations de débogage
      */
-    checkTerrainCollision(previousPosition, delta, debugElement) {
+    checkTerrainCollision(previousPosition, delta) {
         if (!this.terrain) return;
         
         // Hauteur du terrain à la position actuelle
         const terrainHeight = this.getTerrainHeightAtPosition(this.mesh.position.x, this.mesh.position.z);
         
-        // Vérifier si on est sous le terrain
-        if (this.mesh.position.y < terrainHeight) {
-            // On est en collision avec le terrain
+        // Vérifier si on est sous le terrain ou très proche du sol
+        const isOnGround = this.mesh.position.y <= terrainHeight + 0.5; // 0.5 mètre au-dessus du sol est considéré comme "au sol"
+        
+        if (isOnGround) {
+            // On est en collision avec le terrain ou au sol
             this.isColliding = true;
             
             // Calculer la vitesse d'impact
             const impactSpeed = this.velocity.length();
+            const verticalSpeed = Math.abs(this.velocity.y);
             
-            // Calculer les dommages en fonction de la vitesse d'impact
-            // Plus on va vite, plus les dommages sont importants
-            const damageMultiplier = 0.5; // Ajuster selon la difficulté souhaitée
-            const newDamage = impactSpeed * damageMultiplier;
-            this.collisionDamage += newDamage;
+            // Si on est en train de rouler (vitesse verticale faible)
+            const isRolling = verticalSpeed < 3.0; // Moins de 3 m/s en vitesse verticale
             
-            // Limiter les dommages au maximum
-            this.collisionDamage = Math.min(this.collisionDamage, this.maxCollisionDamage);
-            
-            // Calculer la normale à la surface au point de collision
-            // Simplification: on considère que la normale est verticale
-            this.collisionNormal = new THREE.Vector3(0, 1, 0);
-            
-            // Réaction à la collision
-            if (this.collisionDamage >= this.maxCollisionDamage) {
-                // Deltaplane détruit
-                this.velocity.set(0, 0, 0);
-                this.mesh.position.y = terrainHeight;
+            if (isRolling) {
+                // Mode roulement sur le sol
+                this.mesh.position.y = terrainHeight + 0.1; // Maintenir légèrement au-dessus du sol
                 
-                // Le message de crash a été supprimé pour une meilleure expérience utilisateur
+                // Appliquer une friction au sol pour ralentir progressivement
+                this.velocity.x *= 0.98;
+                this.velocity.z *= 0.98;
+                
+                // Annuler la vitesse verticale
+                this.velocity.y = 0;
+                
+                // Redresser progressivement le deltaplane pour qu'il soit parallèle au sol
+                const targetRotationX = 0;
+                const targetRotationZ = 0;
+                this.mesh.rotation.x += (targetRotationX - this.mesh.rotation.x) * 0.1;
+                this.mesh.rotation.z += (targetRotationZ - this.mesh.rotation.z) * 0.1;
+                
+                // Réduire les dommages en mode roulement
+                if (this.collisionDamage > 0) {
+                    this.collisionDamage -= 0.2 * delta;
+                    this.collisionDamage = Math.max(0, this.collisionDamage);
+                }
             } else {
-                // Rebond avec perte d'énergie
-                this.mesh.position.y = terrainHeight + 0.1; // Légèrement au-dessus du terrain
+                // Collision avec impact
                 
-                // Réflexion de la vitesse par rapport à la normale
-                const dot = this.velocity.dot(this.collisionNormal);
-                const reflection = this.velocity.clone().sub(
-                    this.collisionNormal.clone().multiplyScalar(2 * dot)
-                );
+                // Calculer les dommages en fonction de la vitesse d'impact
+                // Plus on va vite, plus les dommages sont importants
+                const damageMultiplier = 0.5; // Ajuster selon la difficulté souhaitée
+                const newDamage = verticalSpeed * damageMultiplier;
+                this.collisionDamage += newDamage;
                 
-                // Appliquer une perte d'énergie au rebond
-                const energyLoss = 0.5; // 50% de perte d'énergie
-                this.velocity.copy(reflection.multiplyScalar(energyLoss));
+                // Limiter les dommages au maximum
+                this.collisionDamage = Math.min(this.collisionDamage, this.maxCollisionDamage);
                 
-                // Réduction supplémentaire de la vitesse horizontale
-                this.velocity.x *= 0.8;
-                this.velocity.z *= 0.8;
+                // Calculer la normale à la surface au point de collision
+                // Simplification: on considère que la normale est verticale
+                this.collisionNormal = new THREE.Vector3(0, 1, 0);
+                
+                // Réaction à la collision
+                if (this.collisionDamage >= this.maxCollisionDamage) {
+                    // Deltaplane détruit
+                    this.velocity.set(0, 0, 0);
+                    this.mesh.position.y = terrainHeight;
+                } else {
+                    // Rebond avec perte d'énergie
+                    this.mesh.position.y = terrainHeight + 0.1; // Légèrement au-dessus du terrain
+                    
+                    // Réflexion de la vitesse par rapport à la normale
+                    const dot = this.velocity.dot(this.collisionNormal);
+                    const reflection = this.velocity.clone().sub(
+                        this.collisionNormal.clone().multiplyScalar(2 * dot)
+                    );
+                    
+                    // Appliquer une perte d'énergie au rebond
+                    const energyLoss = 0.5; // 50% de perte d'énergie
+                    this.velocity.copy(reflection.multiplyScalar(energyLoss));
+                    
+                    // Réduction supplémentaire de la vitesse horizontale
+                    this.velocity.x *= 0.8;
+                    this.velocity.z *= 0.8;
+                }
             }
         } else {
             // Pas de collision
@@ -611,50 +713,8 @@ export class Deltaplane {
      * @returns {number} La hauteur du terrain
      */
     getTerrainHeightAtPosition(x, z) {
-        // Fonction simplifiée pour estimer la hauteur
-        // Utiliser la même fonction de bruit que pour le terrain
-        const perlin = (x, z, scale, amplitude) => {
-            const noiseScale = scale;
-            return amplitude * Math.sin(x / noiseScale) * Math.cos(z / noiseScale);
-        };
-        
-        let height = 
-            perlin(x, z, 150, 15) + 
-            perlin(x, z, 75, 8) + 
-            perlin(x, z, 30, 4);
-        
-        // Ajouter les montagnes spécifiques (version simplifiée)
-        const specificMountains = [
-            { x: 0, z: -500, radius: 800, height: 250 },
-            { x: 200, z: -300, radius: 400, height: 350 },
-            { x: -800, z: 600, radius: 500, height: 220 },
-            { x: 1000, z: 800, radius: 600, height: 280 },
-            { x: 1500, z: -200, radius: 700, height: 200 },
-            { x: -1200, z: -900, radius: 300, height: 180 },
-            { x: 700, z: 1200, radius: 350, height: 190 },
-            { x: 0, z: 0, radius: 600, height: 150 },
-            { x: -400, z: -700, radius: 350, height: 320 },
-            { x: 600, z: -500, radius: 300, height: 280 },
-            { x: -600, z: 300, radius: 400, height: 250 },
-            { x: 300, z: 600, radius: 350, height: 230 },
-        ];
-        
-        for (const mountain of specificMountains) {
-            const dx = x - mountain.x;
-            const dz = z - mountain.z;
-            const distance = Math.sqrt(dx * dx + dz * dz);
-            
-            if (distance < mountain.radius) {
-                const factor = 1 - distance / mountain.radius;
-                height += mountain.height * Math.pow(factor, 1.8);
-            }
-        }
-        
-        // Discrétiser la hauteur pour correspondre au terrain low poly
-        const stepSize = 5;
-        height = Math.floor(height / stepSize) * stepSize;
-        
-        return height;
+        // Terrain plat, hauteur constante à 0
+        return 0;
     }
     
     /**

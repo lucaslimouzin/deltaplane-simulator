@@ -9,181 +9,28 @@ export function createTerrain(scene) {
     try {
         // Création d'un terrain plus grand
         const terrainSize = 5000; // Terrain encore plus grand
-        const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, 100, 100); // Moins de subdivisions pour un look low poly plus prononcé
         
-        // Ajout de relief au terrain avec des montagnes et collines plus variées
-        const vertices = geometry.attributes.position.array;
+        // Créer l'île principale
+        const island = createIsland(scene, terrainSize);
         
-        // Fonction pour générer du bruit Perlin simplifié
-        const perlin = (x, z, scale, amplitude) => {
-            const noiseScale = scale;
-            return amplitude * Math.sin(x / noiseScale) * Math.cos(z / noiseScale);
-        };
+        // Créer l'océan
+        const ocean = createOcean(scene, terrainSize);
         
-        // Définir des montagnes spécifiques à des positions précises
-        const specificMountains = [
-            // Grande chaîne de montagnes centrale
-            { x: 0, z: -500, radius: 800, height: 250, type: 'range', color: 0xA05B53 }, // Montagnes brunes/orangées
-            
-            // Pic principal
-            { x: 200, z: -300, radius: 400, height: 350, type: 'peak', color: 0xB06B43 }, // Plus haut et plus orangé
-            
-            // Montagnes secondaires
-            { x: -800, z: 600, radius: 500, height: 220, type: 'peak', color: 0x9D5B33 },
-            { x: 1000, z: 800, radius: 600, height: 280, type: 'peak', color: 0xA05B53 },
-            
-            // Petite chaîne à l'est
-            { x: 1500, z: -200, radius: 700, height: 200, type: 'range', color: 0xB06B43 },
-            
-            // Montagnes isolées
-            { x: -1200, z: -900, radius: 300, height: 180, type: 'peak', color: 0x9D5B33 },
-            { x: 700, z: 1200, radius: 350, height: 190, type: 'peak', color: 0xA05B53 },
-            
-            // Montagne proche du point de départ
-            { x: 0, z: 0, radius: 600, height: 150, type: 'peak', color: 0x9D5B33 },
-            
-            // Nouvelles montagnes plus hautes et plus anguleuses
-            { x: -400, z: -700, radius: 350, height: 320, type: 'peak', color: 0xB06B43 },
-            { x: 600, z: -500, radius: 300, height: 280, type: 'peak', color: 0xA05B53 },
-            { x: -600, z: 300, radius: 400, height: 250, type: 'peak', color: 0x9D5B33 },
-            { x: 300, z: 600, radius: 350, height: 230, type: 'peak', color: 0xB06B43 },
-        ];
+        // Créer les montagnes
+        const mountains = createMountains(scene);
         
-        // Fonction pour calculer la hauteur d'une montagne à une position donnée
-        const calculateMountainHeight = (x, z, mountain) => {
-            const dx = x - mountain.x;
-            const dz = z - mountain.z;
-            const distance = Math.sqrt(dx * dx + dz * dz);
-            
-            if (distance >= mountain.radius) return 0;
-            
-            let heightFactor;
-            
-            if (mountain.type === 'peak') {
-                // Montagne conique avec sommet plus pointu pour un look low poly
-                heightFactor = Math.pow(1 - distance / mountain.radius, 1.2); // Exposant plus petit pour des pentes plus raides
-                
-                // Ajouter des facettes plus prononcées au sommet
-                if (distance < mountain.radius * 0.2) {
-                    // Utiliser des fonctions step pour créer des plateaux et des arêtes
-                    const step = Math.floor(distance / (mountain.radius * 0.05)) * (mountain.radius * 0.05);
-                    heightFactor += 0.4 * Math.pow(1 - step / (mountain.radius * 0.2), 2);
-                }
-            } else if (mountain.type === 'range') {
-                // Chaîne de montagnes avec crête plus anguleuse
-                // Calculer la distance à la ligne centrale de la chaîne
-                const angle = Math.atan2(dz, dx);
-                const distanceToRidge = Math.abs(distance * Math.sin(angle));
-                
-                // La hauteur diminue en s'éloignant de la crête avec des plateaux
-                heightFactor = Math.pow(1 - distanceToRidge / (mountain.radius * 0.5), 1.0); // Exposant plus petit pour des pentes plus raides
-                
-                // Variation le long de la crête avec des arêtes plus prononcées
-                const positionOnRidge = distance * Math.cos(angle);
-                const ridgeVariation = 0.4 * Math.sin(positionOnRidge / 200) + 0.3 * Math.sin(positionOnRidge / 50);
-                
-                heightFactor = Math.max(0, heightFactor) * (1 + ridgeVariation);
-                
-                // Ajouter des facettes en "escalier" pour un look plus low poly
-                heightFactor = Math.floor(heightFactor * 5) / 5;
-            }
-            
-            return mountain.height * heightFactor;
-        };
-        
-        // Créer un tableau pour stocker les matériaux des montagnes
-        const mountainMaterials = [];
-        const mountainGeometries = [];
-        const mountainMeshes = [];
-        
-        // Appliquer les hauteurs au terrain
-        for (let i = 0; i < vertices.length; i += 3) {
-            const x = vertices[i];
-            const z = vertices[i + 2];
-            
-            // Hauteur de base avec du bruit Perlin
-            let height = 
-                perlin(x, z, 150, 15) + 
-                perlin(x, z, 75, 8) + 
-                perlin(x, z, 30, 4);
-            
-            // Ajouter les montagnes spécifiques
-            for (const mountain of specificMountains) {
-                height += calculateMountainHeight(x, z, mountain);
-            }
-            
-            // Ajouter des détails de texture aux montagnes
-            if (height > 50) {
-                height += perlin(x, z, 10, 2) + perlin(x, z, 5, 1);
-            }
-            
-            // Discrétiser la hauteur pour créer des plateaux (effet low poly)
-            const stepSize = 5; // Taille des marches
-            height = Math.floor(height / stepSize) * stepSize;
-            
-            // Appliquer la hauteur
-            vertices[i + 1] = height;
-        }
-        
-        geometry.computeVertexNormals();
-        
-        // Matériau du terrain avec texture - style low poly plus prononcé
-        const material = new THREE.MeshStandardMaterial({
-            color: 0x7cba3d, // Vert plus vif
-            side: THREE.DoubleSide,
-            flatShading: true, // Activer le flat shading pour un look low poly
-            roughness: 0.8,
-            metalness: 0.1,
-            wireframe: false
-        });
-        
-        const terrain = new THREE.Mesh(geometry, material);
-        terrain.rotation.x = -Math.PI / 2;
-        terrain.receiveShadow = true;
-        scene.add(terrain);
-        
-        // Créer des montagnes séparées avec des matériaux distincts
-        for (const mountain of specificMountains) {
-            createMountain(scene, mountain);
-        }
-        
-        // Ajout d'un plan d'eau sous le terrain
-        const waterGeometry = new THREE.PlaneGeometry(terrainSize * 1.5, terrainSize * 1.5);
-        const waterMaterial = new THREE.MeshStandardMaterial({
-            color: 0x4a9ad9, // Bleu vif pour l'eau
-            side: THREE.DoubleSide,
-            flatShading: true,
-            roughness: 0.3,
-            metalness: 0.6
-        });
-        const water = new THREE.Mesh(waterGeometry, waterMaterial);
-        water.rotation.x = -Math.PI / 2;
-        water.position.y = -10; // Légèrement en dessous du terrain
-        water.receiveShadow = true;
-        scene.add(water);
-        
-        // Ajout d'un sol terreux sous les parties émergées
-        const groundGeometry = new THREE.PlaneGeometry(terrainSize * 1.5, terrainSize * 1.5);
-        const groundMaterial = new THREE.MeshStandardMaterial({
-            color: 0xd9c27e, // Couleur sable/terre
-            side: THREE.DoubleSide,
-            flatShading: true,
-            roughness: 0.9,
-            metalness: 0.1
-        });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -5; // Entre l'eau et le terrain
-        ground.receiveShadow = true;
-        scene.add(ground);
-        
-        // Ajout de forêts
-        addForests(scene, terrain, specificMountains, terrainSize);
-        
-        // Ajout de nuages low poly
+        // Créer les nuages low poly
         addLowPolyClouds(scene);
         
-        return terrain;
+        // Créer une petite ville
+        createLowPolyCity(scene);
+        
+        // Créer des forêts
+        createForests(scene);
+        
+        console.log("Terrain low poly créé avec succès");
+        
+        return island; // Retourner l'île comme terrain principal pour la détection de collision
     } catch (error) {
         console.error('Erreur lors de la création du terrain:', error);
         return null;
@@ -191,53 +38,409 @@ export function createTerrain(scene) {
 }
 
 /**
- * Crée une montagne avec un matériau spécifique
+ * Crée l'île principale
  * @param {THREE.Scene} scene - La scène Three.js
- * @param {Object} mountain - Les paramètres de la montagne
+ * @param {number} terrainSize - La taille du terrain
+ * @returns {THREE.Mesh} Le mesh de l'île
  */
-function createMountain(scene, mountain) {
-    // Créer une géométrie conique pour la montagne
-    let geometry;
+function createIsland(scene, terrainSize) {
+    // Créer la forme de l'île avec une géométrie personnalisée
+    const islandSize = terrainSize * 0.4;
+    const islandGeometry = new THREE.BufferGeometry();
     
-    if (mountain.type === 'peak') {
-        // Pour les pics, utiliser un cône avec peu de segments
-        geometry = new THREE.ConeGeometry(mountain.radius, mountain.height, 6);
-    } else {
-        // Pour les chaînes, utiliser une géométrie plus complexe
-        geometry = new THREE.CylinderGeometry(0, mountain.radius, mountain.height, 6, 2);
-        // Déformer la géométrie pour créer une crête
-        const vertices = geometry.attributes.position.array;
-        for (let i = 0; i < vertices.length; i += 3) {
-            const x = vertices[i];
-            const z = vertices[i + 2];
-            // Aplatir le sommet pour créer une crête
-            if (vertices[i + 1] > mountain.height * 0.7) {
-                vertices[i + 1] = mountain.height * 0.7 + (vertices[i + 1] - mountain.height * 0.7) * 0.5;
+    // Créer une forme d'île irrégulière
+    const vertices = [];
+    const indices = [];
+    const resolution = 40; // Résolution de la grille
+    const heightMap = generateHeightMap(resolution, resolution);
+    
+    // Générer les sommets
+    for (let z = 0; z < resolution; z++) {
+        for (let x = 0; x < resolution; x++) {
+            // Position normalisée entre -0.5 et 0.5
+            const nx = x / (resolution - 1) - 0.5;
+            const nz = z / (resolution - 1) - 0.5;
+            
+            // Calculer la distance au centre
+            const distToCenter = Math.sqrt(nx * nx + nz * nz) * 2;
+            
+            // Forme d'île: plus élevée au centre, s'abaisse vers les bords
+            let height = 0;
+            
+            // Seulement créer l'île si on est dans un certain rayon
+            if (distToCenter < 0.8) {
+                // Hauteur de base de l'île
+                height = Math.max(0, 20 * (1 - distToCenter / 0.8));
+                
+                // Ajouter des variations de hauteur pour les collines
+                height += heightMap[z][x] * 15 * (1 - distToCenter / 0.8);
             }
-            // Ajouter des variations pour un aspect plus naturel
-            vertices[i] += Math.sin(z * 0.2) * mountain.radius * 0.2;
-            vertices[i + 2] += Math.sin(x * 0.2) * mountain.radius * 0.2;
+            
+            // Ajouter le sommet
+            vertices.push(nx * islandSize, height, nz * islandSize);
         }
-        geometry.computeVertexNormals();
     }
     
-    // Matériau avec la couleur spécifique de la montagne
-    const material = new THREE.MeshStandardMaterial({
-        color: mountain.color || 0xA05B53, // Couleur par défaut si non spécifiée
+    // Générer les triangles
+    for (let z = 0; z < resolution - 1; z++) {
+        for (let x = 0; x < resolution - 1; x++) {
+            const a = z * resolution + x;
+            const b = z * resolution + x + 1;
+            const c = (z + 1) * resolution + x;
+            const d = (z + 1) * resolution + x + 1;
+            
+            // Premier triangle
+            indices.push(a, c, b);
+            
+            // Deuxième triangle
+            indices.push(b, c, d);
+        }
+    }
+    
+    // Créer la géométrie avec les sommets et indices
+    islandGeometry.setIndex(indices);
+    islandGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    islandGeometry.computeVertexNormals();
+    
+    // Matériau pour l'île - vert pour l'herbe
+    const islandMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8BC34A, // Vert clair
+        flatShading: true, // Activer le flat shading pour un look low poly
+        roughness: 0.8,
+        metalness: 0.1
+    });
+    
+    const island = new THREE.Mesh(islandGeometry, islandMaterial);
+    island.castShadow = true;
+    island.receiveShadow = true;
+    scene.add(island);
+    
+    // Ajouter des plages autour de l'île
+    addBeaches(scene, island, islandSize);
+    
+    return island;
+}
+
+/**
+ * Ajoute des plages autour de l'île
+ * @param {THREE.Scene} scene - La scène Three.js
+ * @param {THREE.Mesh} island - Le mesh de l'île
+ * @param {number} islandSize - La taille de l'île
+ */
+function addBeaches(scene, island, islandSize) {
+    // Créer un anneau autour de l'île pour les plages
+    const beachGeometry = new THREE.BufferGeometry();
+    const resolution = 40;
+    const beachWidth = islandSize * 0.1;
+    
+    const vertices = [];
+    const indices = [];
+    
+    // Générer les sommets
+    for (let z = 0; z < resolution; z++) {
+        for (let x = 0; x < resolution; x++) {
+            // Position normalisée entre -0.5 et 0.5
+            const nx = x / (resolution - 1) - 0.5;
+            const nz = z / (resolution - 1) - 0.5;
+            
+            // Calculer la distance au centre
+            const distToCenter = Math.sqrt(nx * nx + nz * nz) * 2;
+            
+            // Hauteur de la plage
+            let height = 0;
+            
+            // Créer la plage seulement dans un anneau autour de l'île
+            if (distToCenter >= 0.8 && distToCenter < 0.9) {
+                // La plage descend progressivement vers l'eau
+                height = Math.max(0, 5 * (1 - (distToCenter - 0.8) / 0.1));
+            }
+            
+            // Ajouter le sommet
+            vertices.push(nx * (islandSize + beachWidth), height, nz * (islandSize + beachWidth));
+        }
+    }
+    
+    // Générer les triangles
+    for (let z = 0; z < resolution - 1; z++) {
+        for (let x = 0; x < resolution - 1; x++) {
+            const a = z * resolution + x;
+            const b = z * resolution + x + 1;
+            const c = (z + 1) * resolution + x;
+            const d = (z + 1) * resolution + x + 1;
+            
+            // Premier triangle
+            indices.push(a, c, b);
+            
+            // Deuxième triangle
+            indices.push(b, c, d);
+        }
+    }
+    
+    // Créer la géométrie avec les sommets et indices
+    beachGeometry.setIndex(indices);
+    beachGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    beachGeometry.computeVertexNormals();
+    
+    // Matériau pour la plage - couleur sable
+    const beachMaterial = new THREE.MeshStandardMaterial({
+        color: 0xE6D2A8, // Couleur sable
         flatShading: true,
         roughness: 0.9,
         metalness: 0.1
     });
     
-    const mountainMesh = new THREE.Mesh(geometry, material);
-    mountainMesh.position.set(mountain.x, mountain.height / 2, mountain.z);
-    mountainMesh.castShadow = true;
-    mountainMesh.receiveShadow = true;
+    const beach = new THREE.Mesh(beachGeometry, beachMaterial);
+    beach.castShadow = true;
+    beach.receiveShadow = true;
+    scene.add(beach);
+}
+
+/**
+ * Crée l'océan autour de l'île
+ * @param {THREE.Scene} scene - La scène Three.js
+ * @param {number} terrainSize - La taille du terrain
+ * @returns {THREE.Mesh} Le mesh de l'océan
+ */
+function createOcean(scene, terrainSize) {
+    const oceanGeometry = new THREE.PlaneGeometry(terrainSize * 2, terrainSize * 2, 32, 32);
     
-    // Rotation aléatoire pour plus de variété
-    mountainMesh.rotation.y = Math.random() * Math.PI * 2;
+    // Matériau pour l'océan - bleu
+    const oceanMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4FC3F7, // Bleu clair
+        flatShading: true,
+        roughness: 0.3,
+        metalness: 0.6
+    });
     
-    scene.add(mountainMesh);
+    const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
+    ocean.rotation.x = -Math.PI / 2;
+    ocean.position.y = -2; // Légèrement en dessous de l'île
+    ocean.receiveShadow = true;
+    scene.add(ocean);
+    
+    return ocean;
+}
+
+/**
+ * Crée les montagnes
+ * @param {THREE.Scene} scene - La scène Three.js
+ * @returns {THREE.Group} Le groupe contenant les montagnes
+ */
+function createMountains(scene) {
+    const mountainsGroup = new THREE.Group();
+    
+    // Créer plusieurs montagnes
+    const mountainCount = 8;
+    const mountainPositions = [
+        { x: -300, z: -100, scale: 1.5, color: 0xA1887F }, // Marron
+        { x: -250, z: -150, scale: 1.2, color: 0x8D6E63 }, // Marron plus foncé
+        { x: -350, z: -50, scale: 1.3, color: 0xA1887F },
+        { x: -200, z: -100, scale: 1.0, color: 0x8D6E63 },
+        { x: -280, z: -200, scale: 1.4, color: 0xA1887F },
+        { x: -320, z: 0, scale: 1.1, color: 0x8D6E63 },
+        { x: -400, z: -120, scale: 1.6, color: 0xA1887F }, // Grande montagne
+        { x: -150, z: -50, scale: 0.9, color: 0x8D6E63 }
+    ];
+    
+    // Créer chaque montagne
+    for (const pos of mountainPositions) {
+        const mountain = createLowPolyMountain(pos.color);
+        mountain.position.set(pos.x, 0, pos.z);
+        mountain.scale.set(pos.scale * 100, pos.scale * 150, pos.scale * 100);
+        mountainsGroup.add(mountain);
+    }
+    
+    scene.add(mountainsGroup);
+    return mountainsGroup;
+}
+
+/**
+ * Crée une montagne low poly
+ * @param {number} color - La couleur de la montagne
+ * @returns {THREE.Mesh} Le mesh de la montagne
+ */
+function createLowPolyMountain(color) {
+    // Créer une géométrie de tétraèdre modifiée pour une montagne low poly
+    const geometry = new THREE.ConeGeometry(1, 1, 4, 1);
+    
+    // Déformer légèrement les sommets pour un aspect plus naturel
+    const positions = geometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 3) {
+        positions[i] += (Math.random() - 0.5) * 0.2;
+        positions[i + 2] += (Math.random() - 0.5) * 0.2;
+    }
+    
+    geometry.computeVertexNormals();
+    
+    // Matériau pour la montagne
+    const material = new THREE.MeshStandardMaterial({
+        color: color,
+        flatShading: true,
+        roughness: 0.8,
+        metalness: 0.2
+    });
+    
+    return new THREE.Mesh(geometry, material);
+}
+
+/**
+ * Crée une petite ville low poly
+ * @param {THREE.Scene} scene - La scène Three.js
+ */
+function createLowPolyCity(scene) {
+    const cityGroup = new THREE.Group();
+    cityGroup.position.set(200, 0, 200); // Position de la ville sur l'île
+    
+    // Créer plusieurs bâtiments
+    const buildingCount = 30;
+    
+    for (let i = 0; i < buildingCount; i++) {
+        // Position aléatoire dans un cercle
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 50;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        
+        // Taille aléatoire
+        const width = 3 + Math.random() * 5;
+        const height = 5 + Math.random() * 15;
+        const depth = 3 + Math.random() * 5;
+        
+        // Créer un bâtiment
+        const building = createLowPolyBuilding(width, height, depth);
+        building.position.set(x, height / 2, z);
+        
+        // Rotation aléatoire
+        building.rotation.y = Math.random() * Math.PI * 2;
+        
+        cityGroup.add(building);
+    }
+    
+    scene.add(cityGroup);
+}
+
+/**
+ * Crée un bâtiment low poly
+ * @param {number} width - La largeur du bâtiment
+ * @param {number} height - La hauteur du bâtiment
+ * @param {number} depth - La profondeur du bâtiment
+ * @returns {THREE.Mesh} Le mesh du bâtiment
+ */
+function createLowPolyBuilding(width, height, depth) {
+    const geometry = new THREE.BoxGeometry(width, height, depth);
+    
+    // Couleur aléatoire pour le bâtiment
+    const colors = [
+        0xE0E0E0, // Gris clair
+        0xBDBDBD, // Gris
+        0x9E9E9E, // Gris foncé
+        0x757575  // Gris très foncé
+    ];
+    
+    const material = new THREE.MeshStandardMaterial({
+        color: colors[Math.floor(Math.random() * colors.length)],
+        flatShading: true,
+        roughness: 0.7,
+        metalness: 0.3
+    });
+    
+    return new THREE.Mesh(geometry, material);
+}
+
+/**
+ * Crée des forêts sur l'île
+ * @param {THREE.Scene} scene - La scène Three.js
+ */
+function createForests(scene) {
+    const forestsGroup = new THREE.Group();
+    
+    // Créer plusieurs zones de forêt
+    const forestCount = 5;
+    const forestPositions = [
+        { x: 100, z: -100, radius: 80 },
+        { x: -100, z: 100, radius: 60 },
+        { x: 0, z: 200, radius: 70 },
+        { x: 150, z: 50, radius: 50 },
+        { x: -50, z: -150, radius: 40 }
+    ];
+    
+    // Créer chaque forêt
+    for (const pos of forestPositions) {
+        const forest = createForestCluster(pos.radius);
+        forest.position.set(pos.x, 0, pos.z);
+        forestsGroup.add(forest);
+    }
+    
+    scene.add(forestsGroup);
+}
+
+/**
+ * Crée un groupe d'arbres formant une forêt
+ * @param {number} radius - Le rayon de la forêt
+ * @returns {THREE.Group} Le groupe contenant les arbres
+ */
+function createForestCluster(radius) {
+    const forestGroup = new THREE.Group();
+    
+    // Nombre d'arbres basé sur le rayon
+    const treeCount = Math.floor(radius * 0.5);
+    
+    for (let i = 0; i < treeCount; i++) {
+        // Position aléatoire dans un cercle
+        const angle = Math.random() * Math.PI * 2;
+        const r = Math.random() * radius;
+        const x = Math.cos(angle) * r;
+        const z = Math.sin(angle) * r;
+        
+        // Taille aléatoire
+        const scale = 0.5 + Math.random() * 1.5;
+        
+        // Créer un arbre
+        const tree = createLowPolyTree();
+        tree.position.set(x, 0, z);
+        tree.scale.set(scale, scale, scale);
+        
+        // Rotation aléatoire
+        tree.rotation.y = Math.random() * Math.PI * 2;
+        
+        forestGroup.add(tree);
+    }
+    
+    return forestGroup;
+}
+
+/**
+ * Crée un arbre low poly
+ * @returns {THREE.Group} Le groupe contenant l'arbre
+ */
+function createLowPolyTree() {
+    const treeGroup = new THREE.Group();
+    
+    // Tronc
+    const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 4, 6);
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8D6E63, // Marron
+        flatShading: true,
+        roughness: 0.9,
+        metalness: 0.1
+    });
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.position.y = 2;
+    treeGroup.add(trunk);
+    
+    // Feuillage
+    const foliageGeometry = new THREE.ConeGeometry(2, 6, 6);
+    const foliageMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4CAF50, // Vert
+        flatShading: true,
+        roughness: 0.8,
+        metalness: 0.1
+    });
+    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+    foliage.position.y = 6;
+    treeGroup.add(foliage);
+    
+    return treeGroup;
 }
 
 /**
@@ -247,18 +450,18 @@ function createMountain(scene, mountain) {
 function addLowPolyClouds(scene) {
     // Groupe pour contenir tous les nuages
     const cloudsGroup = new THREE.Group();
-    cloudsGroup.position.y = 500; // Hauteur des nuages
+    cloudsGroup.position.y = 300; // Hauteur des nuages
     scene.add(cloudsGroup);
     
     // Créer plusieurs nuages
     for (let i = 0; i < 15; i++) {
         // Position aléatoire
-        const x = (Math.random() - 0.5) * 3000;
-        const y = Math.random() * 200;
-        const z = (Math.random() - 0.5) * 3000;
+        const x = (Math.random() - 0.5) * 2000;
+        const y = Math.random() * 100;
+        const z = (Math.random() - 0.5) * 2000;
         
         // Taille aléatoire
-        const scale = 50 + Math.random() * 100;
+        const scale = 30 + Math.random() * 70;
         
         // Créer un nuage
         const cloud = createLowPolyCloud();
@@ -313,291 +516,86 @@ function createLowPolyCloud() {
 }
 
 /**
- * Ajoute des forêts au terrain
- * @param {THREE.Scene} scene - La scène Three.js
- * @param {THREE.Mesh} terrain - Le mesh du terrain
- * @param {Array} mountainZones - Les zones de montagnes
- * @param {number} terrainSize - La taille du terrain
+ * Génère une carte de hauteur aléatoire
+ * @param {number} width - La largeur de la carte
+ * @param {number} height - La hauteur de la carte
+ * @returns {Array} La carte de hauteur
  */
-function addForests(scene, terrain, mountainZones, terrainSize) {
-    // Créer des groupes d'arbres dans différentes zones
-    const forestZones = [];
+function generateHeightMap(width, height) {
+    const map = [];
     
-    // Forêts dans les zones de montagnes
-    for (const mountain of mountainZones) {
-        if (Math.random() > 0.3) { // 70% de chance d'avoir une forêt sur une montagne
-            forestZones.push({
-                x: mountain.x,
-                z: mountain.z,
-                radius: mountain.radius * 0.7,
-                density: 0.1 + Math.random() * 0.2
-            });
+    // Initialiser la carte avec des valeurs aléatoires
+    for (let z = 0; z < height; z++) {
+        const row = [];
+        for (let x = 0; x < width; x++) {
+            row.push(Math.random());
         }
+        map.push(row);
     }
     
-    // Quelques forêts aléatoires supplémentaires
-    for (let i = 0; i < 10; i++) {
-        forestZones.push({
-            x: (Math.random() - 0.5) * terrainSize * 0.8,
-            z: (Math.random() - 0.5) * terrainSize * 0.8,
-            radius: 50 + Math.random() * 150,
-            density: 0.05 + Math.random() * 0.15
-        });
-    }
-    
-    // Créer des instances d'arbres pour chaque zone de forêt
-    for (const forest of forestZones) {
-        createForest(scene, forest, terrain);
-    }
-}
-
-/**
- * Crée une forêt dans une zone spécifique
- * @param {THREE.Scene} scene - La scène Three.js
- * @param {Object} forest - Les paramètres de la forêt
- * @param {THREE.Mesh} terrain - Le mesh du terrain
- */
-function createForest(scene, forest, terrain) {
-    // Nombre d'arbres basé sur la densité et la taille de la forêt
-    const treeCount = Math.floor(forest.radius * forest.radius * forest.density * 0.01);
-    
-    // Limiter le nombre d'arbres pour des raisons de performance
-    const maxTrees = 100;
-    const actualTreeCount = Math.min(treeCount, maxTrees);
-    
-    // Créer un groupe pour contenir tous les arbres de cette forêt
-    const forestGroup = new THREE.Group();
-    scene.add(forestGroup);
-    
-    // Créer des géométries d'arbres réutilisables
-    const treeTypes = [
-        createPineTree(),
-        createBroadleafTree()
-    ];
-    
-    // Tableau pour stocker les positions des arbres déjà placés
-    const placedTrees = [];
-    
-    // Placer les arbres
-    for (let i = 0; i < actualTreeCount; i++) {
-        // Position aléatoire dans la zone de forêt
-        const angle = Math.random() * Math.PI * 2;
-        const distance = Math.random() * forest.radius;
-        const x = forest.x + Math.cos(angle) * distance;
-        const z = forest.z + Math.sin(angle) * distance;
-        
-        // Déterminer la hauteur du terrain à cette position
-        const y = getApproximateHeight(x, z, terrain);
-        
-        // Choisir un type d'arbre aléatoire
-        const treeType = treeTypes[Math.floor(Math.random() * treeTypes.length)];
-        const tree = treeType.clone();
-        
-        // Taille aléatoire
-        const scale = 0.8 + Math.random() * 0.4;
-        tree.scale.set(scale, scale, scale);
-        
-        // Rotation aléatoire
-        tree.rotation.y = Math.random() * Math.PI * 2;
-        
-        // Vérifier si l'arbre est proche d'un autre arbre
-        let finalY = y;
-        let touchingAnotherTree = false;
-        
-        // Rayon approximatif de l'arbre (pour la détection de proximité)
-        const treeRadius = 3 * scale;
-        
-        // Vérifier la proximité avec les arbres déjà placés
-        for (const placedTree of placedTrees) {
-            const dx = x - placedTree.x;
-            const dz = z - placedTree.z;
-            const distance = Math.sqrt(dx * dx + dz * dz);
+    // Lisser la carte
+    const smoothedMap = [];
+    for (let z = 0; z < height; z++) {
+        const row = [];
+        for (let x = 0; x < width; x++) {
+            // Moyenne des valeurs voisines
+            let sum = 0;
+            let count = 0;
             
-            // Si l'arbre est très proche d'un autre (mais pas trop pour éviter les chevauchements complets)
-            if (distance < treeRadius * 1.5 && distance > treeRadius * 0.5) {
-                touchingAnotherTree = true;
-                
-                // Ajuster la hauteur pour qu'il semble "pousser" contre l'autre arbre
-                // On utilise la hauteur de l'arbre déjà placé comme référence
-                finalY = placedTree.y;
-                
-                // Légère variation pour éviter que tous les arbres soient exactement à la même hauteur
-                finalY += (Math.random() - 0.5) * 2;
-                break;
+            for (let dz = -1; dz <= 1; dz++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const nz = z + dz;
+                    const nx = x + dx;
+                    
+                    if (nz >= 0 && nz < height && nx >= 0 && nx < width) {
+                        sum += map[nz][nx];
+                        count++;
+                    }
+                }
             }
+            
+            row.push(sum / count);
         }
-        
-        // Si l'arbre ne touche pas un autre arbre, il touche le sol
-        if (!touchingAnotherTree) {
-            // Assurer que l'arbre est exactement au niveau du sol
-            finalY = y;
-        }
-        
-        // Positionner l'arbre
-        tree.position.set(x, finalY, z);
-        
-        // Enregistrer la position de cet arbre
-        placedTrees.push({
-            x: x,
-            y: finalY,
-            z: z,
-            radius: treeRadius
-        });
-        
-        // Ajouter l'arbre au groupe de forêt
-        forestGroup.add(tree);
+        smoothedMap.push(row);
     }
+    
+    return smoothedMap;
 }
 
 /**
- * Obtient une hauteur approximative du terrain à une position donnée
+ * Calcule la hauteur du terrain à une position donnée
  * @param {number} x - Coordonnée X
  * @param {number} z - Coordonnée Z
- * @param {THREE.Mesh} terrain - Le mesh du terrain
- * @returns {number} La hauteur approximative
+ * @returns {number} La hauteur du terrain
  */
-function getApproximateHeight(x, z, terrain) {
-    // Fonction simplifiée pour estimer la hauteur
-    // Dans un cas réel, on utiliserait un raycasting précis
+export function getTerrainHeightAtPosition(x, z) {
+    // Calculer la distance au centre de l'île
+    const distToCenter = Math.sqrt(x * x + z * z);
+    const islandRadius = 1000; // Rayon approximatif de l'île
     
-    // Utiliser la même fonction de bruit que pour le terrain
-    const perlin = (x, z, scale, amplitude) => {
-        const noiseScale = scale;
-        return amplitude * Math.sin(x / noiseScale) * Math.cos(z / noiseScale);
-    };
-    
-    let height = 
-        perlin(x, z, 150, 15) + 
-        perlin(x, z, 75, 8) + 
-        perlin(x, z, 30, 4);
-    
-    // Ajouter les montagnes spécifiques (version simplifiée)
-    const specificMountains = [
-        { x: 0, z: -500, radius: 800, height: 250 },
-        { x: 200, z: -300, radius: 400, height: 350 },
-        { x: -800, z: 600, radius: 500, height: 220 },
-        { x: 1000, z: 800, radius: 600, height: 280 },
-        { x: 1500, z: -200, radius: 700, height: 200 },
-        { x: -1200, z: -900, radius: 300, height: 180 },
-        { x: 700, z: 1200, radius: 350, height: 190 },
-        { x: 0, z: 0, radius: 600, height: 150 },
-        { x: -400, z: -700, radius: 350, height: 320 },
-        { x: 600, z: -500, radius: 300, height: 280 },
-        { x: -600, z: 300, radius: 400, height: 250 },
-        { x: 300, z: 600, radius: 350, height: 230 },
-    ];
-    
-    for (const mountain of specificMountains) {
-        const dx = x - mountain.x;
-        const dz = z - mountain.z;
-        const distance = Math.sqrt(dx * dx + dz * dz);
+    // Si on est sur l'île
+    if (distToCenter < islandRadius) {
+        // Hauteur de base de l'île
+        const baseHeight = Math.max(0, 20 * (1 - distToCenter / islandRadius));
         
-        if (distance < mountain.radius) {
-            const factor = 1 - distance / mountain.radius;
-            height += mountain.height * Math.pow(factor, 1.8);
+        // Vérifier si on est dans la zone des montagnes
+        const mountainsX = -300;
+        const mountainsZ = -100;
+        const mountainsRadius = 400;
+        
+        const distToMountains = Math.sqrt((x - mountainsX) * (x - mountainsX) + (z - mountainsZ) * (z - mountainsZ));
+        
+        if (distToMountains < mountainsRadius) {
+            // Hauteur supplémentaire pour les montagnes
+            const mountainHeight = Math.max(0, 100 * (1 - distToMountains / mountainsRadius));
+            return baseHeight + mountainHeight;
         }
+        
+        return baseHeight;
     }
     
-    // Discrétiser la hauteur pour correspondre au terrain low poly
-    const stepSize = 5;
-    height = Math.floor(height / stepSize) * stepSize;
-    
-    return height;
-}
-
-/**
- * Crée un modèle d'arbre de type pin - style low poly
- * @returns {THREE.Group} Le groupe contenant l'arbre
- */
-function createPineTree() {
-    const treeGroup = new THREE.Group();
-    
-    // Tronc
-    const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 5, 5); // Encore moins de segments pour un look plus low poly
-    const trunkMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8B4513,
-        flatShading: true, // Activer le flat shading pour un look low poly
-        roughness: 0.9,
-        metalness: 0.1
-    });
-    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.y = 2.5;
-    trunk.castShadow = true;
-    treeGroup.add(trunk);
-    
-    // Feuillage (plusieurs cônes superposés)
-    const foliageMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2d6a1e, // Vert plus vif
-        flatShading: true, // Activer le flat shading pour un look low poly
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    
-    const foliage1 = new THREE.Mesh(
-        new THREE.ConeGeometry(3, 6, 5), // Moins de segments pour un look plus low poly
-        foliageMaterial
-    );
-    foliage1.position.y = 5;
-    foliage1.castShadow = true;
-    treeGroup.add(foliage1);
-    
-    const foliage2 = new THREE.Mesh(
-        new THREE.ConeGeometry(2.5, 5, 5), // Moins de segments pour un look plus low poly
-        foliageMaterial
-    );
-    foliage2.position.y = 8;
-    foliage2.castShadow = true;
-    treeGroup.add(foliage2);
-    
-    const foliage3 = new THREE.Mesh(
-        new THREE.ConeGeometry(1.8, 4, 5), // Moins de segments pour un look plus low poly
-        foliageMaterial
-    );
-    foliage3.position.y = 10.5;
-    foliage3.castShadow = true;
-    treeGroup.add(foliage3);
-    
-    return treeGroup;
-}
-
-/**
- * Crée un modèle d'arbre à feuilles larges - style low poly
- * @returns {THREE.Group} Le groupe contenant l'arbre
- */
-function createBroadleafTree() {
-    const treeGroup = new THREE.Group();
-    
-    // Tronc
-    const trunkGeometry = new THREE.CylinderGeometry(0.4, 0.6, 4, 5); // Moins de segments pour un look plus low poly
-    const trunkMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8B4513,
-        flatShading: true, // Activer le flat shading pour un look low poly
-        roughness: 0.9,
-        metalness: 0.1
-    });
-    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.y = 2;
-    trunk.castShadow = true;
-    treeGroup.add(trunk);
-    
-    // Feuillage (forme géométrique simple)
-    const foliageMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4a9d44, // Vert plus vif
-        flatShading: true, // Activer le flat shading pour un look low poly
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    
-    const foliage = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(3, 0), // Utiliser un icosaèdre sans subdivision pour un look très low poly
-        foliageMaterial
-    );
-    foliage.position.y = 6;
-    foliage.scale.y = 1.2;
-    foliage.castShadow = true;
-    treeGroup.add(foliage);
-    
-    return treeGroup;
+    // Si on est dans l'eau
+    return 0;
 }
 
 /**

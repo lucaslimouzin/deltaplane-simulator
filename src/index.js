@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createTerrain, createGrid } from './terrain.js';
 import { Deltaplane } from './deltaplane.js';
+import { MultiplayerManager } from './multiplayer.js';
 
 // Variables globales
 let camera, scene, renderer;
@@ -10,27 +11,43 @@ let deltaplane;
 let terrain;
 let clock = new THREE.Clock();
 let devMode = false; // Mode développement désactivé
-
-// Débogage
-console.log('Initialisation du simulateur de deltaplane...');
+let multiplayerManager; // Gestionnaire multijoueur
+let isMultiplayerMode = false; // Mode multijoueur désactivé par défaut
+let gameStarted = false; // Indique si le jeu a démarré
 
 // Initialisation
 init();
-animate();
+
+// Fonction pour démarrer le jeu après la connexion
+async function startGame() {
+    // Créer le gestionnaire multijoueur s'il n'existe pas déjà
+    if (!multiplayerManager) {
+        multiplayerManager = new MultiplayerManager(scene, deltaplane);
+    }
+    
+    // Se connecter au serveur WebSocket
+    try {
+        await multiplayerManager.connect();
+        isMultiplayerMode = true;
+        gameStarted = true;
+        
+        // Démarrer la boucle d'animation
+        animate();
+    } catch (error) {
+        console.error('Erreur lors de la connexion au serveur:', error);
+        alert('Erreur lors de la connexion au serveur. Veuillez réessayer.');
+    }
+}
 
 function init() {
-    console.log('Fonction init() appelée');
-    
     try {
         // Création de la scène
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB); // Bleu ciel plus vif pour le style low poly
-        console.log('Scène créée');
 
         // Création de la caméra
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
         camera.position.set(0, 100, 200); // Position originale
-        console.log('Caméra créée');
 
         // Création du renderer
         renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -39,7 +56,6 @@ function init() {
         renderer.shadowMap.enabled = true; // Activer les ombres
         renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Ombres douces
         document.body.appendChild(renderer.domElement);
-        console.log('Renderer créé et ajouté au DOM');
 
         // Ajout des contrôles pour le développement
         controls = new OrbitControls(camera, renderer.domElement);
@@ -50,28 +66,22 @@ function init() {
         controls.maxDistance = 500;
         controls.maxPolarAngle = Math.PI / 2;
         controls.enabled = devMode; // Désactivé par défaut
-        console.log('Contrôles créés');
 
         // Création du terrain
         terrain = createTerrain(scene);
-        console.log('Terrain créé');
         
         // Ajout d'une grille de référence
         createGrid(scene);
-        console.log('Grille créée');
 
         // Création du deltaplane
         deltaplane = new Deltaplane(scene);
-        console.log('Deltaplane créé');
         
         // Passer la référence du terrain au deltaplane pour la détection de collisions
         deltaplane.setTerrain(terrain);
-        console.log('Référence du terrain passée au deltaplane');
 
         // Ajout des lumières
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Lumière ambiante plus douce
         scene.add(ambientLight);
-        console.log('Lumière ambiante ajoutée');
 
         // Lumière directionnelle (soleil)
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Plus intense pour des ombres plus marquées
@@ -89,66 +99,33 @@ function init() {
         directionalLight.shadow.camera.bottom = -200;
         
         scene.add(directionalLight);
-        console.log('Lumière directionnelle ajoutée');
         
         // Lumière secondaire pour éclairer les zones d'ombre
         const secondaryLight = new THREE.DirectionalLight(0x6666ff, 0.3); // Lumière bleutée
         secondaryLight.position.set(-50, 30, -50);
         scene.add(secondaryLight);
-        console.log('Lumière secondaire ajoutée');
 
         // Gestion du redimensionnement de la fenêtre
         window.addEventListener('resize', onWindowResize);
-        console.log('Gestionnaire de redimensionnement ajouté');
 
         // Gestion des touches du clavier
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
-        console.log('Gestionnaires de clavier ajoutés');
-
-        // Élément de débogage
-        const debugElement = document.createElement('div');
-        debugElement.id = 'debug';
-        debugElement.style.position = 'absolute';
-        debugElement.style.top = '10px';
-        debugElement.style.left = '10px';
-        debugElement.style.color = 'white';
-        debugElement.style.fontFamily = 'monospace';
-        debugElement.style.fontSize = '12px';
-        debugElement.style.textShadow = '1px 1px 1px black';
-        debugElement.style.pointerEvents = 'none'; // Ne pas interférer avec les clics
-        document.body.appendChild(debugElement);
-        console.log('Élément de débogage ajouté');
-
-        // Instructions
-        const instructionsElement = document.createElement('div');
-        instructionsElement.id = 'instructions';
-        instructionsElement.style.position = 'absolute';
-        instructionsElement.style.bottom = '10px';
-        instructionsElement.style.left = '10px';
-        instructionsElement.style.color = 'white';
-        instructionsElement.style.fontFamily = 'Arial, sans-serif';
-        instructionsElement.style.fontSize = '14px';
-        instructionsElement.style.textShadow = '1px 1px 1px black';
-        instructionsElement.style.pointerEvents = 'none';
-        instructionsElement.innerHTML = `
-            <div style="background-color: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px;">
-                <h3 style="margin-top: 0;">Contrôles du deltaplane:</h3>
-                <p>Flèches directionnelles: contrôler l'orientation du deltaplane</p>
-                <p>↑/↓: Cabrer/Piquer (monter/descendre)</p>
-                <p>←/→: Incliner à gauche/droite (tourner)</p>
-            </div>
-        `;
-        document.body.appendChild(instructionsElement);
-        console.log('Instructions ajoutées');
-
+        
         // Positionnement initial du deltaplane
         deltaplane.mesh.position.set(0, 100, 0);
-        console.log('Deltaplane positionné');
         
         // Initialisation de la caméra pour suivre le deltaplane
         deltaplane.updateCamera(camera);
-        console.log('Caméra initialisée pour suivre le deltaplane');
+        
+        // Création du gestionnaire multijoueur
+        multiplayerManager = new MultiplayerManager(scene, deltaplane);
+        
+        // Afficher un rendu initial de la scène
+        renderer.render(scene, camera);
+        
+        // Démarrer le jeu automatiquement (connexion au serveur)
+        startGame();
     } catch (error) {
         console.error('Erreur lors de l\'initialisation:', error);
     }
@@ -157,12 +134,6 @@ function init() {
 function resetPosition() {
     // Réinitialiser la position et la vitesse du deltaplane
     deltaplane.resetPosition();
-    
-    // Afficher un message
-    const debugElement = document.getElementById('debug');
-    if (debugElement) {
-        debugElement.innerHTML += `<div>Position réinitialisée</div>`;
-    }
 }
 
 function onWindowResize() {
@@ -181,6 +152,9 @@ function onWindowResize() {
 }
 
 function onKeyDown(event) {
+    // Si le jeu n'a pas encore démarré, ignorer les touches
+    if (!gameStarted) return;
+    
     // Afficher le code de la touche pour le débogage
     console.log('Touche pressée:', event.code);
     
@@ -216,6 +190,9 @@ function onKeyDown(event) {
 }
 
 function onKeyUp(event) {
+    // Si le jeu n'a pas encore démarré, ignorer les touches
+    if (!gameStarted) return;
+    
     // Ne pas traiter les touches en mode développement
     if (devMode) return;
     
@@ -242,6 +219,9 @@ function onKeyUp(event) {
 }
 
 function animate() {
+    // Si le jeu n'a pas encore démarré, ne pas animer
+    if (!gameStarted) return;
+    
     try {
         requestAnimationFrame(animate);
         
@@ -252,12 +232,16 @@ function animate() {
         if (controls.enabled) {
             controls.update();
         } else {
-            // Mise à jour du deltaplane
-            const debugElement = document.getElementById('debug');
-            deltaplane.update(delta, debugElement);
+            // Mise à jour du deltaplane sans passer l'élément de débogage
+            deltaplane.update(delta, null);
             
             // Mise à jour de la caméra pour suivre le deltaplane
             deltaplane.updateCamera(camera);
+            
+            // Mise à jour du gestionnaire multijoueur si activé
+            if (isMultiplayerMode) {
+                multiplayerManager.update(delta);
+            }
         }
         
         // Rendu de la scène
