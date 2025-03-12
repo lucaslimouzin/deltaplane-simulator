@@ -47,9 +47,11 @@ class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 # Démarrer le serveur HTTP dans un thread séparé
 def start_http_server():
-    with socketserver.TCPServer(("", PORT), HttpRequestHandler) as httpd:
+    # Utiliser "0.0.0.0" pour écouter sur toutes les interfaces réseau
+    with socketserver.TCPServer(("0.0.0.0", PORT), HttpRequestHandler) as httpd:
         print(f"Serveur HTTP démarré sur le port {PORT}")
         print(f"Ouvrez votre navigateur à l'adresse: http://localhost:{PORT}")
+        print(f"Pour accéder depuis d'autres ordinateurs, utilisez: http://VOTRE_IP:{PORT}")
         httpd.serve_forever()
 
 # Gestionnaire de connexions WebSocket
@@ -200,8 +202,10 @@ async def broadcast_player_left(player_id, player_name):
 
 # Démarrer le serveur WebSocket
 async def start_websocket_server():
-    async with websockets.serve(websocket_handler, "localhost", WEBSOCKET_PORT):
+    # Utiliser "0.0.0.0" pour écouter sur toutes les interfaces réseau
+    async with websockets.serve(websocket_handler, "0.0.0.0", WEBSOCKET_PORT):
         print(f"Serveur WebSocket démarré sur le port {WEBSOCKET_PORT}")
+        print(f"Pour accéder depuis d'autres ordinateurs, utilisez: ws://VOTRE_IP:{WEBSOCKET_PORT}")
         await asyncio.Future()  # Exécuter indéfiniment
 
 # Fonction principale

@@ -20,9 +20,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 def run_server():
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    # Utiliser "0.0.0.0" au lieu de "" pour écouter sur toutes les interfaces réseau
+    with socketserver.TCPServer(("0.0.0.0", PORT), Handler) as httpd:
         print(f"Serveur démarré sur le port {PORT}")
         print(f"Ouvrez votre navigateur à l'adresse: http://localhost:{PORT}")
+        print(f"Pour accéder depuis d'autres ordinateurs, utilisez: http://VOTRE_IP:{PORT}")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
