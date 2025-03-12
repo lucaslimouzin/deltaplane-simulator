@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur de Deltaplane</title>
+    <link rel="icon" href="favicon.png" type="image/png">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            z-index: 100;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px black;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        #debug {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            max-width: 400px;
+            max-height: 200px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Simulateur de Deltaplane</div>
+    <div id="controls">
+        <p>Contrôles:</p>
+        <p>Flèche haut - Piquer vers l'avant (descendre)</p>
+        <p>Flèche bas - Cabrer (monter)</p>
+        <p>Flèche gauche - Incliner à gauche</p>
+        <p>Flèche droite - Incliner à droite</p>
+        <p>R - Réinitialiser la position</p>
+    </div>
+    <div id="debug">Chargement...</div>
+    <script>
+        // Rediriger les messages de console vers l'élément de débogage
+        const debugElement = document.getElementById('debug');
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function() {
+            originalConsoleLog.apply(console, arguments);
+            const message = Array.from(arguments).join(' ');
+            debugElement.innerHTML += `<div>${message}</div>`;
+        };
+        
+        console.error = function() {
+            originalConsoleError.apply(console, arguments);
+            const message = Array.from(arguments).join(' ');
+            debugElement.innerHTML += `<div style="color: red;">${message}</div>`;
+        };
+    </script>
+    <script src="js/bundle.js"></script>
+</body>
+</html> 
