@@ -1,6 +1,7 @@
 import http.server
 import socketserver
 import os
+import socket
 
 # Configuration du port
 PORT = 8000
@@ -24,7 +25,7 @@ def run_server():
     with socketserver.TCPServer(("0.0.0.0", PORT), Handler) as httpd:
         print(f"Serveur démarré sur le port {PORT}")
         print(f"Ouvrez votre navigateur à l'adresse: http://localhost:{PORT}")
-        print(f"Pour accéder depuis d'autres ordinateurs, utilisez: http://VOTRE_IP:{PORT}")
+        print(f"Pour accéder depuis d'autres ordinateurs du réseau local, utilisez l'adresse IP de cet ordinateur")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

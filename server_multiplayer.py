@@ -51,7 +51,7 @@ def start_http_server():
     with socketserver.TCPServer(("0.0.0.0", PORT), HttpRequestHandler) as httpd:
         print(f"Serveur HTTP démarré sur le port {PORT}")
         print(f"Ouvrez votre navigateur à l'adresse: http://localhost:{PORT}")
-        print(f"Pour accéder depuis d'autres ordinateurs, utilisez: http://VOTRE_IP:{PORT}")
+        print(f"Pour accéder depuis d'autres ordinateurs du réseau local, utilisez l'adresse IP de cet ordinateur")
         httpd.serve_forever()
 
 # Gestionnaire de connexions WebSocket
@@ -205,7 +205,7 @@ async def start_websocket_server():
     # Utiliser "0.0.0.0" pour écouter sur toutes les interfaces réseau
     async with websockets.serve(websocket_handler, "0.0.0.0", WEBSOCKET_PORT):
         print(f"Serveur WebSocket démarré sur le port {WEBSOCKET_PORT}")
-        print(f"Pour accéder depuis d'autres ordinateurs, utilisez: ws://VOTRE_IP:{WEBSOCKET_PORT}")
+        print(f"Pour accéder depuis d'autres ordinateurs du réseau local, utilisez l'adresse IP de cet ordinateur")
         await asyncio.Future()  # Exécuter indéfiniment
 
 # Fonction principale
