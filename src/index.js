@@ -1,14 +1,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { createTerrain, createGrid } from './terrain.js';
+import { initScene, getTerrainHeightAtPosition } from './terrain.js';
 import { Deltaplane } from './deltaplane.js';
 import { MultiplayerManager } from './multiplayer.js';
+
+// Message de débogage pour vérifier si cette version est chargée
+console.log("NOUVELLE VERSION DE INDEX.JS: Version avec terrain low poly");
 
 // Variables globales
 let camera, scene, renderer;
 let controls;
 let deltaplane;
-let terrain;
 let clock = new THREE.Clock();
 let devMode = false; // Mode développement désactivé
 let multiplayerManager; // Gestionnaire multijoueur
@@ -41,21 +43,11 @@ async function startGame() {
 
 function init() {
     try {
-        // Création de la scène
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Bleu ciel plus vif pour le style low poly
-
-        // Création de la caméra
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-        camera.position.set(0, 100, 200); // Position originale
-
-        // Création du renderer
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true; // Activer les ombres
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Ombres douces
-        document.body.appendChild(renderer.domElement);
+        // Initialisation de la scène avec main.js
+        const sceneObjects = initScene(document.body);
+        scene = sceneObjects.scene;
+        camera = sceneObjects.camera;
+        renderer = sceneObjects.renderer;
 
         // Ajout des contrôles pour le développement
         controls = new OrbitControls(camera, renderer.domElement);
@@ -67,46 +59,11 @@ function init() {
         controls.maxPolarAngle = Math.PI / 2;
         controls.enabled = devMode; // Désactivé par défaut
 
-        // Création du terrain
-        terrain = createTerrain(scene);
-        
-        // Ajout d'une grille de référence
-        createGrid(scene);
-
         // Création du deltaplane
         deltaplane = new Deltaplane(scene);
         
-        // Passer la référence du terrain au deltaplane pour la détection de collisions
-        deltaplane.setTerrain(terrain);
-
-        // Ajout des lumières
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Lumière ambiante plus douce
-        scene.add(ambientLight);
-
-        // Lumière directionnelle (soleil)
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Plus intense pour des ombres plus marquées
-        directionalLight.position.set(100, 100, 50);
-        directionalLight.castShadow = true;
-        
-        // Configuration des ombres
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 500;
-        directionalLight.shadow.camera.left = -200;
-        directionalLight.shadow.camera.right = 200;
-        directionalLight.shadow.camera.top = 200;
-        directionalLight.shadow.camera.bottom = -200;
-        
-        scene.add(directionalLight);
-        
-        // Lumière secondaire pour éclairer les zones d'ombre
-        const secondaryLight = new THREE.DirectionalLight(0x6666ff, 0.3); // Lumière bleutée
-        secondaryLight.position.set(-50, 30, -50);
-        scene.add(secondaryLight);
-
-        // Gestion du redimensionnement de la fenêtre
-        window.addEventListener('resize', onWindowResize);
+        // Configurer le deltaplane pour utiliser la fonction getTerrainHeightAtPosition
+        deltaplane.getTerrainHeightAtPosition = getTerrainHeightAtPosition;
 
         // Gestion des touches du clavier
         window.addEventListener('keydown', onKeyDown);
@@ -121,9 +78,6 @@ function init() {
         // Création du gestionnaire multijoueur
         multiplayerManager = new MultiplayerManager(scene, deltaplane);
         
-        // Afficher un rendu initial de la scène
-        renderer.render(scene, camera);
-        
         // Démarrer le jeu automatiquement (connexion au serveur)
         startGame();
     } catch (error) {
@@ -134,21 +88,6 @@ function init() {
 function resetPosition() {
     // Réinitialiser la position et la vitesse du deltaplane
     deltaplane.resetPosition();
-}
-
-function onWindowResize() {
-    try {
-        // Mise à jour de la caméra et du renderer lors du redimensionnement
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-
-        camera.aspect = width / height;
-        camera.updateProjectionMatrix();
-
-        renderer.setSize(width, height);
-    } catch (error) {
-        console.error('Erreur lors du redimensionnement de la fenêtre:', error);
-    }
 }
 
 function onKeyDown(event) {
@@ -168,15 +107,15 @@ function onKeyDown(event) {
     if (devMode) return;
     
     // Mise à jour des contrôles du deltaplane (uniquement orientation de la voile)
-    // Simplification pour n'utiliser que les touches fléchées
+    // Utilisation des flèches pour tous les contrôles
     switch (event.code) {
         case 'ArrowUp':
-            deltaplane.setControl('pitchDown', true); // Piquer vers l'avant
-            console.log('Piquer vers l\'avant activé');
+            deltaplane.setControl('pitchUp', true); // Monter
+            console.log('Monter activé');
             break;
         case 'ArrowDown':
-            deltaplane.setControl('pitchUp', true); // Cabrer
-            console.log('Cabrer activé');
+            deltaplane.setControl('pitchDown', true); // Descendre
+            console.log('Descendre activé');
             break;
         case 'ArrowLeft':
             deltaplane.setControl('rollLeft', true); // Incliner à gauche
@@ -197,15 +136,15 @@ function onKeyUp(event) {
     if (devMode) return;
     
     // Mise à jour des contrôles du deltaplane
-    // Simplification pour n'utiliser que les touches fléchées
+    // Utilisation des flèches pour tous les contrôles
     switch (event.code) {
         case 'ArrowUp':
-            deltaplane.setControl('pitchDown', false);
-            console.log('Piquer vers l\'avant désactivé');
+            deltaplane.setControl('pitchUp', false);
+            console.log('Monter désactivé');
             break;
         case 'ArrowDown':
-            deltaplane.setControl('pitchUp', false);
-            console.log('Cabrer désactivé');
+            deltaplane.setControl('pitchDown', false);
+            console.log('Descendre désactivé');
             break;
         case 'ArrowLeft':
             deltaplane.setControl('rollLeft', false);

@@ -1,608 +1,1006 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
+import seedrandom from 'seedrandom';
+
+// Configuration du terrain
+const config = {
+    // Paramètres généraux
+    terrainSize: 2000,         // Taille totale du terrain (augmentée pour accueillir plusieurs îles)
+    waterSize: 3000,           // Taille du plan d'eau (augmentée également)
+    waterLevel: -0.5,          // Niveau de l'eau légèrement abaissé pour éviter le z-fighting
+    
+    // Paramètres de forme des îles
+    islandShapeComplexity: 0.7,    // Complexité de la forme des îles (0-1)
+    islandEdgeRoughness: 0.4,      // Rugosité des bords des îles (0-1)
+    
+    // Paramètres des îles
+    islands: [
+        {
+            center: { x: 0, z: 0 },
+            radius: 400,
+            mountainHeight: 300,
+            biome: 'temperate',
+            hasMountain: true,
+            mountains: [
+                { x: -100, z: -100, height: 300 },
+                { x: 100, z: 100, height: 250 },
+                { x: -50, z: 150, height: 200 }
+            ]
+        },
+        {
+            center: { x: -700, z: 500 },
+            radius: 250,
+            mountainHeight: 100,
+            biome: 'tropical',
+            hasMountain: false
+        },
+        {
+            center: { x: 600, z: -400 },
+            radius: 300,
+            mountainHeight: 200,
+            biome: 'desert',
+            hasMountain: true
+        },
+        {
+            center: { x: 800, z: 700 },
+            radius: 180,
+            mountainHeight: 80,
+            biome: 'volcanic',
+            hasMountain: true
+        },
+        {
+            center: { x: -400, z: -600 },
+            radius: 350,
+            mountainHeight: 350,
+            biome: 'snowy',
+            hasMountain: true,
+            mountains: [
+                { x: -450, z: -650, height: 350 },
+                { x: -350, z: -550, height: 300 },
+                { x: -500, z: -500, height: 280 }
+            ]
+        }
+    ],
+    
+    // Paramètres de terrain
+    terrainSegments: 120,      // Nombre de segments pour le terrain (augmenté pour plus de détail)
+    
+    // Paramètres des arbres
+    numTreesPerIsland: 80,     // Nombre d'arbres par île
+    treeMinHeight: 8,          // Hauteur minimale des arbres
+    treeMaxHeight: 20,         // Hauteur maximale des arbres
+    
+    // Paramètres des habitations
+    numHousesPerIsland: 15,
+    houseMinSize: 5,
+    houseMaxSize: 10,
+    
+    // Couleurs des biomes
+    biomes: {
+        temperate: {
+            beach: 0xFFE66D,       // Sable
+            grass: 0x7BC950,       // Vert clair
+            forest: 0x2D936C,      // Vert foncé
+            mountain: 0x9B7653,    // Marron
+            snow: 0xFFFAFA,        // Blanc
+            treeColor: 0x2D936C    // Vert pour les feuilles
+        },
+        tropical: {
+            beach: 0xFFF2CC,       // Sable clair
+            grass: 0x9DE649,       // Vert vif
+            forest: 0x45B69C,      // Turquoise
+            mountain: 0xB3A369,    // Beige
+            snow: 0xFFFFFF,        // Blanc
+            treeColor: 0x45B69C    // Turquoise pour les feuilles
+        },
+        desert: {
+            beach: 0xF6D7B0,       // Sable doré
+            grass: 0xD4AC6E,       // Beige
+            forest: 0x7D6608,      // Vert olive
+            mountain: 0xAA6C39,    // Brun
+            snow: 0xF0E68C,        // Jaune pâle
+            treeColor: 0x7D6608    // Vert olive pour les feuilles
+        },
+        volcanic: {
+            beach: 0x696969,       // Gris foncé
+            grass: 0x8B4513,       // Brun
+            forest: 0x556B2F,      // Vert olive foncé
+            mountain: 0x3D3635,    // Gris très foncé
+            snow: 0xFF4500,        // Rouge orangé (lave)
+            treeColor: 0x556B2F    // Vert olive foncé pour les feuilles
+        },
+        snowy: {
+            beach: 0xE6E6FA,
+            grass: 0xF0F8FF,
+            forest: 0xF5F5F5,
+            mountain: 0xDCDCDC,
+            snow: 0xFFFFFF,
+            treeColor: 0x90EE90
+        }
+    },
+    
+    // Couleurs générales
+    colors: {
+        water: 0x4ECDC4,       // Turquoise
+        trunkColor: 0x8B4513,  // Marron pour les troncs
+    },
+    
+    // Paramètres visuels
+    enableShadows: true,
+    fogColor: 0x87CEEB,        // Couleur du ciel/brouillard
+    fogNear: 1500,             // Distance de début du brouillard (augmentée)
+    fogFar: 4000,             // Distance de fin du brouillard (augmentée)
+    
+    // Paramètres du système infini
+    chunkSize: 1000,           // Taille d'un chunk
+    renderDistance: 3,         // Distance de rendu en chunks
+    islandDensity: 0.3,       // Probabilité d'avoir une île dans un chunk
+    minIslandSpacing: 800,    // Distance minimale entre les îles
+};
+
+// Variables globales
+let scene, camera, renderer;
+let terrain, water;
+let noise = new SimplexNoise();
+let loadedChunks = new Map(); // Stockage des chunks chargés
+let currentChunk = { x: 0, z: 0 }; // Position actuelle du joueur en chunks
 
 /**
- * Crée et retourne le terrain du simulateur
- * @param {THREE.Scene} scene - La scène Three.js
- * @returns {THREE.Mesh} Le mesh du terrain
+ * Initialise la scène Three.js
  */
-export function createTerrain(scene) {
-    try {
-        // Création d'un terrain plus grand
-        const terrainSize = 5000; // Terrain encore plus grand
-        
-        // Créer l'île principale
-        const island = createIsland(scene, terrainSize);
-        
-        // Créer l'océan
-        const ocean = createOcean(scene, terrainSize);
-        
-        // Créer les montagnes
-        const mountains = createMountains(scene);
-        
-        // Créer les nuages low poly
-        addLowPolyClouds(scene);
-        
-        // Créer une petite ville
-        createLowPolyCity(scene);
-        
-        // Créer des forêts
-        createForests(scene);
-        
-        console.log("Terrain low poly créé avec succès");
-        
-        return island; // Retourner l'île comme terrain principal pour la détection de collision
-    } catch (error) {
-        console.error('Erreur lors de la création du terrain:', error);
-        return null;
+export function initScene(container) {
+    // Créer la scène
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(config.fogColor);
+    scene.fog = new THREE.Fog(config.fogColor, config.fogNear, config.fogFar);
+    
+    // Créer la caméra
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, config.fogFar);
+    camera.position.set(0, 300, 600); // Position plus élevée pour voir toutes les îles
+    camera.lookAt(0, 0, 0);
+    
+    // Créer le renderer avec des paramètres améliorés
+    renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+        logarithmicDepthBuffer: true // Ajout pour améliorer la précision du depth buffer
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = config.enableShadows;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    renderer.setClearColor(config.fogColor);
+    
+    // Ajouter le renderer au conteneur
+    if (container) {
+        container.appendChild(renderer.domElement);
+    } else {
+        document.body.appendChild(renderer.domElement);
     }
-}
-
-/**
- * Crée l'île principale
- * @param {THREE.Scene} scene - La scène Three.js
- * @param {number} terrainSize - La taille du terrain
- * @returns {THREE.Mesh} Le mesh de l'île
- */
-function createIsland(scene, terrainSize) {
-    // Créer la forme de l'île avec une géométrie personnalisée
-    const islandSize = terrainSize * 0.4;
-    const islandGeometry = new THREE.BufferGeometry();
     
-    // Créer une forme d'île irrégulière
-    const vertices = [];
-    const indices = [];
-    const resolution = 40; // Résolution de la grille
-    const heightMap = generateHeightMap(resolution, resolution);
+    // Ajouter les lumières
+    addLights();
     
-    // Générer les sommets
-    for (let z = 0; z < resolution; z++) {
-        for (let x = 0; x < resolution; x++) {
-            // Position normalisée entre -0.5 et 0.5
-            const nx = x / (resolution - 1) - 0.5;
-            const nz = z / (resolution - 1) - 0.5;
-            
-            // Calculer la distance au centre
-            const distToCenter = Math.sqrt(nx * nx + nz * nz) * 2;
-            
-            // Forme d'île: plus élevée au centre, s'abaisse vers les bords
-            let height = 0;
-            
-            // Seulement créer l'île si on est dans un certain rayon
-            if (distToCenter < 0.8) {
-                // Hauteur de base de l'île
-                height = Math.max(0, 20 * (1 - distToCenter / 0.8));
-                
-                // Ajouter des variations de hauteur pour les collines
-                height += heightMap[z][x] * 15 * (1 - distToCenter / 0.8);
-            }
-            
-            // Ajouter le sommet
-            vertices.push(nx * islandSize, height, nz * islandSize);
+    // Créer les îles
+    createIslands();
+    
+    // Créer l'eau
+    createWater();
+    
+    // Ajouter des arbres sur chaque île
+    addTrees();
+    
+    // Ajouter des habitations
+    addHouses();
+    
+    // Gérer le redimensionnement de la fenêtre
+    window.addEventListener('resize', onWindowResize);
+    
+    // Initialiser le système de chunks
+    updateChunks(0, 0);
+    
+    // Ajouter un écouteur pour mettre à jour les chunks quand la caméra bouge
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.addEventListener('change', () => {
+        const pos = camera.position;
+        const newChunkX = Math.floor(pos.x / config.chunkSize);
+        const newChunkZ = Math.floor(pos.z / config.chunkSize);
+        
+        if (newChunkX !== currentChunk.x || newChunkZ !== currentChunk.z) {
+            currentChunk = { x: newChunkX, z: newChunkZ };
+            updateChunks(newChunkX, newChunkZ);
         }
-    }
-    
-    // Générer les triangles
-    for (let z = 0; z < resolution - 1; z++) {
-        for (let x = 0; x < resolution - 1; x++) {
-            const a = z * resolution + x;
-            const b = z * resolution + x + 1;
-            const c = (z + 1) * resolution + x;
-            const d = (z + 1) * resolution + x + 1;
-            
-            // Premier triangle
-            indices.push(a, c, b);
-            
-            // Deuxième triangle
-            indices.push(b, c, d);
-        }
-    }
-    
-    // Créer la géométrie avec les sommets et indices
-    islandGeometry.setIndex(indices);
-    islandGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    islandGeometry.computeVertexNormals();
-    
-    // Matériau pour l'île - vert pour l'herbe
-    const islandMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8BC34A, // Vert clair
-        flatShading: true, // Activer le flat shading pour un look low poly
-        roughness: 0.8,
-        metalness: 0.1
     });
     
-    const island = new THREE.Mesh(islandGeometry, islandMaterial);
-    island.castShadow = true;
-    island.receiveShadow = true;
-    scene.add(island);
+    // Démarrer la boucle d'animation
+    animate();
     
-    // Ajouter des plages autour de l'île
-    addBeaches(scene, island, islandSize);
-    
-    return island;
+    return { scene, camera, renderer };
 }
 
 /**
- * Ajoute des plages autour de l'île
- * @param {THREE.Scene} scene - La scène Three.js
- * @param {THREE.Mesh} island - Le mesh de l'île
- * @param {number} islandSize - La taille de l'île
+ * Ajoute les lumières à la scène
  */
-function addBeaches(scene, island, islandSize) {
-    // Créer un anneau autour de l'île pour les plages
-    const beachGeometry = new THREE.BufferGeometry();
-    const resolution = 40;
-    const beachWidth = islandSize * 0.1;
+function addLights() {
+    // Lumière ambiante
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
     
-    const vertices = [];
-    const indices = [];
+    // Lumière directionnelle (soleil)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(500, 500, 0);
+    directionalLight.castShadow = config.enableShadows;
     
-    // Générer les sommets
-    for (let z = 0; z < resolution; z++) {
-        for (let x = 0; x < resolution; x++) {
-            // Position normalisée entre -0.5 et 0.5
-            const nx = x / (resolution - 1) - 0.5;
-            const nz = z / (resolution - 1) - 0.5;
-            
-            // Calculer la distance au centre
-            const distToCenter = Math.sqrt(nx * nx + nz * nz) * 2;
-            
-            // Hauteur de la plage
-            let height = 0;
-            
-            // Créer la plage seulement dans un anneau autour de l'île
-            if (distToCenter >= 0.8 && distToCenter < 0.9) {
-                // La plage descend progressivement vers l'eau
-                height = Math.max(0, 5 * (1 - (distToCenter - 0.8) / 0.1));
-            }
-            
-            // Ajouter le sommet
-            vertices.push(nx * (islandSize + beachWidth), height, nz * (islandSize + beachWidth));
-        }
-    }
+    // Configuration des ombres améliorée
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 3000;
+    directionalLight.shadow.camera.left = -1500;
+    directionalLight.shadow.camera.right = 1500;
+    directionalLight.shadow.camera.top = 1500;
+    directionalLight.shadow.camera.bottom = -1500;
+    directionalLight.shadow.bias = -0.0005; // Ajout pour réduire les artefacts d'ombre
     
-    // Générer les triangles
-    for (let z = 0; z < resolution - 1; z++) {
-        for (let x = 0; x < resolution - 1; x++) {
-            const a = z * resolution + x;
-            const b = z * resolution + x + 1;
-            const c = (z + 1) * resolution + x;
-            const d = (z + 1) * resolution + x + 1;
-            
-            // Premier triangle
-            indices.push(a, c, b);
-            
-            // Deuxième triangle
-            indices.push(b, c, d);
-        }
-    }
-    
-    // Créer la géométrie avec les sommets et indices
-    beachGeometry.setIndex(indices);
-    beachGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    beachGeometry.computeVertexNormals();
-    
-    // Matériau pour la plage - couleur sable
-    const beachMaterial = new THREE.MeshStandardMaterial({
-        color: 0xE6D2A8, // Couleur sable
-        flatShading: true,
-        roughness: 0.9,
-        metalness: 0.1
-    });
-    
-    const beach = new THREE.Mesh(beachGeometry, beachMaterial);
-    beach.castShadow = true;
-    beach.receiveShadow = true;
-    scene.add(beach);
+    scene.add(directionalLight);
 }
 
 /**
- * Crée l'océan autour de l'île
- * @param {THREE.Scene} scene - La scène Three.js
- * @param {number} terrainSize - La taille du terrain
- * @returns {THREE.Mesh} Le mesh de l'océan
+ * Crée les îles avec différents biomes
  */
-function createOcean(scene, terrainSize) {
-    const oceanGeometry = new THREE.PlaneGeometry(terrainSize * 2, terrainSize * 2, 32, 32);
+function createIslands() {
+    // Créer la géométrie du terrain
+    const geometry = new THREE.PlaneGeometry(
+        config.terrainSize,
+        config.terrainSize,
+        config.terrainSegments,
+        config.terrainSegments
+    );
     
-    // Matériau pour l'océan - bleu
-    const oceanMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4FC3F7, // Bleu clair
-        flatShading: true,
-        roughness: 0.3,
-        metalness: 0.6
-    });
+    // Rotation pour avoir un plan horizontal
+    geometry.rotateX(-Math.PI / 2);
     
-    const ocean = new THREE.Mesh(oceanGeometry, oceanMaterial);
-    ocean.rotation.x = -Math.PI / 2;
-    ocean.position.y = -2; // Légèrement en dessous de l'île
-    ocean.receiveShadow = true;
-    scene.add(ocean);
-    
-    return ocean;
-}
-
-/**
- * Crée les montagnes
- * @param {THREE.Scene} scene - La scène Three.js
- * @returns {THREE.Group} Le groupe contenant les montagnes
- */
-function createMountains(scene) {
-    const mountainsGroup = new THREE.Group();
-    
-    // Créer plusieurs montagnes
-    const mountainCount = 8;
-    const mountainPositions = [
-        { x: -300, z: -100, scale: 1.5, color: 0xA1887F }, // Marron
-        { x: -250, z: -150, scale: 1.2, color: 0x8D6E63 }, // Marron plus foncé
-        { x: -350, z: -50, scale: 1.3, color: 0xA1887F },
-        { x: -200, z: -100, scale: 1.0, color: 0x8D6E63 },
-        { x: -280, z: -200, scale: 1.4, color: 0xA1887F },
-        { x: -320, z: 0, scale: 1.1, color: 0x8D6E63 },
-        { x: -400, z: -120, scale: 1.6, color: 0xA1887F }, // Grande montagne
-        { x: -150, z: -50, scale: 0.9, color: 0x8D6E63 }
-    ];
-    
-    // Créer chaque montagne
-    for (const pos of mountainPositions) {
-        const mountain = createLowPolyMountain(pos.color);
-        mountain.position.set(pos.x, 0, pos.z);
-        mountain.scale.set(pos.scale * 100, pos.scale * 150, pos.scale * 100);
-        mountainsGroup.add(mountain);
-    }
-    
-    scene.add(mountainsGroup);
-    return mountainsGroup;
-}
-
-/**
- * Crée une montagne low poly
- * @param {number} color - La couleur de la montagne
- * @returns {THREE.Mesh} Le mesh de la montagne
- */
-function createLowPolyMountain(color) {
-    // Créer une géométrie de tétraèdre modifiée pour une montagne low poly
-    const geometry = new THREE.ConeGeometry(1, 1, 4, 1);
-    
-    // Déformer légèrement les sommets pour un aspect plus naturel
+    // Obtenir les positions des vertices
     const positions = geometry.attributes.position.array;
+    const colors = new Float32Array(positions.length);
+    
+    // Créer un tableau pour stocker les hauteurs (pour la fonction getTerrainHeightAtPosition)
+    window.terrainHeights = [];
+    
+    // Modifier les hauteurs pour créer plusieurs îles
     for (let i = 0; i < positions.length; i += 3) {
-        positions[i] += (Math.random() - 0.5) * 0.2;
-        positions[i + 2] += (Math.random() - 0.5) * 0.2;
-    }
-    
-    geometry.computeVertexNormals();
-    
-    // Matériau pour la montagne
-    const material = new THREE.MeshStandardMaterial({
-        color: color,
-        flatShading: true,
-        roughness: 0.8,
-        metalness: 0.2
-    });
-    
-    return new THREE.Mesh(geometry, material);
-}
-
-/**
- * Crée une petite ville low poly
- * @param {THREE.Scene} scene - La scène Three.js
- */
-function createLowPolyCity(scene) {
-    const cityGroup = new THREE.Group();
-    cityGroup.position.set(200, 0, 200); // Position de la ville sur l'île
-    
-    // Créer plusieurs bâtiments
-    const buildingCount = 30;
-    
-    for (let i = 0; i < buildingCount; i++) {
-        // Position aléatoire dans un cercle
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 50;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
+        const x = positions[i];
+        const z = positions[i + 2];
         
-        // Taille aléatoire
-        const width = 3 + Math.random() * 5;
-        const height = 5 + Math.random() * 15;
-        const depth = 3 + Math.random() * 5;
+        // Initialiser la hauteur à 0 (sous l'eau)
+        let height = -5;
+        let islandIndex = -1;
+        let minDistance = Infinity;
         
-        // Créer un bâtiment
-        const building = createLowPolyBuilding(width, height, depth);
-        building.position.set(x, height / 2, z);
-        
-        // Rotation aléatoire
-        building.rotation.y = Math.random() * Math.PI * 2;
-        
-        cityGroup.add(building);
-    }
-    
-    scene.add(cityGroup);
-}
-
-/**
- * Crée un bâtiment low poly
- * @param {number} width - La largeur du bâtiment
- * @param {number} height - La hauteur du bâtiment
- * @param {number} depth - La profondeur du bâtiment
- * @returns {THREE.Mesh} Le mesh du bâtiment
- */
-function createLowPolyBuilding(width, height, depth) {
-    const geometry = new THREE.BoxGeometry(width, height, depth);
-    
-    // Couleur aléatoire pour le bâtiment
-    const colors = [
-        0xE0E0E0, // Gris clair
-        0xBDBDBD, // Gris
-        0x9E9E9E, // Gris foncé
-        0x757575  // Gris très foncé
-    ];
-    
-    const material = new THREE.MeshStandardMaterial({
-        color: colors[Math.floor(Math.random() * colors.length)],
-        flatShading: true,
-        roughness: 0.7,
-        metalness: 0.3
-    });
-    
-    return new THREE.Mesh(geometry, material);
-}
-
-/**
- * Crée des forêts sur l'île
- * @param {THREE.Scene} scene - La scène Three.js
- */
-function createForests(scene) {
-    const forestsGroup = new THREE.Group();
-    
-    // Créer plusieurs zones de forêt
-    const forestCount = 5;
-    const forestPositions = [
-        { x: 100, z: -100, radius: 80 },
-        { x: -100, z: 100, radius: 60 },
-        { x: 0, z: 200, radius: 70 },
-        { x: 150, z: 50, radius: 50 },
-        { x: -50, z: -150, radius: 40 }
-    ];
-    
-    // Créer chaque forêt
-    for (const pos of forestPositions) {
-        const forest = createForestCluster(pos.radius);
-        forest.position.set(pos.x, 0, pos.z);
-        forestsGroup.add(forest);
-    }
-    
-    scene.add(forestsGroup);
-}
-
-/**
- * Crée un groupe d'arbres formant une forêt
- * @param {number} radius - Le rayon de la forêt
- * @returns {THREE.Group} Le groupe contenant les arbres
- */
-function createForestCluster(radius) {
-    const forestGroup = new THREE.Group();
-    
-    // Nombre d'arbres basé sur le rayon
-    const treeCount = Math.floor(radius * 0.5);
-    
-    for (let i = 0; i < treeCount; i++) {
-        // Position aléatoire dans un cercle
-        const angle = Math.random() * Math.PI * 2;
-        const r = Math.random() * radius;
-        const x = Math.cos(angle) * r;
-        const z = Math.sin(angle) * r;
-        
-        // Taille aléatoire
-        const scale = 0.5 + Math.random() * 1.5;
-        
-        // Créer un arbre
-        const tree = createLowPolyTree();
-        tree.position.set(x, 0, z);
-        tree.scale.set(scale, scale, scale);
-        
-        // Rotation aléatoire
-        tree.rotation.y = Math.random() * Math.PI * 2;
-        
-        forestGroup.add(tree);
-    }
-    
-    return forestGroup;
-}
-
-/**
- * Crée un arbre low poly
- * @returns {THREE.Group} Le groupe contenant l'arbre
- */
-function createLowPolyTree() {
-    const treeGroup = new THREE.Group();
-    
-    // Tronc
-    const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 4, 6);
-    const trunkMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8D6E63, // Marron
-        flatShading: true,
-        roughness: 0.9,
-        metalness: 0.1
-    });
-    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.y = 2;
-    treeGroup.add(trunk);
-    
-    // Feuillage
-    const foliageGeometry = new THREE.ConeGeometry(2, 6, 6);
-    const foliageMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4CAF50, // Vert
-        flatShading: true,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-    foliage.position.y = 6;
-    treeGroup.add(foliage);
-    
-    return treeGroup;
-}
-
-/**
- * Ajoute des nuages low poly à la scène
- * @param {THREE.Scene} scene - La scène Three.js
- */
-function addLowPolyClouds(scene) {
-    // Groupe pour contenir tous les nuages
-    const cloudsGroup = new THREE.Group();
-    cloudsGroup.position.y = 300; // Hauteur des nuages
-    scene.add(cloudsGroup);
-    
-    // Créer plusieurs nuages
-    for (let i = 0; i < 15; i++) {
-        // Position aléatoire
-        const x = (Math.random() - 0.5) * 2000;
-        const y = Math.random() * 100;
-        const z = (Math.random() - 0.5) * 2000;
-        
-        // Taille aléatoire
-        const scale = 30 + Math.random() * 70;
-        
-        // Créer un nuage
-        const cloud = createLowPolyCloud();
-        cloud.position.set(x, y, z);
-        cloud.scale.set(scale, scale * 0.6, scale);
-        
-        // Rotation aléatoire
-        cloud.rotation.y = Math.random() * Math.PI * 2;
-        
-        // Ajouter au groupe
-        cloudsGroup.add(cloud);
-    }
-}
-
-/**
- * Crée un nuage low poly
- * @returns {THREE.Group} Le groupe contenant le nuage
- */
-function createLowPolyCloud() {
-    const cloudGroup = new THREE.Group();
-    
-    // Matériau pour le nuage
-    const cloudMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        flatShading: true,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    
-    // Nombre de "blobs" pour former le nuage
-    const blobCount = 3 + Math.floor(Math.random() * 4);
-    
-    // Créer plusieurs formes géométriques pour former le nuage
-    for (let i = 0; i < blobCount; i++) {
-        // Position aléatoire autour du centre
-        const x = (Math.random() - 0.5) * 2;
-        const y = (Math.random() - 0.5) * 0.5;
-        const z = (Math.random() - 0.5) * 2;
-        
-        // Taille aléatoire
-        const size = 0.7 + Math.random() * 0.5;
-        
-        // Utiliser un icosaèdre pour un look low poly
-        const geometry = new THREE.IcosahedronGeometry(size, 0); // 0 = pas de subdivisions pour un look très low poly
-        const blob = new THREE.Mesh(geometry, cloudMaterial);
-        
-        blob.position.set(x, y, z);
-        cloudGroup.add(blob);
-    }
-    
-    return cloudGroup;
-}
-
-/**
- * Génère une carte de hauteur aléatoire
- * @param {number} width - La largeur de la carte
- * @param {number} height - La hauteur de la carte
- * @returns {Array} La carte de hauteur
- */
-function generateHeightMap(width, height) {
-    const map = [];
-    
-    // Initialiser la carte avec des valeurs aléatoires
-    for (let z = 0; z < height; z++) {
-        const row = [];
-        for (let x = 0; x < width; x++) {
-            row.push(Math.random());
-        }
-        map.push(row);
-    }
-    
-    // Lisser la carte
-    const smoothedMap = [];
-    for (let z = 0; z < height; z++) {
-        const row = [];
-        for (let x = 0; x < width; x++) {
-            // Moyenne des valeurs voisines
-            let sum = 0;
-            let count = 0;
+        // Déterminer à quelle île appartient ce point (la plus proche)
+        for (let j = 0; j < config.islands.length; j++) {
+            const island = config.islands[j];
             
-            for (let dz = -1; dz <= 1; dz++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    const nz = z + dz;
-                    const nx = x + dx;
+            // Calculer la distance de base au centre de l'île
+            const baseDistance = Math.sqrt(
+                Math.pow(x - island.center.x, 2) + 
+                Math.pow(z - island.center.z, 2)
+            );
+            
+            // Appliquer une déformation à la distance pour créer des formes non circulaires
+            let distanceToIsland = baseDistance;
+            
+            // Utiliser le bruit de Perlin pour déformer le contour de l'île
+            const angle = Math.atan2(z - island.center.z, x - island.center.x);
+            const noiseScale = 2.0; // Échelle du bruit
+            
+            // Seed spécifique à chaque île pour des formes différentes
+            const seed = j * 1000;
+            
+            // Déformation basée sur l'angle (crée des baies et des péninsules)
+            const angleNoise = (noise.noise(Math.cos(angle) * noiseScale + seed, Math.sin(angle) * noiseScale + seed) + 1) * 0.5;
+            
+            // Déformation basée sur la position (crée des irrégularités locales)
+            const posNoise = (noise.noise((x * 0.01) + seed, (z * 0.01) + seed) + 1) * 0.5;
+            
+            // Combiner les déformations
+            const deformation = island.radius * config.islandShapeComplexity * (angleNoise * 0.7 + posNoise * 0.3);
+            
+            // Ajouter des variations de bord plus petites pour la rugosité
+            const edgeNoise = (noise.noise((x * 0.05) + seed, (z * 0.05) + seed) + 1) * 0.5;
+            const edgeDeformation = island.radius * config.islandEdgeRoughness * edgeNoise * 0.2;
+            
+            // Appliquer les déformations à la distance
+            distanceToIsland = baseDistance - deformation - edgeDeformation;
+            
+            // Vérifier si ce point est dans l'île déformée
+            if (distanceToIsland < island.radius && distanceToIsland < minDistance) {
+                minDistance = distanceToIsland;
+                islandIndex = j;
+            }
+        }
+        
+        // Si le point appartient à une île
+        if (islandIndex >= 0) {
+            const island = config.islands[islandIndex];
+            const distanceToCenter = minDistance;
+            
+            // Facteur d'atténuation vers les bords (plus progressif pour les formes irrégulières)
+            const falloff = Math.pow(1 - distanceToCenter / island.radius, 1.5);
+            
+            // Bruit pour les variations de terrain spécifique à chaque île
+            const seed = islandIndex * 1000;
+            const baseNoiseScale = 0.005;
+            const detailNoiseScale = 0.02;
+            
+            const baseNoise = (noise.noise(x * baseNoiseScale + seed, z * baseNoiseScale + seed) + 1) * 0.5;
+            const detailNoise = (noise.noise(x * detailNoiseScale + seed, z * detailNoiseScale + seed) + 1) * 0.5;
+            
+            const combinedNoise = baseNoise * 0.7 + detailNoise * 0.3;
+            
+            // Hauteur de base de l'île (varie selon le biome)
+            const baseHeight = island.biome === 'snowy' ? 20 : (island.biome === 'desert' ? 3 : 5);
+            height = baseHeight + 15 * falloff;
+            
+            // Gérer plusieurs montagnes si elles sont définies
+            if (island.mountains) {
+                for (const mountain of island.mountains) {
+                    const distanceToMountain = Math.sqrt(
+                        Math.pow(x - (island.center.x + mountain.x), 2) + 
+                        Math.pow(z - (island.center.z + mountain.z), 2)
+                    );
                     
-                    if (nz >= 0 && nz < height && nx >= 0 && nx < width) {
-                        sum += map[nz][nx];
-                        count++;
+                    if (distanceToMountain < island.radius * 0.3) {
+                        const mountainFactor = Math.pow(1 - distanceToMountain / (island.radius * 0.3), 2);
+                        const mountainNoise = noise.noise(x * 0.01 + seed, z * 0.01 + seed) * 0.3 + 0.7;
+                        height += mountain.height * mountainFactor * mountainNoise;
                     }
                 }
             }
             
-            row.push(sum / count);
+            // Ajouter des variations de terrain spécifiques au biome
+            if (island.biome === 'desert') {
+                // Dunes pour le désert
+                height += (noise.noise(x * 0.03 + seed, z * 0.03 + seed) * 0.5 + 0.5) * 10 * falloff;
+            } else if (island.biome === 'tropical') {
+                // Terrain plus vallonné pour l'île tropicale
+                height += combinedNoise * 12 * falloff;
+            } else if (island.biome === 'volcanic') {
+                // Terrain plus accidenté pour l'île volcanique
+                height += (noise.noise(x * 0.04 + seed, z * 0.04 + seed) * 0.5) * 15 * falloff;
+            } else {
+                // Variations standard pour l'île tempérée
+                height += combinedNoise * 10 * falloff;
+            }
+            
+            // Cas spécial pour le biome neigeux
+            if (island.biome === 'snowy') {
+                // Ajouter plus de variations pour créer des congères
+                height += (noise.noise(x * 0.05 + seed, z * 0.05 + seed) * 0.5) * 20 * falloff;
+                // Garantir une couverture neigeuse minimale
+                if (height > config.waterLevel + 5) {
+                    height += 5;
+                }
+            }
+            
+            // Ajouter des variations supplémentaires pour les côtes
+            // Cela crée des plages, des falaises et des zones côtières variées
+            if (falloff < 0.3) {
+                const coastalNoise = noise.noise(x * 0.1 + seed, z * 0.1 + seed);
+                
+                if (coastalNoise > 0.3) {
+                    // Créer des falaises sur certaines côtes
+                    height += (coastalNoise - 0.3) * 30 * falloff;
+                } else if (coastalNoise < -0.3) {
+                    // Créer des plages plus plates sur d'autres côtes
+                    height -= Math.abs(coastalNoise + 0.3) * 5;
+                }
+            }
         }
-        smoothedMap.push(row);
+        
+        // Arrondir la hauteur pour un effet low poly, mais avec des paliers plus petits pour plus de réalisme
+        height = Math.round(height / 4) * 4;
+        
+        // Appliquer la hauteur
+        positions[i + 1] = height;
+        
+        // Stocker la hauteur pour la fonction getTerrainHeightAtPosition
+        window.terrainHeights.push({ x, z, height });
+        
+        // Déterminer la couleur en fonction de la hauteur et du biome
+        let color = new THREE.Color(0x4ECDC4); // Couleur par défaut (eau)
+        
+        // Trouver l'île la plus proche pour déterminer le biome
+        let nearestIsland = null;
+        let minIslandDistance = Infinity;
+        
+        for (const island of config.islands) {
+            const distanceToIsland = Math.sqrt(
+                Math.pow(x - island.center.x, 2) + 
+                Math.pow(z - island.center.z, 2)
+            );
+            
+            if (distanceToIsland < minIslandDistance) {
+                minIslandDistance = distanceToIsland;
+                nearestIsland = island;
+            }
+        }
+        
+        // Si on a trouvé une île proche, utiliser ses couleurs de biome
+        if (nearestIsland && height > config.waterLevel) {
+            const biomeColors = config.biomes[nearestIsland.biome];
+            
+            if (height <= config.waterLevel + 2) {
+                color = new THREE.Color(biomeColors.beach);
+            } else if (height < 30) {
+                color = new THREE.Color(biomeColors.grass);
+            } else if (height < 100) {
+                color = new THREE.Color(biomeColors.forest);
+            } else if (height < 200) {
+                color = new THREE.Color(biomeColors.mountain);
+            } else {
+                color = new THREE.Color(biomeColors.snow);
+            }
+            
+            // Cas spécial pour l'île volcanique: lave au sommet
+            if (nearestIsland.biome === 'volcanic' && height > nearestIsland.mountainHeight * 0.8) {
+                // Mélanger avec la couleur de la lave
+                const lavaFactor = Math.min(1, (height - nearestIsland.mountainHeight * 0.8) / 50);
+                color.lerp(new THREE.Color(0xFF4500), lavaFactor);
+            }
+        }
+        
+        // Ajouter une légère variation de couleur pour plus de réalisme
+        const variation = (Math.random() - 0.5) * 0.05;
+        color.r = Math.max(0, Math.min(1, color.r + variation));
+        color.g = Math.max(0, Math.min(1, color.g + variation));
+        color.b = Math.max(0, Math.min(1, color.b + variation));
+        
+        // Assigner la couleur
+        colors[i] = color.r;
+        colors[i + 1] = color.g;
+        colors[i + 2] = color.b;
     }
     
-    return smoothedMap;
+    // Mettre à jour la géométrie
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    
+    // Créer le matériau
+    const material = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        flatShading: true,
+        roughness: 0.8,
+        metalness: 0.1
+    });
+    
+    // Créer le mesh
+    terrain = new THREE.Mesh(geometry, material);
+    terrain.receiveShadow = config.enableShadows;
+    terrain.castShadow = config.enableShadows;
+    
+    // Ajouter à la scène
+    scene.add(terrain);
+}
+
+/**
+ * Crée le plan d'eau
+ */
+function createWater() {
+    // Créer la géométrie de l'eau
+    const geometry = new THREE.PlaneGeometry(
+        config.waterSize,
+        config.waterSize,
+        1,
+        1
+    );
+    
+    // Rotation pour avoir un plan horizontal
+    geometry.rotateX(-Math.PI / 2);
+    
+    // Positionner l'eau au niveau de l'eau
+    geometry.translate(0, config.waterLevel, 0);
+    
+    // Créer le matériau avec des paramètres améliorés
+    const material = new THREE.MeshStandardMaterial({
+        color: config.colors.water,
+        transparent: true,
+        opacity: 0.8,
+        flatShading: true,
+        roughness: 0.1,
+        metalness: 0.3,
+        emissive: 0x1A9EAA,
+        emissiveIntensity: 0.2,
+        depthWrite: false, // Désactiver l'écriture dans le depth buffer pour éviter les artefacts
+        polygonOffset: true, // Activer le décalage de polygone
+        polygonOffsetFactor: -1, // Facteur de décalage négatif pour éviter le z-fighting
+        polygonOffsetUnits: -1
+    });
+    
+    // Créer le mesh
+    water = new THREE.Mesh(geometry, material);
+    water.receiveShadow = false;
+    water.renderOrder = 1; // Définir l'ordre de rendu pour s'assurer que l'eau est rendue après le terrain
+    
+    // Ajouter à la scène
+    scene.add(water);
+}
+
+/**
+ * Ajoute des arbres sur chaque île
+ */
+function addTrees() {
+    // Créer des géométries partagées pour les arbres
+    const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, 1, 4, 1);
+    const leavesGeometry = new THREE.TetrahedronGeometry(3, 0);
+    
+    // Créer le matériau pour les troncs
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+        color: config.colors.trunkColor,
+        flatShading: true,
+        roughness: 1.0,
+        metalness: 0.0
+    });
+    
+    // Pour chaque île, ajouter des arbres adaptés à son biome
+    for (const island of config.islands) {
+        // Créer le matériau pour les feuilles selon le biome
+        const leavesMaterial = new THREE.MeshStandardMaterial({
+            color: config.biomes[island.biome].treeColor,
+            flatShading: true,
+            roughness: 0.8,
+            metalness: 0.0
+        });
+        
+        // Nombre d'arbres adapté à la taille de l'île
+        const numTrees = Math.floor(config.numTreesPerIsland * (island.radius / 400));
+        
+        // Ajouter des arbres
+        for (let i = 0; i < numTrees; i++) {
+            // Position aléatoire sur l'île
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * island.radius * 0.8; // Éviter les bords
+            
+            const x = Math.cos(angle) * radius + island.center.x;
+            const z = Math.sin(angle) * radius + island.center.z;
+            
+            // Obtenir la hauteur du terrain à cette position
+            const height = getTerrainHeightAtPosition(x, z);
+            
+            // Ne pas placer d'arbres dans l'eau ou sur la montagne
+            if (height <= config.waterLevel + 2 || height > 100) continue;
+            
+            // Créer un groupe pour l'arbre
+            const treeGroup = new THREE.Group();
+            
+            // Hauteur aléatoire pour l'arbre (adaptée au biome)
+            let treeMinHeight = config.treeMinHeight;
+            let treeMaxHeight = config.treeMaxHeight;
+            
+            // Ajuster la hauteur des arbres selon le biome
+            if (island.biome === 'tropical') {
+                treeMinHeight = 10; // Arbres plus grands dans les tropiques
+                treeMaxHeight = 25;
+            } else if (island.biome === 'desert') {
+                treeMinHeight = 5; // Arbres plus petits dans le désert
+                treeMaxHeight = 12;
+            }
+            
+            const treeHeight = treeMinHeight + Math.random() * (treeMaxHeight - treeMinHeight);
+            
+            // Créer le tronc
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.scale.set(1, treeHeight, 1);
+            trunk.position.y = treeHeight / 2;
+            trunk.castShadow = config.enableShadows;
+            treeGroup.add(trunk);
+            
+            // Créer les feuilles (forme adaptée au biome)
+            let leaves;
+            
+            if (island.biome === 'tropical') {
+                // Arbres tropicaux avec plusieurs niveaux de feuilles
+                const leavesGroup = new THREE.Group();
+                
+                for (let j = 0; j < 3; j++) {
+                    const leafLayer = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                    const scale = 2.5 - j * 0.5;
+                    leafLayer.scale.set(scale, scale, scale);
+                    leafLayer.position.y = treeHeight - j * 3;
+                    leafLayer.castShadow = config.enableShadows;
+                    leavesGroup.add(leafLayer);
+                }
+                
+                treeGroup.add(leavesGroup);
+            } else if (island.biome === 'desert') {
+                // Cactus ou arbres du désert (plus fins)
+                trunk.scale.set(0.7, treeHeight, 0.7);
+                
+                leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                leaves.scale.set(1.5, 1.5, 1.5);
+                leaves.position.y = treeHeight + 1;
+                leaves.castShadow = config.enableShadows;
+                treeGroup.add(leaves);
+            } else {
+                // Arbres standard
+                leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                leaves.scale.set(2, 2, 2);
+                leaves.position.y = treeHeight + 2;
+                leaves.castShadow = config.enableShadows;
+                treeGroup.add(leaves);
+            }
+            
+            // Positionner l'arbre
+            treeGroup.position.set(x, height, z);
+            
+            // Rotation aléatoire
+            treeGroup.rotation.y = Math.random() * Math.PI * 2;
+            
+            // Ajouter à la scène
+            scene.add(treeGroup);
+        }
+    }
 }
 
 /**
  * Calcule la hauteur du terrain à une position donnée
- * @param {number} x - Coordonnée X
- * @param {number} z - Coordonnée Z
- * @returns {number} La hauteur du terrain
  */
 export function getTerrainHeightAtPosition(x, z) {
-    // Calculer la distance au centre de l'île
-    const distToCenter = Math.sqrt(x * x + z * z);
-    const islandRadius = 1000; // Rayon approximatif de l'île
+    // Si les hauteurs de terrain n'ont pas encore été calculées, retourner 0
+    if (!window.terrainHeights) return 0;
     
-    // Si on est sur l'île
-    if (distToCenter < islandRadius) {
-        // Hauteur de base de l'île
-        const baseHeight = Math.max(0, 20 * (1 - distToCenter / islandRadius));
-        
-        // Vérifier si on est dans la zone des montagnes
-        const mountainsX = -300;
-        const mountainsZ = -100;
-        const mountainsRadius = 400;
-        
-        const distToMountains = Math.sqrt((x - mountainsX) * (x - mountainsX) + (z - mountainsZ) * (z - mountainsZ));
-        
-        if (distToMountains < mountainsRadius) {
-            // Hauteur supplémentaire pour les montagnes
-            const mountainHeight = Math.max(0, 100 * (1 - distToMountains / mountainsRadius));
-            return baseHeight + mountainHeight;
+    // Trouver le point le plus proche dans le tableau des hauteurs
+    let closestPoint = null;
+    let closestDistance = Infinity;
+    
+    for (const point of window.terrainHeights) {
+        const distance = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.z - z, 2));
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestPoint = point;
         }
-        
-        return baseHeight;
     }
     
-    // Si on est dans l'eau
-    return 0;
+    // Retourner la hauteur du point le plus proche
+    return closestPoint ? closestPoint.height : 0;
 }
 
 /**
- * Crée une grille pour mieux percevoir l'altitude
- * @param {THREE.Scene} scene - La scène Three.js
+ * Gère le redimensionnement de la fenêtre
  */
-export function createGrid(scene) {
-    // La grille a été supprimée pour un rendu plus naturel
-    // Aucune grille n'est visible dans l'image de référence
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/**
+ * Boucle d'animation
+ */
+function animate() {
+    requestAnimationFrame(animate);
+    
+    // Mettre à jour la position de l'eau pour qu'elle suive la caméra
+    if (water) {
+        water.position.x = camera.position.x;
+        water.position.z = camera.position.z;
+    }
+    
+    renderer.render(scene, camera);
+}
+
+/**
+ * Crée une grille pour le débogage
+ */
+export function createGrid() {
+    const gridSize = 2000;
+    const gridDivisions = 20;
+    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0x444444);
+    scene.add(gridHelper);
+}
+
+/**
+ * Ajoute des habitations sur les îles
+ */
+function addHouses() {
+    // Créer des géométries de base pour les maisons
+    const baseGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const roofGeometry = new THREE.ConeGeometry(1, 1, 4);
+    
+    // Matériaux pour les maisons
+    const wallMaterials = {
+        temperate: new THREE.MeshStandardMaterial({ color: 0xE5D3B3, flatShading: true }),
+        tropical: new THREE.MeshStandardMaterial({ color: 0xFFE4C4, flatShading: true }),
+        desert: new THREE.MeshStandardMaterial({ color: 0xDEB887, flatShading: true }),
+        volcanic: new THREE.MeshStandardMaterial({ color: 0x8B4513, flatShading: true }),
+        snowy: new THREE.MeshStandardMaterial({ color: 0xF5F5F5, flatShading: true })
+    };
+    
+    const roofMaterials = {
+        temperate: new THREE.MeshStandardMaterial({ color: 0x8B4513, flatShading: true }),
+        tropical: new THREE.MeshStandardMaterial({ color: 0xCD853F, flatShading: true }),
+        desert: new THREE.MeshStandardMaterial({ color: 0xD2691E, flatShading: true }),
+        volcanic: new THREE.MeshStandardMaterial({ color: 0x696969, flatShading: true }),
+        snowy: new THREE.MeshStandardMaterial({ color: 0x4682B4, flatShading: true })
+    };
+    
+    // Pour chaque île
+    for (const island of config.islands) {
+        // Nombre de maisons adapté à la taille de l'île
+        const numHouses = Math.floor(config.numHousesPerIsland * (island.radius / 400));
+        
+        // Ajouter des maisons
+        for (let i = 0; i < numHouses; i++) {
+            // Position aléatoire sur l'île (éviter les montagnes et l'eau)
+            let attempts = 0;
+            let validPosition = false;
+            let x, z, height;
+            
+            while (!validPosition && attempts < 50) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * island.radius * 0.6; // Rester loin des bords
+                
+                x = Math.cos(angle) * radius + island.center.x;
+                z = Math.sin(angle) * radius + island.center.z;
+                height = getTerrainHeightAtPosition(x, z);
+                
+                // Vérifier si la position est valide (pas dans l'eau, pas trop en hauteur)
+                if (height > config.waterLevel + 2 && height < 50) {
+                    validPosition = true;
+                }
+                attempts++;
+            }
+            
+            if (!validPosition) continue;
+            
+            // Créer un groupe pour la maison
+            const houseGroup = new THREE.Group();
+            
+            // Taille aléatoire pour la maison
+            const houseWidth = config.houseMinSize + Math.random() * (config.houseMaxSize - config.houseMinSize);
+            const houseHeight = houseWidth * 0.8;
+            
+            // Base de la maison
+            const base = new THREE.Mesh(baseGeometry, wallMaterials[island.biome]);
+            base.scale.set(houseWidth, houseHeight, houseWidth);
+            base.position.y = houseHeight / 2;
+            base.castShadow = config.enableShadows;
+            base.receiveShadow = config.enableShadows;
+            houseGroup.add(base);
+            
+            // Toit
+            const roof = new THREE.Mesh(roofGeometry, roofMaterials[island.biome]);
+            roof.scale.set(houseWidth * 1.2, houseHeight * 0.6, houseWidth * 1.2);
+            roof.position.y = houseHeight + (houseHeight * 0.3);
+            roof.castShadow = config.enableShadows;
+            roof.receiveShadow = config.enableShadows;
+            houseGroup.add(roof);
+            
+            // Positionner la maison
+            houseGroup.position.set(x, height, z);
+            
+            // Rotation aléatoire
+            houseGroup.rotation.y = Math.random() * Math.PI * 2;
+            
+            // Ajouter à la scène
+            scene.add(houseGroup);
+        }
+    }
+}
+
+/**
+ * Met à jour les chunks visibles en fonction de la position du joueur
+ */
+function updateChunks(centerX, centerZ) {
+    const chunksToLoad = new Set();
+    const renderDist = config.renderDistance;
+    
+    // Déterminer quels chunks devraient être chargés
+    for (let x = -renderDist; x <= renderDist; x++) {
+        for (let z = -renderDist; z <= renderDist; z++) {
+            const chunkX = centerX + x;
+            const chunkZ = centerZ + z;
+            const chunkKey = `${chunkX},${chunkZ}`;
+            chunksToLoad.add(chunkKey);
+            
+            // Charger le chunk s'il n'existe pas déjà
+            if (!loadedChunks.has(chunkKey)) {
+                const chunk = generateChunk(chunkX, chunkZ);
+                loadedChunks.set(chunkKey, chunk);
+                scene.add(chunk);
+            }
+        }
+    }
+    
+    // Décharger les chunks qui ne sont plus visibles
+    for (const [key, chunk] of loadedChunks.entries()) {
+        if (!chunksToLoad.has(key)) {
+            scene.remove(chunk);
+            chunk.geometry.dispose();
+            chunk.material.dispose();
+            loadedChunks.delete(key);
+        }
+    }
+}
+
+/**
+ * Génère un nouveau chunk de terrain
+ */
+function generateChunk(chunkX, chunkZ) {
+    const chunkWorldX = chunkX * config.chunkSize;
+    const chunkWorldZ = chunkZ * config.chunkSize;
+    
+    // Créer la géométrie du chunk
+    const geometry = new THREE.PlaneGeometry(
+        config.chunkSize,
+        config.chunkSize,
+        config.terrainSegments / 2,
+        config.terrainSegments / 2
+    );
+    
+    geometry.rotateX(-Math.PI / 2);
+    geometry.translate(
+        chunkWorldX + config.chunkSize / 2,
+        0,
+        chunkWorldZ + config.chunkSize / 2
+    );
+    
+    const positions = geometry.attributes.position.array;
+    const colors = new Float32Array(positions.length);
+    
+    // Générer des îles pour ce chunk si nécessaire
+    const chunkIslands = generateIslandsForChunk(chunkX, chunkZ);
+    
+    // Modifier les hauteurs pour créer le terrain
+    for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i];
+        const z = positions[i + 2];
+        
+        let height = -5; // Niveau de base (sous l'eau)
+        let nearestIsland = null;
+        let minDistance = Infinity;
+        
+        // Vérifier la proximité avec les îles
+        for (const island of chunkIslands) {
+            const distanceToIsland = Math.sqrt(
+                Math.pow(x - island.center.x, 2) + 
+                Math.pow(z - island.center.z, 2)
+            );
+            
+            if (distanceToIsland < island.radius && distanceToIsland < minDistance) {
+                minDistance = distanceToIsland;
+                nearestIsland = island;
+            }
+        }
+        
+        // Générer le terrain si on est près d'une île
+        if (nearestIsland) {
+            const distanceToCenter = minDistance;
+            const falloff = Math.pow(1 - distanceToCenter / nearestIsland.radius, 1.5);
+            
+            // Utiliser le même système de génération que précédemment
+            const seed = nearestIsland.seed;
+            const baseNoise = (noise.noise(x * 0.005 + seed, z * 0.005 + seed) + 1) * 0.5;
+            const detailNoise = (noise.noise(x * 0.02 + seed, z * 0.02 + seed) + 1) * 0.5;
+            const combinedNoise = baseNoise * 0.7 + detailNoise * 0.3;
+            
+            height = nearestIsland.baseHeight + nearestIsland.mountainHeight * falloff * combinedNoise;
+            
+            // Appliquer les déformations de côte
+            if (falloff < 0.3) {
+                const coastalNoise = noise.noise(x * 0.1 + seed, z * 0.1 + seed);
+                if (coastalNoise > 0.3) {
+                    height += (coastalNoise - 0.3) * 30 * falloff;
+                }
+            }
+        }
+        
+        // Appliquer la hauteur
+        positions[i + 1] = height;
+        
+        // Déterminer la couleur
+        let color = new THREE.Color(config.colors.water);
+        
+        if (nearestIsland && height > config.waterLevel) {
+            const biomeColors = config.biomes[nearestIsland.biome];
+            
+            if (height <= config.waterLevel + 2) {
+                color = new THREE.Color(biomeColors.beach);
+            } else if (height < 30) {
+                color = new THREE.Color(biomeColors.grass);
+            } else if (height < 100) {
+                color = new THREE.Color(biomeColors.forest);
+            } else if (height < 200) {
+                color = new THREE.Color(biomeColors.mountain);
+            } else {
+                color = new THREE.Color(biomeColors.snow);
+            }
+        }
+        
+        // Ajouter une variation de couleur
+        const variation = (Math.random() - 0.5) * 0.05;
+        color.r = Math.max(0, Math.min(1, color.r + variation));
+        color.g = Math.max(0, Math.min(1, color.g + variation));
+        color.b = Math.max(0, Math.min(1, color.b + variation));
+        
+        colors[i] = color.r;
+        colors[i + 1] = color.g;
+        colors[i + 2] = color.b;
+    }
+    
+    // Mettre à jour la géométrie
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.computeVertexNormals();
+    
+    // Créer le mesh
+    const material = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        flatShading: true,
+        roughness: 0.8,
+        metalness: 0.1
+    });
+    
+    const chunk = new THREE.Mesh(geometry, material);
+    chunk.receiveShadow = config.enableShadows;
+    chunk.castShadow = config.enableShadows;
+    
+    return chunk;
+}
+
+/**
+ * Génère des îles pour un chunk donné
+ */
+function generateIslandsForChunk(chunkX, chunkZ) {
+    const islands = [];
+    const chunkSeed = (chunkX * 16384 + chunkZ) * 123456789;
+    const random = seedrandom(chunkSeed.toString());
+    
+    // Décider si ce chunk doit avoir une île
+    if (random() < config.islandDensity) {
+        // Générer une position aléatoire dans le chunk
+        const x = chunkX * config.chunkSize + random() * config.chunkSize;
+        const z = chunkZ * config.chunkSize + random() * config.chunkSize;
+        
+        // Vérifier la distance avec les îles existantes des chunks voisins
+        let tooClose = false;
+        for (const [key, chunk] of loadedChunks) {
+            const [otherX, otherZ] = key.split(',').map(Number);
+            const otherIslands = chunk.userData.islands || [];
+            
+            for (const otherIsland of otherIslands) {
+                const distance = Math.sqrt(
+                    Math.pow(x - otherIsland.center.x, 2) + 
+                    Math.pow(z - otherIsland.center.z, 2)
+                );
+                
+                if (distance < config.minIslandSpacing) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            
+            if (tooClose) break;
+        }
+        
+        if (!tooClose) {
+            // Créer une nouvelle île avec des paramètres aléatoires
+            const biomes = Object.keys(config.biomes);
+            const island = {
+                center: { x, z },
+                radius: 200 + random() * 300,
+                mountainHeight: 100 + random() * 250,
+                biome: biomes[Math.floor(random() * biomes.length)],
+                seed: random() * 1000000,
+                baseHeight: 5 + random() * 15
+            };
+            
+            islands.push(island);
+        }
+    }
+    
+    return islands;
 } 

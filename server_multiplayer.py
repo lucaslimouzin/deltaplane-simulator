@@ -26,11 +26,15 @@ class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.path = '/public/index.html'
             print(f"Redirection vers: {self.path}")
         # Rediriger bundle.js vers le bon emplacement
-        elif self.path == '/js/bundle.js':
-            self.path = '/public/js/bundle.js'
+        elif self.path.startswith('/js/bundle.js'):
+            # Préserver les paramètres de requête pour éviter le cache
+            query_params = ''
+            if '?' in self.path:
+                query_params = self.path[self.path.index('?'):]
+            self.path = f'/public/js/bundle.js{query_params}'
             print(f"Redirection vers: {self.path}")
         # Rediriger bundle.js.map vers le bon emplacement
-        elif self.path == '/js/bundle.js.map':
+        elif self.path.startswith('/js/bundle.js.map'):
             self.path = '/public/js/bundle.js.map'
             print(f"Redirection vers: {self.path}")
         # Rediriger favicon.png vers le bon emplacement
@@ -40,10 +44,18 @@ class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         # Sinon, servir les fichiers normalement
         
         try:
+            # Utiliser le gestionnaire par défaut pour servir les fichiers
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
         except Exception as e:
             print(f"Erreur lors du traitement de la requête: {e}")
             self.send_error(500, f"Erreur interne du serveur: {e}")
+            
+    def end_headers(self):
+        # Ajouter des en-têtes pour désactiver la mise en cache
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        http.server.SimpleHTTPRequestHandler.end_headers(self)
 
 # Démarrer le serveur HTTP dans un thread séparé
 def start_http_server():

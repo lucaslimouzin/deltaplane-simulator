@@ -260,7 +260,16 @@ export class MultiplayerManager {
         console.log(`Ajout du joueur distant: ${playerData.name} (${playerData.id})`);
         
         // Créer un nouveau deltaplane pour le joueur distant
-        const remotePlayer = new Deltaplane(this.scene);
+        // Utiliser une version simplifiée pour éviter d'ajouter des éléments de terrain
+        const remotePlayer = {
+            mesh: new THREE.Group()
+        };
+        
+        // Créer un modèle simplifié de deltaplane
+        this.createSimpleDeltaplane(remotePlayer.mesh);
+        
+        // Ajouter le deltaplane à la scène
+        this.scene.add(remotePlayer.mesh);
         
         // Positionner le deltaplane
         remotePlayer.mesh.position.set(
@@ -307,6 +316,50 @@ export class MultiplayerManager {
             ),
             interpolationFactor: 0
         };
+    }
+    
+    /**
+     * Crée un modèle simplifié de deltaplane
+     * @param {THREE.Group} group - Le groupe auquel ajouter le modèle
+     */
+    createSimpleDeltaplane(group) {
+        // Création de la voile triangulaire
+        const voileGeometry = new THREE.BufferGeometry();
+        const voileVertices = new Float32Array([
+            0, 0, -5,    // pointe arrière
+            -10, 0, 5,   // coin gauche
+            10, 0, 5     // coin droit
+        ]);
+        voileGeometry.setAttribute('position', new THREE.BufferAttribute(voileVertices, 3));
+        voileGeometry.computeVertexNormals();
+        
+        const voileMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xff0000, // Rouge pour les autres joueurs
+            side: THREE.DoubleSide,
+            flatShading: true,
+            roughness: 0.7,
+            metalness: 0.1
+        });
+        
+        const voile = new THREE.Mesh(voileGeometry, voileMaterial);
+        voile.castShadow = true;
+        group.add(voile);
+        
+        // Création de la structure rectangulaire verticale (mât)
+        const structureGeometry = new THREE.BoxGeometry(0.8, 5, 0.8);
+        const structureMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x888888,
+            flatShading: true,
+            metalness: 0.3,
+            roughness: 0.7
+        });
+        
+        const structure = new THREE.Mesh(structureGeometry, structureMaterial);
+        structure.position.y = -2;
+        structure.position.z = 2.5;
+        structure.rotation.x = Math.PI / 4;
+        structure.castShadow = true;
+        group.add(structure);
     }
     
     /**
