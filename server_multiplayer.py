@@ -8,9 +8,9 @@ import threading
 from urllib.parse import urlparse, parse_qs
 
 # Configuration
-PORT = 8000
+PORT = int(os.environ.get('PORT', 8000))  # Use environment variable for port in production
 MAX_PLAYERS = 1000000
-WEBSOCKET_PORT = 8001
+WEBSOCKET_PORT = PORT  # Use same port for WebSocket in production
 
 # Stockage des joueurs connectés
 connected_players = {}
@@ -19,7 +19,7 @@ player_count = 0
 # Serveur HTTP pour servir les fichiers statiques
 class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        print(f"Requête GET reçue pour: {self.path}")
+        print(f"GET request received for: {self.path}")
         
         # Servir le fichier index.html pour la racine
         if self.path == '/':

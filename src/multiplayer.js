@@ -32,7 +32,7 @@ export class MultiplayerManager {
      */
     createLoginUI() {
         return new Promise((resolve) => {
-            // Create background element
+            // Créer l'élément de fond
             const overlay = document.createElement('div');
             overlay.style.position = 'fixed';
             overlay.style.top = '0';
@@ -45,7 +45,7 @@ export class MultiplayerManager {
             overlay.style.alignItems = 'center';
             overlay.style.zIndex = '1000';
             
-            // Create login form
+            // Créer le formulaire de connexion
             const loginForm = document.createElement('div');
             loginForm.style.backgroundColor = 'white';
             loginForm.style.padding = '20px';
@@ -53,22 +53,22 @@ export class MultiplayerManager {
             loginForm.style.width = '300px';
             loginForm.style.textAlign = 'center';
             
-            // Title
+            // Titre
             const title = document.createElement('h2');
             title.textContent = 'Hang Glider Simulator';
             title.style.marginBottom = '20px';
             title.style.color = '#333';
             
-            // Subtitle (empty)
+            // Sous-titre
             const subtitle = document.createElement('p');
             subtitle.textContent = '';
             subtitle.style.marginBottom = '20px';
             subtitle.style.color = '#666';
             
-            // Username input field
+            // Champ de saisie du pseudo
             const nameInput = document.createElement('input');
             nameInput.type = 'text';
-            nameInput.placeholder = 'Enter your username';
+            nameInput.placeholder = 'Entrez votre pseudo';
             nameInput.style.width = '100%';
             nameInput.style.padding = '10px';
             nameInput.style.marginBottom = '20px';
@@ -76,9 +76,9 @@ export class MultiplayerManager {
             nameInput.style.border = '1px solid #ddd';
             nameInput.style.borderRadius = '5px';
             
-            // Play button
+            // Bouton de connexion
             const playButton = document.createElement('button');
-            playButton.textContent = 'Play';
+            playButton.textContent = 'Jouer';
             playButton.style.backgroundColor = '#4CAF50';
             playButton.style.color = 'white';
             playButton.style.padding = '10px 20px';
@@ -88,49 +88,49 @@ export class MultiplayerManager {
             playButton.style.fontSize = '16px';
             playButton.style.width = '100%';
             
-            // Error message
+            // Message d'erreur
             const errorMessage = document.createElement('p');
             errorMessage.style.color = 'red';
             errorMessage.style.marginTop = '10px';
             errorMessage.style.display = 'none';
             
-            // Add elements to form
+            // Ajouter les éléments au formulaire
             loginForm.appendChild(title);
             loginForm.appendChild(subtitle);
             loginForm.appendChild(nameInput);
             loginForm.appendChild(playButton);
             loginForm.appendChild(errorMessage);
             
-            // Add form to overlay
+            // Ajouter le formulaire à l'overlay
             overlay.appendChild(loginForm);
             
-            // Add overlay to document
+            // Ajouter l'overlay au document
             document.body.appendChild(overlay);
             
-            // Focus on input field
+            // Focus sur le champ de saisie
             nameInput.focus();
             
-            // Handle play button click
+            // Gérer le clic sur le bouton de connexion
             playButton.addEventListener('click', () => {
                 const name = nameInput.value.trim();
                 
                 if (name.length < 3) {
-                    errorMessage.textContent = 'Username must contain at least 3 characters';
+                    errorMessage.textContent = 'Le pseudo doit contenir au moins 3 caractères';
                     errorMessage.style.display = 'block';
                     return;
                 }
                 
-                // Store player name
+                // Stocker le nom du joueur
                 this.playerName = name;
                 
-                // Remove overlay
+                // Supprimer l'overlay
                 document.body.removeChild(overlay);
                 
-                // Resolve promise
+                // Résoudre la promesse
                 resolve(name);
             });
             
-            // Handle Enter key
+            // Gérer la touche Entrée
             nameInput.addEventListener('keypress', (event) => {
                 if (event.key === 'Enter') {
                     playButton.click();
@@ -149,7 +149,7 @@ export class MultiplayerManager {
         // Connect to WebSocket server
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsHost = window.location.hostname || 'localhost';
-        const wsPort = 8001; // WebSocket server port
+        const wsPort = window.location.port || '8000';  // Use same port as HTTP in production
         
         this.socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}`);
         
@@ -244,7 +244,7 @@ export class MultiplayerManager {
      * Met à jour le compteur de joueurs (méthode simplifiée)
      */
     updatePlayerCount() {
-        this.localPlayer.playerCount = this.playerCount;
+        // Ne fait rien, le panneau des joueurs connectés a été supprimé
         console.log(`Nombre de joueurs connectés: ${this.playerCount}`);
     }
     
