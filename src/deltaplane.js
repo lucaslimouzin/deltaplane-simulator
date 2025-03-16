@@ -38,6 +38,7 @@ export class Deltaplane {
         this.weight = 100; // kg (pilote + deltaplane)
         this.lastYaw = 0; // Pour suivre la rotation en lacet
         this.minAltitude = 250; // Altitude minimum en mètres (augmentée de 200 à 250)
+        this.maxAltitude = 500; // Altitude maximum en mètres
         
         // Paramètres de vent - désactivés
         this.windEnabled = false;
@@ -66,6 +67,10 @@ export class Deltaplane {
         this.PITCH_AXIS = new THREE.Vector3(1, 0, 0);
         this.YAW_AXIS = new THREE.Vector3(0, 1, 0);
         this.ROLL_AXIS = new THREE.Vector3(0, 0, 1);
+        
+        // Ajout des variables pour le calcul des FPS
+        this.lastTime = performance.now();
+        this.currentFPS = 0;
         
         // Création du deltaplane
         this.createModel();
@@ -232,6 +237,12 @@ export class Deltaplane {
      */
     update(delta) {
         try {
+            // Calcul des FPS
+            const currentTime = performance.now();
+            const timeDiff = currentTime - this.lastTime;
+            this.currentFPS = Math.round(1000 / timeDiff);
+            this.lastTime = currentTime;
+
             // Vitesse de rotation pour les contrôles
             const rotationSpeed = 0.8;
             
@@ -365,17 +376,31 @@ export class Deltaplane {
             }
             
             // Propulsion constante dans la direction du deltaplane
-            const constantPropulsion = 300; // Remis à 300 pour une vitesse d'environ 300 km/h
+            const maxSpeed = 200; // Vitesse maximum en km/h
+            const currentSpeed = this.velocity.length() * 3.6; // Convertir en km/h
+            
+            // Réduire la propulsion si on approche de la vitesse maximum
+            const speedRatio = currentSpeed / maxSpeed;
+            const propulsionForce = 150 * Math.max(0, 1 - speedRatio);
             
             // Créer un vecteur de direction horizontale (en ignorant la composante Y)
-            // Utiliser une direction fixe vers l'avant, indépendante de la rotation en X
             const forwardDirection = new THREE.Vector3(0, 0, -1);
             forwardDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.mesh.rotation.y);
             const horizontalDirection = new THREE.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
             
             // Appliquer la propulsion uniquement horizontalement
-            const propulsionVector = horizontalDirection.multiplyScalar(constantPropulsion * delta);
+            const propulsionVector = horizontalDirection.multiplyScalar(propulsionForce * delta);
             this.velocity.add(propulsionVector);
+            
+            // Limiter la vitesse maximum
+            if (currentSpeed > maxSpeed) {
+                const reduction = maxSpeed / currentSpeed;
+                this.velocity.multiplyScalar(reduction);
+            }
+            
+            // Ajouter une résistance de l'air progressive
+            const airResistance = Math.pow(speedRatio, 2) * 0.02;
+            this.velocity.multiplyScalar(1 - airResistance);
             
             // Ne plus stabiliser l'altitude pour permettre de monter/descendre naturellement
             
@@ -417,6 +442,19 @@ export class Deltaplane {
                     
                     // Ajouter une légère poussée vers le haut pour éviter de rester collé au sol
                     this.velocity.y += 5;
+                }
+            }
+            
+            // Vérification de l'altitude maximum
+            if (this.mesh.position.y > this.maxAltitude) {
+                this.mesh.position.y = this.maxAltitude;
+                
+                // Si on monte trop haut, annuler la vitesse verticale positive
+                if (this.velocity.y > 0) {
+                    this.velocity.y = 0;
+                    
+                    // Ajouter une légère poussée vers le bas pour éviter de rester collé au plafond
+                    this.velocity.y -= 5;
                 }
             }
             
@@ -482,6 +520,7 @@ export class Deltaplane {
             infoDiv.innerHTML = `
                 <div style="text-align: center; font-size: 14px; margin-bottom: 8px; color: #ffcc00;">INFORMATIONS DE VOL</div>
                 <div style="${sectionStyle}">
+                    <div><span style="${labelStyle}">FPS:</span> <span style="${valueStyle}">${this.currentFPS}</span></div>
                     <div><span style="${labelStyle}">Altitude:</span> <span style="${valueStyle}">${validAltitude} m</span></div>
                     <div><span style="${labelStyle}">Hauteur/terrain:</span> <span style="${valueStyle}">${validHeightAboveTerrain} m</span></div>
                 </div>
@@ -527,47 +566,55 @@ export class Deltaplane {
         const direction = new THREE.Vector3(0, 0, -1);
         direction.applyQuaternion(this.mesh.quaternion);
         
-        // Position de base derrière le deltaplane - plus éloignée
-        const offset = new THREE.Vector3(0, 5, 25); // Augmenté la distance de 15 à 25 et la hauteur de 3 à 5
+        // Position de base derrière le deltaplane - plus éloignée et plus haute
+        const offset = new THREE.Vector3(0, 8, 35); // Augmenté la distance et la hauteur pour une meilleure vue
         
-        // Appliquer la rotation du deltaplane à l'offset de la caméra
+        // Calculer la rotation du deltaplane en excluant le pitch (rotation X)
+        // Cela permet de garder une vue stable même lors des montées/descentes
+        const smoothedRotationY = this.mesh.rotation.y;
         const rotatedOffset = new THREE.Vector3(
-            offset.x * Math.cos(this.mesh.rotation.y) + offset.z * Math.sin(this.mesh.rotation.y),
-            offset.y, // Hauteur fixe pour éviter les problèmes
-            -offset.x * Math.sin(this.mesh.rotation.y) + offset.z * Math.cos(this.mesh.rotation.y)
+            offset.x * Math.cos(smoothedRotationY) + offset.z * Math.sin(smoothedRotationY),
+            offset.y,
+            -offset.x * Math.sin(smoothedRotationY) + offset.z * Math.cos(smoothedRotationY)
         );
         
-        // Position cible de la caméra - directement basée sur la position du deltaplane
+        // Position cible de la caméra
         const targetPosition = this.mesh.position.clone().add(rotatedOffset);
         
-        // Facteur de lissage (plus la valeur est petite, plus le mouvement est doux)
-        const smoothFactor = 0.2; // Maintenu pour une réponse rapide
+        // Si c'est la première fois, initialiser la position de la caméra
+        if (!this.lastCameraPosition) {
+            this.lastCameraPosition = targetPosition.clone();
+            mainCamera.position.copy(targetPosition);
+        }
         
-        // Interpolation entre la position actuelle et la position cible
+        // Facteurs de lissage adaptatifs
+        const distanceToTarget = mainCamera.position.distanceTo(targetPosition);
+        const baseSmooth = 0.1; // Lissage de base
+        const speedFactor = this.velocity.length() / 300; // Facteur basé sur la vitesse
+        const smoothFactor = Math.min(baseSmooth + speedFactor * 0.1, 0.3);
+        
+        // Interpolation de la position avec un lissage adaptatif
         mainCamera.position.lerp(targetPosition, smoothFactor);
         
-        // Point vers lequel la caméra regarde (directement sur le deltaplane)
-        const lookAtTarget = this.mesh.position.clone();
+        // Point vers lequel la caméra regarde (légèrement devant le deltaplane)
+        const lookAheadDistance = 20 * (this.velocity.length() / 300); // Distance de regard devant, proportionnelle à la vitesse
+        const lookAtTarget = this.mesh.position.clone().add(
+            direction.multiplyScalar(lookAheadDistance)
+        );
         
-        // Si c'est la première fois qu'on définit currentLookAt
+        // Initialiser le point de visée si nécessaire
         if (!this.currentLookAt) {
             this.currentLookAt = lookAtTarget.clone();
-        } else {
-            // Interpolation du point de visée
-            this.currentLookAt.lerp(lookAtTarget, smoothFactor);
         }
+        
+        // Interpolation du point de visée avec le même lissage adaptatif
+        this.currentLookAt.lerp(lookAtTarget, smoothFactor);
         
         // La caméra regarde le point interpolé
         mainCamera.lookAt(this.currentLookAt);
         
-        // Vérification de sécurité - si la caméra est trop loin, la replacer
-        const distanceToTarget = mainCamera.position.distanceTo(this.mesh.position);
-        if (distanceToTarget > 100) { // Augmenté la distance maximale de 50 à 100
-            console.log("Caméra trop éloignée, repositionnement...");
-            mainCamera.position.copy(this.mesh.position).add(new THREE.Vector3(0, 5, 25));
-            this.currentLookAt = this.mesh.position.clone();
-            mainCamera.lookAt(this.currentLookAt);
-        }
+        // Sauvegarder la dernière position pour le prochain frame
+        this.lastCameraPosition = mainCamera.position.clone();
     }
     
     /**
