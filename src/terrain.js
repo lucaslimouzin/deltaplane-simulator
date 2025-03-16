@@ -3,29 +3,62 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
 import seedrandom from 'seedrandom';
 
-// Configuration du terrain
-const TERRAIN_SIZE = 2000;         // Taille de chaque chunk
-const RENDER_DISTANCE = 2;         // Distance de rendu en chunks (2 = 5x5 grille)
-const PRELOAD_DISTANCE = 3;        // Distance de préchargement (3 = 7x7 grille)
-const CHUNK_FADE_DURATION = 1000;  // Durée du fade-in en millisecondes
-const CHUNK_LOAD_DELAY = 50;       // Délai entre le chargement de chaque chunk
-const MAX_CHUNKS_PER_FRAME = 2;    // Nombre maximum de chunks à charger par frame
-const PRELOAD_EXTRA_DISTANCE = 2;  // Distance supplémentaire de préchargement dans la direction du mouvement
+// Terrain configuration
+const TERRAIN_SIZE = 2000;         // Size of each chunk
+const RENDER_DISTANCE = 2;         // Render distance in chunks (2 = 5x5 grid)
+const PRELOAD_DISTANCE = 3;        // Preload distance (3 = 7x7 grid)
+const CHUNK_FADE_DURATION = 1000;  // Fade-in duration in milliseconds
+const CHUNK_LOAD_DELAY = 50;       // Delay between each chunk load
+const MAX_CHUNKS_PER_FRAME = 2;    // Maximum number of chunks to load per frame
+const PRELOAD_EXTRA_DISTANCE = 2;  // Extra preload distance in movement direction
 
 const config = {
-    // Paramètres généraux
+    // General parameters
     terrainSize: TERRAIN_SIZE,
-    waterSize: 14000,          // Taille du plan d'eau (augmentée pour couvrir 5x5 chunks)
-    waterLevel: -0.5,          // Niveau de l'eau légèrement abaissé pour éviter le z-fighting
+    waterSize: 14000,          // Water plane size (increased to cover 5x5 chunks)
+    waterLevel: -0.5,          // Water level slightly lowered to avoid z-fighting
     
-    // Paramètres de forme des îles
-    islandShapeComplexity: 0.7,    // Complexité de la forme des îles (0-1)
-    islandEdgeRoughness: 0.4,      // Rugosité des bords des îles (0-1)
+    // Island shape parameters
+    islandShapeComplexity: 0.7,    // Island shape complexity (0-1)
+    islandEdgeRoughness: 0.4,      // Island edge roughness (0-1)
+    islandMinRadius: 100,          // Minimum island radius
+    islandMaxRadius: 300,          // Maximum island radius
+    islandHeightScale: 100,        // Island height scale
+    islandHeightOffset: 0,         // Island height offset
     
-    // Configuration des chunks
+    // Noise parameters for terrain generation
+    noiseScale: 100,           // Base noise scale
+    noiseOctaves: 4,          // Number of noise octaves
+    noisePersistence: 0.5,    // Noise persistence between octaves
+    noiseLacunarity: 2,       // Noise frequency multiplier between octaves
+    
+    // Material parameters
+    grassColor: 0x3c8f3c,     // Grass color (light green)
+    sandColor: 0xc2b280,      // Sand color (beige)
+    rockColor: 0x808080,      // Rock color (gray)
+    waterColor: 0x0077be,     // Water color (blue)
+    
+    // Lighting parameters
+    ambientColor: 0xffffff,   // Ambient light color (white)
+    ambientIntensity: 0.5,    // Ambient light intensity
+    sunColor: 0xffffff,       // Sun color (white)
+    sunIntensity: 1.0,        // Sun intensity
+    sunPosition: {            // Sun position
+        x: 100,
+        y: 100,
+        z: 100
+    },
+    
+    // Fog parameters
+    fogColor: 0x87ceeb,       // Fog color (sky blue)
+    fogNear: 2500,             // Distance where fog starts (increased from 100)
+    fogFar: 6000,              // Distance where fog ends (increased from 3000)
+    fogDensity: 0.0005,        // Exponential fog density (reduced from 0.002)
+    
+    // Configuration of chunks
     chunks: Array(25).fill(null).map((_, index) => {
-        const row = Math.floor(index / 5) - 2; // -2 à 2
-        const col = (index % 5) - 2; // -2 à 2
+        const row = Math.floor(index / 5) - 2; // -2 to 2
+        const col = (index % 5) - 2; // -2 to 2
         
         return {
             offset: { 
@@ -75,56 +108,56 @@ const config = {
                     biome: ['temperate', 'tropical', 'desert', 'volcanic', 'snowy'][Math.floor(Math.random() * 5)],
                     hasMountain: Math.random() > 0.7
                 } : null
-            ].filter(Boolean) // Supprime les îles null
+            ].filter(Boolean) // Remove null islands
         };
     }),
     
-    // Paramètres de terrain
-    terrainSegments: 120,      // Nombre de segments pour le terrain (augmenté pour plus de détail)
+    // Terrain parameters
+    terrainSegments: 120,      // Number of segments for the terrain (increased for more detail)
     
-    // Paramètres des arbres
-    numTreesPerIsland: 80,     // Nombre d'arbres par île
-    treeMinHeight: 8,          // Hauteur minimale des arbres
-    treeMaxHeight: 20,         // Hauteur maximale des arbres
+    // Tree parameters
+    numTreesPerIsland: 80,     // Number of trees per island
+    treeMinHeight: 8,          // Minimum tree height
+    treeMaxHeight: 20,         // Maximum tree height
     
-    // Paramètres des habitations
+    // House parameters
     numHousesPerIsland: 15,
     houseMinSize: 5,
     houseMaxSize: 10,
     
-    // Couleurs des biomes
+    // Biome colors
     biomes: {
         temperate: {
-            beach: 0xFFE66D,       // Sable
-            grass: 0x7BC950,       // Vert clair
-            forest: 0x2D936C,      // Vert foncé
-            mountain: 0x9B7653,    // Marron
-            snow: 0xFFFAFA,        // Blanc
-            treeColor: 0x2D936C    // Vert pour les feuilles
+            beach: 0xFFE66D,       // Sand
+            grass: 0x7BC950,       // Light green
+            forest: 0x2D936C,      // Dark green
+            mountain: 0x9B7653,    // Brown
+            snow: 0xFFFAFA,        // White
+            treeColor: 0x2D936C    // Green for leaves
         },
         tropical: {
-            beach: 0xFFF2CC,       // Sable clair
-            grass: 0x9DE649,       // Vert vif
+            beach: 0xFFF2CC,       // Light sand
+            grass: 0x9DE649,       // Bright green
             forest: 0x45B69C,      // Turquoise
             mountain: 0xB3A369,    // Beige
-            snow: 0xFFFFFF,        // Blanc
-            treeColor: 0x45B69C    // Turquoise pour les feuilles
+            snow: 0xFFFFFF,        // White
+            treeColor: 0x45B69C    // Turquoise for leaves
         },
         desert: {
-            beach: 0xF6D7B0,       // Sable doré
+            beach: 0xF6D7B0,       // Golden sand
             grass: 0xD4AC6E,       // Beige
-            forest: 0x7D6608,      // Vert olive
+            forest: 0x7D6608,      // Olive green
             mountain: 0xAA6C39,    // Brun
-            snow: 0xF0E68C,        // Jaune pâle
-            treeColor: 0x7D6608    // Vert olive pour les feuilles
+            snow: 0xF0E68C,        // Pale yellow
+            treeColor: 0x7D6608    // Olive green for leaves
         },
         volcanic: {
-            beach: 0x696969,       // Gris foncé
+            beach: 0x696969,       // Dark gray
             grass: 0x8B4513,       // Brun
-            forest: 0x556B2F,      // Vert olive foncé
-            mountain: 0x3D3635,    // Gris très foncé
-            snow: 0xFF4500,        // Rouge orangé (lave)
-            treeColor: 0x556B2F    // Vert olive foncé pour les feuilles
+            forest: 0x556B2F,      // Dark olive green
+            mountain: 0x3D3635,    // Very dark gray
+            snow: 0xFF4500,        // Orange red (lava)
+            treeColor: 0x556B2F    // Dark olive green for leaves
         },
         snowy: {
             beach: 0xE6E6FA,
@@ -136,60 +169,60 @@ const config = {
         }
     },
     
-    // Couleurs générales
+    // General colors
     colors: {
         water: 0x4ECDC4,       // Turquoise
-        trunkColor: 0x8B4513,  // Marron pour les troncs
+        trunkColor: 0x8B4513,  // Brown for trunks
     },
     
-    // Paramètres visuels
+    // Visual parameters
     enableShadows: true,
-    fogColor: 0x87CEEB,        // Couleur du ciel/brouillard
-    fogNear: 2500,             // Distance de début du brouillard (ajustée pour le carré 3x3)
-    fogFar: 4000,              // Distance de fin du brouillard (plus dense)
-    fogDensity: 0.002,         // Densité du brouillard exponentiel
+    fogColor: 0x87CEEB,        // Fog color (sky blue)
+    fogNear: 2500,             // Distance where fog starts (adjusted for 3x3 square)
+    fogFar: 4000,              // Distance where fog ends (denser)
+    fogDensity: 0.002,         // Exponential fog density
 };
 
-// Variables globales
+// Global variables
 let scene, camera, renderer;
-let terrain = new Map(); // Map pour stocker les chunks avec leurs coordonnées comme clé
+let terrain = new Map(); // Map to store chunks with their coordinates as key
 let water;
 let noise = new SimplexNoise();
-let currentChunkCoords = { x: 0, z: 0 }; // Initialisation avec des valeurs par défaut
+let currentChunkCoords = { x: 0, z: 0 }; // Initialize with default values
 let chunkLoadQueue = [];
 let isLoadingChunk = false;
 
 /**
- * Initialise la scène Three.js
+ * Initializes the Three.js scene
  */
 export function initScene(container) {
-    // Créer la scène
+    // Create scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(config.fogColor);
     scene.fog = new THREE.FogExp2(config.fogColor, config.fogDensity);
     
-    // Créer la caméra
+    // Create camera
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 8000);
 
-    // Trouver une position de spawn valide sur une île
+    // Find a valid spawn position on an island
     let spawnX = 0, spawnZ = 0, spawnHeight = -1;
-    const chunk = config.chunks[12]; // Chunk central (index 12 dans un tableau 5x5)
+    const chunk = config.chunks[12]; // Central chunk (index 12 in a 5x5 array)
     
-    // Chercher une position valide sur la première île du chunk central
+    // Look for a valid position on the first island of the central chunk
     if (chunk && chunk.islands.length > 0) {
         const island = chunk.islands[0];
         const angle = Math.random() * Math.PI * 2;
-        const radius = island.radius * 0.3; // 30% du rayon pour être bien sur l'île
+        const radius = island.radius * 0.3; // 30% of radius to be well on the island
         
         spawnX = Math.cos(angle) * radius + island.center.x;
         spawnZ = Math.sin(angle) * radius + island.center.z;
-        spawnHeight = 50; // Hauteur de départ sécurisée
+        spawnHeight = 50; // Safe starting height
     }
 
     camera.position.set(spawnX, spawnHeight, spawnZ);
     camera.lookAt(spawnX, spawnHeight - 10, spawnZ - 100);
 
-    // Initialiser les coordonnées du chunk actuel et la vélocité
+    // Initialize current chunk coordinates and velocity
     currentChunkCoords = {
         x: Math.floor(camera.position.x / TERRAIN_SIZE),
         z: Math.floor(camera.position.z / TERRAIN_SIZE)
@@ -197,7 +230,7 @@ export function initScene(container) {
     camera.velocity = new THREE.Vector3();
     camera.lastPosition = camera.position.clone();
     
-    // Créer le renderer avec des paramètres améliorés
+    // Create renderer with improved parameters
     renderer = new THREE.WebGLRenderer({ 
         antialias: true,
         alpha: true,
@@ -212,52 +245,52 @@ export function initScene(container) {
     renderer.toneMappingExposure = 1.2;
     renderer.setClearColor(config.fogColor);
     
-    // Ajouter le renderer au conteneur
+    // Add renderer to container
     if (container) {
         container.appendChild(renderer.domElement);
     } else {
         document.body.appendChild(renderer.domElement);
     }
     
-    // Ajouter les lumières
+    // Add lights
     addLights();
     
-    // Créer l'eau
+    // Create water
     createWater();
     
-    // Initialiser le premier chunk
+    // Initialize first chunk
     updateChunks(currentChunkCoords.x, currentChunkCoords.z, new THREE.Vector3());
     
-    // Gérer le redimensionnement de la fenêtre
+    // Handle window resizing
     window.addEventListener('resize', onWindowResize);
     
-    // Ajouter les contrôles de caméra
+    // Add camera controls
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableRotate = false; // Désactive la rotation avec le clic gauche
-    controls.enablePan = false;    // Désactive le déplacement avec le clic droit
-    controls.enableZoom = false;   // Désactive le zoom avec la molette
-    controls.enabled = false;      // Désactive complètement les contrôles
+    controls.enableRotate = false; // Disable rotation with left click
+    controls.enablePan = false;    // Disable movement with right click
+    controls.enableZoom = false;   // Disable zoom with scroll
+    controls.enabled = false;      // Completely disable controls
     
-    // Démarrer la boucle d'animation
+    // Start animation loop
     animate();
     
     return { scene, camera, renderer };
 }
 
 /**
- * Ajoute les lumières à la scène
+ * Adds lights to the scene
  */
 function addLights() {
-    // Lumière ambiante
+    // Ambient light
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
     
-    // Lumière directionnelle (soleil)
+    // Directional light (sun)
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
     directionalLight.position.set(500, 500, 0);
     directionalLight.castShadow = config.enableShadows;
     
-    // Configuration des ombres améliorée
+    // Improved shadow configuration
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     directionalLight.shadow.camera.near = 0.5;
@@ -266,18 +299,18 @@ function addLights() {
     directionalLight.shadow.camera.right = 1500;
     directionalLight.shadow.camera.top = 1500;
     directionalLight.shadow.camera.bottom = -1500;
-    directionalLight.shadow.bias = -0.0005; // Ajout pour réduire les artefacts d'ombre
+    directionalLight.shadow.bias = -0.0005; // Add to reduce shadow artifacts
     
     scene.add(directionalLight);
 }
 
 /**
- * Crée les îles avec différents biomes
+ * Creates islands with different biomes
  */
 function createIslands() {
-    // Créer les terrains pour chaque chunk
+    // Create terrains for each chunk
     config.chunks.forEach(chunk => {
-        // Créer la géométrie du terrain pour ce chunk
+        // Create terrain geometry for this chunk
         const geometry = new THREE.PlaneGeometry(
             config.terrainSize,
             config.terrainSize,
@@ -285,81 +318,81 @@ function createIslands() {
             config.terrainSegments
         );
         
-        // Rotation pour avoir un plan horizontal
+        // Rotate for horizontal plane
         geometry.rotateX(-Math.PI / 2);
         
-        // Déplacer le chunk à sa position
+        // Move chunk to its position
         geometry.translate(chunk.offset.x, 0, chunk.offset.z);
         
-        // Obtenir les positions des vertices
+        // Get vertex positions
         const positions = geometry.attributes.position.array;
         const colors = new Float32Array(positions.length);
         
-        // Créer un tableau pour stocker les hauteurs (pour la fonction getTerrainHeightAtPosition)
+        // Create array to store heights (for getTerrainHeightAtPosition function)
         window.terrainHeights = [];
         
-        // Modifier les hauteurs pour créer plusieurs îles
+        // Modify heights to create multiple islands
         for (let i = 0; i < positions.length; i += 3) {
             const x = positions[i];
             const z = positions[i + 2];
             
-            // Initialiser la hauteur à 0 (sous l'eau)
+            // Initialize height to 0 (under water)
             let height = -5;
             let islandIndex = -1;
             let minDistance = Infinity;
             
-            // Déterminer à quelle île appartient ce point (la plus proche)
+            // Determine which island this point belongs to (closest)
             for (let j = 0; j < chunk.islands.length; j++) {
                 const island = chunk.islands[j];
                 
-                // Calculer la distance de base au centre de l'île
+                // Calculate base distance to island center
                 const baseDistance = Math.sqrt(
                     Math.pow(x - island.center.x, 2) + 
                     Math.pow(z - island.center.z, 2)
                 );
                 
-                // Appliquer une déformation à la distance pour créer des formes non circulaires
+                // Apply deformation to distance to create non-circular shapes
                 let distanceToIsland = baseDistance;
                 
-                // Utiliser le bruit de Perlin pour déformer le contour de l'île
+                // Use Perlin noise to deform island contour
                 const angle = Math.atan2(z - island.center.z, x - island.center.x);
-                const noiseScale = 2.0; // Échelle du bruit
+                const noiseScale = 2.0; // Noise scale
                 
-                // Seed spécifique à chaque île pour des formes différentes
+                // Seed specific to each island for different shapes
                 const seed = j * 1000;
                 
-                // Déformation basée sur l'angle (crée des baies et des péninsules)
+                // Deformation based on angle (creates bays and peninsulas)
                 const angleNoise = (noise.noise(Math.cos(angle) * noiseScale + seed, Math.sin(angle) * noiseScale + seed) + 1) * 0.5;
                 
-                // Déformation basée sur la position (crée des irrégularités locales)
+                // Deformation based on position (creates local irregularities)
                 const posNoise = (noise.noise((x * 0.01) + seed, (z * 0.01) + seed) + 1) * 0.5;
                 
-                // Combiner les déformations
+                // Combine deformations
                 const deformation = island.radius * config.islandShapeComplexity * (angleNoise * 0.7 + posNoise * 0.3);
                 
-                // Ajouter des variations de bord plus petites pour la rugosité
+                // Add smaller variations to island edges for roughness
                 const edgeNoise = (noise.noise((x * 0.05) + seed, (z * 0.05) + seed) + 1) * 0.5;
                 const edgeDeformation = island.radius * config.islandEdgeRoughness * edgeNoise * 0.2;
                 
-                // Appliquer les déformations à la distance
+                // Apply deformations to distance
                 distanceToIsland = baseDistance - deformation - edgeDeformation;
                 
-                // Vérifier si ce point est dans l'île déformée
+                // Check if this point is in the deformed island
                 if (distanceToIsland < island.radius && distanceToIsland < minDistance) {
                     minDistance = distanceToIsland;
                     islandIndex = j;
                 }
             }
             
-            // Si le point appartient à une île
+            // If point belongs to an island
             if (islandIndex >= 0) {
                 const island = chunk.islands[islandIndex];
                 const distanceToCenter = minDistance;
                 
-                // Facteur d'atténuation vers les bords (plus progressif pour les formes irrégulières)
+                // Attenuation factor towards edges (more progressive for irregular shapes)
                 const falloff = Math.pow(1 - distanceToCenter / island.radius, 1.5);
                 
-                // Bruit pour les variations de terrain spécifique à chaque île
+                // Noise for terrain variations specific to each island
                 const seed = islandIndex * 1000;
                 const baseNoiseScale = 0.005;
                 const detailNoiseScale = 0.02;
@@ -369,11 +402,11 @@ function createIslands() {
                 
                 const combinedNoise = baseNoise * 0.7 + detailNoise * 0.3;
                 
-                // Hauteur de base de l'île (varie selon le biome)
+                // Base height of island (varies by biome)
                 const baseHeight = island.biome === 'snowy' ? 20 : (island.biome === 'desert' ? 3 : 5);
                 height = baseHeight + 15 * falloff;
                 
-                // Gérer plusieurs montagnes si elles sont définies
+                // Handle multiple mountains if they are defined
                 if (island.mountains) {
                     for (const mountain of island.mountains) {
                         const distanceToMountain = Math.sqrt(
@@ -389,59 +422,59 @@ function createIslands() {
                     }
                 }
                 
-                // Ajouter des variations de terrain spécifiques au biome
+                // Add terrain variations specific to biome
                 if (island.biome === 'desert') {
-                    // Dunes pour le désert
+                    // Dunes for desert
                     height += (noise.noise(x * 0.03 + seed, z * 0.03 + seed) * 0.5 + 0.5) * 10 * falloff;
                 } else if (island.biome === 'tropical') {
-                    // Terrain plus vallonné pour l'île tropicale
+                    // More hilly terrain for tropical island
                     height += combinedNoise * 12 * falloff;
                 } else if (island.biome === 'volcanic') {
-                    // Terrain plus accidenté pour l'île volcanique
+                    // More accident terrain for volcanic island
                     height += (noise.noise(x * 0.04 + seed, z * 0.04 + seed) * 0.5) * 15 * falloff;
                 } else {
-                    // Variations standard pour l'île tempérée
+                    // Standard variations for temperate island
                     height += combinedNoise * 10 * falloff;
                 }
                 
-                // Cas spécial pour le biome neigeux
+                // Special case for snowy biome
                 if (island.biome === 'snowy') {
-                    // Ajouter plus de variations pour créer des congères
+                    // Add more variations to create cones
                     height += (noise.noise(x * 0.05 + seed, z * 0.05 + seed) * 0.5) * 20 * falloff;
-                    // Garantir une couverture neigeuse minimale
+                    // Ensure minimum snow coverage
                     if (height > config.waterLevel + 5) {
                         height += 5;
                     }
                 }
                 
-                // Ajouter des variations supplémentaires pour les côtes
-                // Cela crée des plages, des falaises et des zones côtières variées
+                // Add additional variations for coasts
+                // This creates varied beaches, cliffs, and coastal zones
                 if (falloff < 0.3) {
                     const coastalNoise = noise.noise(x * 0.1 + seed, z * 0.1 + seed);
                     
                     if (coastalNoise > 0.3) {
-                        // Créer des falaises sur certaines côtes
+                        // Create cliffs on certain coasts
                         height += (coastalNoise - 0.3) * 30 * falloff;
                     } else if (coastalNoise < -0.3) {
-                        // Créer des plages plus plates sur d'autres côtes
+                        // Create more flat beaches on other coasts
                         height -= Math.abs(coastalNoise + 0.3) * 5;
                     }
                 }
             }
             
-            // Arrondir la hauteur pour un effet low poly, mais avec des paliers plus petits pour plus de réalisme
+            // Round height for low poly effect, but with smaller steps for more realism
             height = Math.round(height / 4) * 4;
             
-            // Appliquer la hauteur
+            // Apply height
             positions[i + 1] = height;
             
-            // Stocker la hauteur pour la fonction getTerrainHeightAtPosition
+            // Store height for getTerrainHeightAtPosition function
             window.terrainHeights.push({ x, z, height });
             
-            // Déterminer la couleur en fonction de la hauteur et du biome
-            let color = new THREE.Color(0x4ECDC4); // Couleur par défaut (eau)
+            // Determine color based on height and biome
+            let color = new THREE.Color(0x4ECDC4); // Default color (water)
             
-            // Trouver l'île la plus proche pour déterminer le biome
+            // Find nearest island to determine biome
             let nearestIsland = null;
             let minIslandDistance = Infinity;
             
@@ -457,7 +490,7 @@ function createIslands() {
                 }
             }
             
-            // Si on a trouvé une île proche, utiliser ses couleurs de biome
+            // If a nearby island was found, use its biome colors
             if (nearestIsland && height > config.waterLevel) {
                 const biomeColors = config.biomes[nearestIsland.biome];
                 
@@ -473,31 +506,31 @@ function createIslands() {
                     color = new THREE.Color(biomeColors.snow);
                 }
                 
-                // Cas spécial pour l'île volcanique: lave au sommet
+                // Special case for volcanic island: lava at top
                 if (nearestIsland.biome === 'volcanic' && height > nearestIsland.mountainHeight * 0.8) {
-                    // Mélanger avec la couleur de la lave
+                    // Mix with lava color
                     const lavaFactor = Math.min(1, (height - nearestIsland.mountainHeight * 0.8) / 50);
                     color.lerp(new THREE.Color(0xFF4500), lavaFactor);
                 }
             }
             
-            // Ajouter une légère variation de couleur pour plus de réalisme
+            // Add slight color variation for more realism
             const variation = (Math.random() - 0.5) * 0.05;
             color.r = Math.max(0, Math.min(1, color.r + variation));
             color.g = Math.max(0, Math.min(1, color.g + variation));
             color.b = Math.max(0, Math.min(1, color.b + variation));
             
-            // Assigner la couleur
+            // Assign color
             colors[i] = color.r;
             colors[i + 1] = color.g;
             colors[i + 2] = color.b;
         }
         
-        // Mettre à jour la géométrie
+        // Update geometry
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         geometry.computeVertexNormals();
         
-        // Créer le matériau
+        // Create material
         const material = new THREE.MeshStandardMaterial({
             vertexColors: true,
             flatShading: true,
@@ -505,29 +538,29 @@ function createIslands() {
             metalness: 0.1
         });
         
-        // Créer le mesh
+        // Create mesh
         const terrainChunk = new THREE.Mesh(geometry, material);
         terrainChunk.receiveShadow = config.enableShadows;
         terrainChunk.castShadow = config.enableShadows;
         
-        // Ajouter à la scène
+        // Add to scene
         scene.add(terrainChunk);
         
-        // Ajouter des arbres et des habitations pour ce chunk
+        // Add trees and houses to this chunk
         addTreesToChunk(chunk);
         addHousesToChunk(chunk);
     });
 }
 
 /**
- * Ajoute des arbres sur un chunk spécifique
+ * Adds trees to a specific chunk
  */
 function addTreesToChunk(chunk) {
-    // Créer des géométries partagées pour les arbres
+    // Create shared geometries for trees
     const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, 1, 4, 1);
     const leavesGeometry = new THREE.TetrahedronGeometry(3, 0);
     
-    // Créer le matériau pour les troncs
+    // Create material for trunks
     const trunkMaterial = new THREE.MeshStandardMaterial({
         color: config.colors.trunkColor,
         flatShading: true,
@@ -535,9 +568,9 @@ function addTreesToChunk(chunk) {
         metalness: 0.0
     });
     
-    // Pour chaque île, ajouter des arbres adaptés à son biome
+    // For each island, add trees adapted to its biome
     for (const island of chunk.islands) {
-        // Créer le matériau pour les feuilles selon le biome
+        // Create material for leaves based on biome
         const leavesMaterial = new THREE.MeshStandardMaterial({
             color: config.biomes[island.biome].treeColor,
             flatShading: true,
@@ -545,54 +578,54 @@ function addTreesToChunk(chunk) {
             metalness: 0.0
         });
         
-        // Nombre d'arbres adapté à la taille de l'île
+        // Number of trees adapted to island size
         const numTrees = Math.floor(config.numTreesPerIsland * (island.radius / 400));
         
-        // Ajouter des arbres
+        // Add trees
         for (let i = 0; i < numTrees; i++) {
-            // Position aléatoire sur l'île
+            // Random position on island
             const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * island.radius * 0.8; // Éviter les bords
+            const radius = Math.random() * island.radius * 0.8; // Avoid edges
             
             const x = Math.cos(angle) * radius + island.center.x;
             const z = Math.sin(angle) * radius + island.center.z;
             
-            // Obtenir la hauteur du terrain à cette position
+            // Get terrain height at this position
             const height = getTerrainHeightAtPosition(x, z);
             
-            // Ne pas placer d'arbres dans l'eau ou sur la montagne
+            // Do not place trees in water or on mountain
             if (height <= config.waterLevel + 2 || height > 100) continue;
             
-            // Créer un groupe pour l'arbre
+            // Create tree group
             const treeGroup = new THREE.Group();
             
-            // Hauteur aléatoire pour l'arbre (adaptée au biome)
+            // Random tree height (adapted to biome)
             let treeMinHeight = config.treeMinHeight;
             let treeMaxHeight = config.treeMaxHeight;
             
-            // Ajuster la hauteur des arbres selon le biome
+            // Adjust tree height based on biome
             if (island.biome === 'tropical') {
-                treeMinHeight = 10; // Arbres plus grands dans les tropiques
+                treeMinHeight = 10; // Larger trees in tropics
                 treeMaxHeight = 25;
             } else if (island.biome === 'desert') {
-                treeMinHeight = 5; // Arbres plus petits dans le désert
+                treeMinHeight = 5; // Smaller trees in desert
                 treeMaxHeight = 12;
             }
             
             const treeHeight = treeMinHeight + Math.random() * (treeMaxHeight - treeMinHeight);
             
-            // Créer le tronc
+            // Create trunk
             const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
             trunk.scale.set(1, treeHeight, 1);
             trunk.position.y = treeHeight / 2;
             trunk.castShadow = config.enableShadows;
             treeGroup.add(trunk);
             
-            // Créer les feuilles (forme adaptée au biome)
+            // Create leaves (adapted shape for biome)
             let leaves;
             
             if (island.biome === 'tropical') {
-                // Arbres tropicaux avec plusieurs niveaux de feuilles
+                // Tropical trees with multiple leaf layers
                 const leavesGroup = new THREE.Group();
                 
                 for (let j = 0; j < 3; j++) {
@@ -606,7 +639,7 @@ function addTreesToChunk(chunk) {
                 
                 treeGroup.add(leavesGroup);
             } else if (island.biome === 'desert') {
-                // Cactus ou arbres du désert (plus fins)
+                // Cactus or desert trees (finer)
                 trunk.scale.set(0.7, treeHeight, 0.7);
                 
                 leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
@@ -615,7 +648,7 @@ function addTreesToChunk(chunk) {
                 leaves.castShadow = config.enableShadows;
                 treeGroup.add(leaves);
             } else {
-                // Arbres standard
+                // Standard trees
                 leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
                 leaves.scale.set(2, 2, 2);
                 leaves.position.y = treeHeight + 2;
@@ -623,27 +656,27 @@ function addTreesToChunk(chunk) {
                 treeGroup.add(leaves);
             }
             
-            // Positionner l'arbre
+            // Position tree
             treeGroup.position.set(x, height, z);
             
-            // Rotation aléatoire
+            // Random rotation
             treeGroup.rotation.y = Math.random() * Math.PI * 2;
             
-            // Ajouter à la scène
+            // Add to scene
             scene.add(treeGroup);
         }
     }
 }
 
 /**
- * Ajoute des habitations sur un chunk spécifique
+ * Adds houses to a specific chunk
  */
 function addHousesToChunk(chunk) {
-    // Créer des géométries de base pour les maisons
+    // Create base geometries for houses
     const baseGeometry = new THREE.BoxGeometry(1, 1, 1);
     const roofGeometry = new THREE.ConeGeometry(1, 1, 4);
     
-    // Matériaux pour les maisons
+    // Materials for houses
     const wallMaterials = {
         temperate: new THREE.MeshStandardMaterial({ color: 0xE5D3B3, flatShading: true }),
         tropical: new THREE.MeshStandardMaterial({ color: 0xFFE4C4, flatShading: true }),
@@ -660,27 +693,27 @@ function addHousesToChunk(chunk) {
         snowy: new THREE.MeshStandardMaterial({ color: 0x4682B4, flatShading: true })
     };
     
-    // Pour chaque île
+    // For each island
     for (const island of chunk.islands) {
-        // Nombre de maisons adapté à la taille de l'île
+        // Number of houses adapted to island size
         const numHouses = Math.floor(config.numHousesPerIsland * (island.radius / 400));
         
-        // Ajouter des maisons
+        // Add houses
         for (let i = 0; i < numHouses; i++) {
-            // Position aléatoire sur l'île (éviter les montagnes et l'eau)
+            // Random position on island (avoid mountains and water)
             let attempts = 0;
             let validPosition = false;
             let x, z, height;
             
             while (!validPosition && attempts < 50) {
                 const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * island.radius * 0.6; // Rester loin des bords
+                const radius = Math.random() * island.radius * 0.6; // Stay away from edges
                 
                 x = Math.cos(angle) * radius + island.center.x;
                 z = Math.sin(angle) * radius + island.center.z;
                 height = getTerrainHeightAtPosition(x, z);
                 
-                // Vérifier si la position est valide (pas dans l'eau, pas trop en hauteur)
+                // Check if position is valid (not in water, not too high)
                 if (height > config.waterLevel + 2 && height < 50) {
                     validPosition = true;
                 }
@@ -689,14 +722,14 @@ function addHousesToChunk(chunk) {
             
             if (!validPosition) continue;
             
-            // Créer un groupe pour la maison
+            // Create house group
             const houseGroup = new THREE.Group();
             
-            // Taille aléatoire pour la maison
+            // Random house size
             const houseWidth = config.houseMinSize + Math.random() * (config.houseMaxSize - config.houseMinSize);
             const houseHeight = houseWidth * 0.8;
             
-            // Base de la maison
+            // House base
             const base = new THREE.Mesh(baseGeometry, wallMaterials[island.biome]);
             base.scale.set(houseWidth, houseHeight, houseWidth);
             base.position.y = houseHeight / 2;
@@ -704,7 +737,7 @@ function addHousesToChunk(chunk) {
             base.receiveShadow = config.enableShadows;
             houseGroup.add(base);
             
-            // Toit
+            // Roof
             const roof = new THREE.Mesh(roofGeometry, roofMaterials[island.biome]);
             roof.scale.set(houseWidth * 1.2, houseHeight * 0.6, houseWidth * 1.2);
             roof.position.y = houseHeight + (houseHeight * 0.3);
@@ -712,23 +745,23 @@ function addHousesToChunk(chunk) {
             roof.receiveShadow = config.enableShadows;
             houseGroup.add(roof);
             
-            // Positionner la maison
+            // Position house
             houseGroup.position.set(x, height, z);
             
-            // Rotation aléatoire
+            // Random rotation
             houseGroup.rotation.y = Math.random() * Math.PI * 2;
             
-            // Ajouter à la scène
+            // Add to scene
             scene.add(houseGroup);
         }
     }
 }
 
 /**
- * Crée le plan d'eau
+ * Creates water plane
  */
 function createWater() {
-    // Créer la géométrie de l'eau
+    // Create water geometry
     const geometry = new THREE.PlaneGeometry(
         config.waterSize,
         config.waterSize,
@@ -736,13 +769,13 @@ function createWater() {
         1
     );
     
-    // Rotation pour avoir un plan horizontal
+    // Rotate for horizontal plane
     geometry.rotateX(-Math.PI / 2);
     
-    // Positionner l'eau au niveau de l'eau
+    // Position water at water level
     geometry.translate(0, config.waterLevel, 0);
     
-    // Créer le matériau avec des paramètres améliorés
+    // Create material with improved parameters
     const material = new THREE.MeshStandardMaterial({
         color: config.colors.water,
         transparent: true,
@@ -752,29 +785,29 @@ function createWater() {
         metalness: 0.3,
         emissive: 0x1A9EAA,
         emissiveIntensity: 0.2,
-        depthWrite: false, // Désactiver l'écriture dans le depth buffer pour éviter les artefacts
-        polygonOffset: true, // Activer le décalage de polygone
-        polygonOffsetFactor: -1, // Facteur de décalage négatif pour éviter le z-fighting
+        depthWrite: false, // Disable depth writing to avoid artifacts
+        polygonOffset: true, // Enable polygon offset
+        polygonOffsetFactor: -1, // Negative polygon offset factor to avoid z-fighting
         polygonOffsetUnits: -1
     });
     
-    // Créer le mesh
+    // Create mesh
     water = new THREE.Mesh(geometry, material);
     water.receiveShadow = false;
-    water.renderOrder = 1; // Définir l'ordre de rendu pour s'assurer que l'eau est rendue après le terrain
+    water.renderOrder = 1; // Define render order to ensure water is rendered after terrain
     
-    // Ajouter à la scène
+    // Add to scene
     scene.add(water);
 }
 
 /**
- * Calcule la hauteur du terrain à une position donnée
+ * Calculates terrain height at a given position
  */
 export function getTerrainHeightAtPosition(x, z) {
-    // Si les hauteurs de terrain n'ont pas encore été calculées, retourner 0
+    // If terrain heights haven't been calculated yet, return 0
     if (!window.terrainHeights) return 0;
     
-    // Trouver le point le plus proche dans le tableau des hauteurs
+    // Find closest point in terrain heights array
     let closestPoint = null;
     let closestDistance = Infinity;
     
@@ -786,12 +819,12 @@ export function getTerrainHeightAtPosition(x, z) {
         }
     }
     
-    // Retourner la hauteur du point le plus proche
+    // Return height of closest point
     return closestPoint ? closestPoint.height : 0;
 }
 
 /**
- * Gère le redimensionnement de la fenêtre
+ * Handles window resizing
  */
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -800,47 +833,47 @@ function onWindowResize() {
 }
 
 /**
- * Boucle d'animation
+ * Animation loop
  */
 function animate() {
     requestAnimationFrame(animate);
     
-    // Mettre à jour la position de l'eau pour qu'elle suive la caméra
+    // Update water position to follow camera
     if (water) {
         water.position.x = camera.position.x;
         water.position.z = camera.position.z;
     }
 
-    // S'assurer que la vélocité de la caméra est initialisée
+    // Ensure camera velocity is initialized
     if (!camera.velocity || !camera.lastPosition) {
         camera.velocity = new THREE.Vector3();
         camera.lastPosition = camera.position.clone();
-        return; // Attendre le prochain frame pour commencer les calculs
+        return; // Wait for next frame to start calculations
     }
 
-    // Mettre à jour la vélocité de la caméra
+    // Update camera velocity
     camera.velocity.copy(camera.position).sub(camera.lastPosition);
     camera.lastPosition.copy(camera.position);
 
-    // S'assurer que currentChunkCoords est initialisé
+    // Ensure currentChunkCoords is initialized
     if (!currentChunkCoords) {
         currentChunkCoords = {
             x: Math.floor(camera.position.x / TERRAIN_SIZE),
             z: Math.floor(camera.position.z / TERRAIN_SIZE)
         };
-        return; // Attendre le prochain frame pour commencer les mises à jour
+        return; // Wait for next frame to start updates
     }
 
-    // Calculer les coordonnées du chunk actuel
+    // Calculate current chunk coordinates
     const camChunkX = Math.floor(camera.position.x / TERRAIN_SIZE);
     const camChunkZ = Math.floor(camera.position.z / TERRAIN_SIZE);
 
-    // Vérifier si nous avons changé de chunk
+    // Check if we've changed chunks
     if (camChunkX !== currentChunkCoords.x || camChunkZ !== currentChunkCoords.z) {
         try {
             updateChunks(camChunkX, camChunkZ, camera.velocity);
         } catch (error) {
-            console.error('Erreur lors de la mise à jour des chunks:', error);
+            console.error('Error updating chunks:', error);
         }
     }
     
@@ -848,10 +881,10 @@ function animate() {
 }
 
 /**
- * Met à jour les chunks en fonction de la position de la caméra
+ * Updates chunks based on camera position
  */
 function updateChunks(centerX, centerZ, velocity = new THREE.Vector3()) {
-    // S'assurer que currentChunkCoords existe et le mettre à jour
+    // Ensure currentChunkCoords exists and update it
     if (!currentChunkCoords) {
         currentChunkCoords = { x: centerX, z: centerZ };
     } else {
@@ -859,14 +892,14 @@ function updateChunks(centerX, centerZ, velocity = new THREE.Vector3()) {
         currentChunkCoords.z = centerZ;
     }
 
-    // Déterminer la direction du mouvement (avec une valeur par défaut si velocity est undefined)
+    // Determine movement direction (with default if velocity is undefined)
     const moveDirection = new THREE.Vector2(velocity.x || 0, velocity.z || 0).normalize();
     
-    // Calculer les chunks à charger
+    // Calculate chunks to load
     const chunksToLoad = [];
     const visibleChunks = new Set();
     
-    // Chunks visibles (distance de rendu normale)
+    // Visible chunks (normal render distance)
     for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
         for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
             const chunkX = Math.floor(centerX + x);
@@ -885,7 +918,7 @@ function updateChunks(centerX, centerZ, velocity = new THREE.Vector3()) {
         }
     }
     
-    // Préchargement dans la direction du mouvement
+    // Preload in movement direction
     if (moveDirection.length() > 0.1) {
         const preloadCenterX = centerX + moveDirection.x * PRELOAD_EXTRA_DISTANCE;
         const preloadCenterZ = centerZ + moveDirection.y * PRELOAD_EXTRA_DISTANCE;
@@ -911,7 +944,7 @@ function updateChunks(centerX, centerZ, velocity = new THREE.Vector3()) {
         }
     }
     
-    // Trier les chunks par priorité et distance
+    // Sort chunks by priority and distance
     chunksToLoad.sort((a, b) => {
         if (a.priority !== b.priority) {
             return a.priority - b.priority;
@@ -919,13 +952,13 @@ function updateChunks(centerX, centerZ, velocity = new THREE.Vector3()) {
         return a.distance - b.distance;
     });
     
-    // Limiter le nombre de chunks à charger par frame
+    // Limit number of chunks to load per frame
     chunksToLoad.splice(MAX_CHUNKS_PER_FRAME);
     
-    // Ajouter les chunks à la file d'attente
+    // Add chunks to load queue
     chunkLoadQueue.push(...chunksToLoad);
     
-    // Supprimer les chunks trop éloignés
+    // Remove chunks too far away
     for (const [key, chunk] of terrain.entries()) {
         const [x, z] = key.split(',').map(Number);
         const distance = Math.sqrt(
@@ -934,20 +967,20 @@ function updateChunks(centerX, centerZ, velocity = new THREE.Vector3()) {
         );
         
         if (distance > RENDER_DISTANCE + PRELOAD_EXTRA_DISTANCE) {
-            // Supprimer le chunk
+            // Remove chunk
             chunk.dispose();
             terrain.delete(key);
         }
     }
     
-    // Démarrer le processus de chargement si ce n'est pas déjà en cours
+    // Start loading process if not already in progress
     if (!isLoadingChunk) {
         processChunkQueue();
     }
 }
 
 /**
- * Traite la file d'attente des chunks à charger
+ * Processes chunk load queue
  */
 function processChunkQueue() {
     if (chunkLoadQueue.length === 0) {
@@ -958,9 +991,9 @@ function processChunkQueue() {
     isLoadingChunk = true;
     const nextChunk = chunkLoadQueue.shift();
     
-    // Créer le chunk
+    // Create chunk
     createChunk(nextChunk.x, nextChunk.z, () => {
-        // Attendre un peu avant de charger le prochain chunk
+        // Wait a bit before loading next chunk
         setTimeout(() => {
             processChunkQueue();
         }, CHUNK_LOAD_DELAY);
@@ -968,7 +1001,7 @@ function processChunkQueue() {
 }
 
 /**
- * Crée un nouveau chunk avec un effet de fade-in
+ * Creates a new chunk with a fade-in effect
  */
 function createChunk(chunkX, chunkZ, callback) {
     const chunk = {
@@ -977,10 +1010,10 @@ function createChunk(chunkX, chunkZ, callback) {
             z: chunkZ * TERRAIN_SIZE
         },
         islands: generateIslandsForChunk(chunkX, chunkZ),
-        objects: [] // Pour stocker tous les objets Three.js de ce chunk
+        objects: [] // For storing all Three.js objects in this chunk
     };
 
-    // Créer la géométrie du terrain
+    // Create terrain geometry
     const geometry = new THREE.PlaneGeometry(
         TERRAIN_SIZE,
         TERRAIN_SIZE,
@@ -991,75 +1024,75 @@ function createChunk(chunkX, chunkZ, callback) {
     geometry.rotateX(-Math.PI / 2);
     geometry.translate(chunk.offset.x, 0, chunk.offset.z);
     
-    // Obtenir les positions des vertices
+    // Get vertex positions
     const positions = geometry.attributes.position.array;
     const colors = new Float32Array(positions.length);
     
-    // Créer un tableau pour stocker les hauteurs (pour la fonction getTerrainHeightAtPosition)
+    // Create array to store heights (for getTerrainHeightAtPosition function)
     window.terrainHeights = [];
     
-    // Modifier les hauteurs pour créer plusieurs îles
+    // Modify heights to create multiple islands
     for (let i = 0; i < positions.length; i += 3) {
         const x = positions[i];
         const z = positions[i + 2];
         
-        // Initialiser la hauteur à 0 (sous l'eau)
+        // Initialize height to 0 (under water)
         let height = -5;
         let islandIndex = -1;
         let minDistance = Infinity;
         
-        // Déterminer à quelle île appartient ce point (la plus proche)
+        // Determine which island this point belongs to (closest)
         for (let j = 0; j < chunk.islands.length; j++) {
             const island = chunk.islands[j];
             
-            // Calculer la distance de base au centre de l'île
+            // Calculate base distance to island center
             const baseDistance = Math.sqrt(
                 Math.pow(x - island.center.x, 2) + 
                 Math.pow(z - island.center.z, 2)
             );
             
-            // Appliquer une déformation à la distance pour créer des formes non circulaires
+            // Apply deformation to distance to create non-circular shapes
             let distanceToIsland = baseDistance;
             
-            // Utiliser le bruit de Perlin pour déformer le contour de l'île
+            // Use Perlin noise to deform island contour
             const angle = Math.atan2(z - island.center.z, x - island.center.x);
-            const noiseScale = 2.0; // Échelle du bruit
+            const noiseScale = 2.0; // Noise scale
             
-            // Seed spécifique à chaque île pour des formes différentes
+            // Seed specific to each island for different shapes
             const seed = j * 1000;
             
-            // Déformation basée sur l'angle (crée des baies et des péninsules)
+            // Deformation based on angle (creates bays and peninsulas)
             const angleNoise = (noise.noise(Math.cos(angle) * noiseScale + seed, Math.sin(angle) * noiseScale + seed) + 1) * 0.5;
             
-            // Déformation basée sur la position (crée des irrégularités locales)
+            // Deformation based on position (creates local irregularities)
             const posNoise = (noise.noise((x * 0.01) + seed, (z * 0.01) + seed) + 1) * 0.5;
             
-            // Combiner les déformations
+            // Combine deformations
             const deformation = island.radius * config.islandShapeComplexity * (angleNoise * 0.7 + posNoise * 0.3);
             
-            // Ajouter des variations de bord plus petites pour la rugosité
+            // Add smaller variations to island edges for roughness
             const edgeNoise = (noise.noise((x * 0.05) + seed, (z * 0.05) + seed) + 1) * 0.5;
             const edgeDeformation = island.radius * config.islandEdgeRoughness * edgeNoise * 0.2;
             
-            // Appliquer les déformations à la distance
+            // Apply deformations to distance
             distanceToIsland = baseDistance - deformation - edgeDeformation;
             
-            // Vérifier si ce point est dans l'île déformée
+            // Check if this point is in the deformed island
             if (distanceToIsland < island.radius && distanceToIsland < minDistance) {
                 minDistance = distanceToIsland;
                 islandIndex = j;
             }
         }
         
-        // Si le point appartient à une île
+        // If point belongs to an island
         if (islandIndex >= 0) {
             const island = chunk.islands[islandIndex];
             const distanceToCenter = minDistance;
             
-            // Facteur d'atténuation vers les bords (plus progressif pour les formes irrégulières)
+            // Attenuation factor towards edges (more progressive for irregular shapes)
             const falloff = Math.pow(1 - distanceToCenter / island.radius, 1.5);
             
-            // Bruit pour les variations de terrain spécifique à chaque île
+            // Noise for terrain variations specific to each island
             const seed = islandIndex * 1000;
             const baseNoiseScale = 0.005;
             const detailNoiseScale = 0.02;
@@ -1069,11 +1102,11 @@ function createChunk(chunkX, chunkZ, callback) {
             
             const combinedNoise = baseNoise * 0.7 + detailNoise * 0.3;
             
-            // Hauteur de base de l'île (varie selon le biome)
+            // Base height of island (varies by biome)
             const baseHeight = island.biome === 'snowy' ? 20 : (island.biome === 'desert' ? 3 : 5);
             height = baseHeight + 15 * falloff;
             
-            // Gérer plusieurs montagnes si elles sont définies
+            // Handle multiple mountains if they are defined
             if (island.mountains) {
                 for (const mountain of island.mountains) {
                     const distanceToMountain = Math.sqrt(
@@ -1089,59 +1122,59 @@ function createChunk(chunkX, chunkZ, callback) {
                 }
             }
             
-            // Ajouter des variations de terrain spécifiques au biome
+            // Add terrain variations specific to biome
             if (island.biome === 'desert') {
-                // Dunes pour le désert
+                // Dunes for desert
                 height += (noise.noise(x * 0.03 + seed, z * 0.03 + seed) * 0.5 + 0.5) * 10 * falloff;
             } else if (island.biome === 'tropical') {
-                // Terrain plus vallonné pour l'île tropicale
+                // More hilly terrain for tropical island
                 height += combinedNoise * 12 * falloff;
             } else if (island.biome === 'volcanic') {
-                // Terrain plus accidenté pour l'île volcanique
+                // More accident terrain for volcanic island
                 height += (noise.noise(x * 0.04 + seed, z * 0.04 + seed) * 0.5) * 15 * falloff;
             } else {
-                // Variations standard pour l'île tempérée
+                // Standard variations for temperate island
                 height += combinedNoise * 10 * falloff;
             }
             
-            // Cas spécial pour le biome neigeux
+            // Special case for snowy biome
             if (island.biome === 'snowy') {
-                // Ajouter plus de variations pour créer des congères
+                // Add more variations to create cones
                 height += (noise.noise(x * 0.05 + seed, z * 0.05 + seed) * 0.5) * 20 * falloff;
-                // Garantir une couverture neigeuse minimale
+                // Ensure minimum snow coverage
                 if (height > config.waterLevel + 5) {
                     height += 5;
                 }
             }
             
-            // Ajouter des variations supplémentaires pour les côtes
-            // Cela crée des plages, des falaises et des zones côtières variées
+            // Add additional variations for coasts
+            // This creates varied beaches, cliffs, and coastal zones
             if (falloff < 0.3) {
                 const coastalNoise = noise.noise(x * 0.1 + seed, z * 0.1 + seed);
                 
                 if (coastalNoise > 0.3) {
-                    // Créer des falaises sur certaines côtes
+                    // Create cliffs on certain coasts
                     height += (coastalNoise - 0.3) * 30 * falloff;
                 } else if (coastalNoise < -0.3) {
-                    // Créer des plages plus plates sur d'autres côtes
+                    // Create more flat beaches on other coasts
                     height -= Math.abs(coastalNoise + 0.3) * 5;
                 }
             }
         }
         
-        // Arrondir la hauteur pour un effet low poly, mais avec des paliers plus petits pour plus de réalisme
+        // Round height for low poly effect, but with smaller steps for more realism
         height = Math.round(height / 4) * 4;
         
-        // Appliquer la hauteur
+        // Apply height
         positions[i + 1] = height;
         
-        // Stocker la hauteur pour la fonction getTerrainHeightAtPosition
+        // Store height for getTerrainHeightAtPosition function
         window.terrainHeights.push({ x, z, height });
         
-        // Déterminer la couleur en fonction de la hauteur et du biome
-        let color = new THREE.Color(0x4ECDC4); // Couleur par défaut (eau)
+        // Determine color based on height and biome
+        let color = new THREE.Color(0x4ECDC4); // Default color (water)
         
-        // Trouver l'île la plus proche pour déterminer le biome
+        // Find nearest island to determine biome
         let nearestIsland = null;
         let minIslandDistance = Infinity;
         
@@ -1157,7 +1190,7 @@ function createChunk(chunkX, chunkZ, callback) {
             }
         }
         
-        // Si on a trouvé une île proche, utiliser ses couleurs de biome
+        // If a nearby island was found, use its biome colors
         if (nearestIsland && height > config.waterLevel) {
             const biomeColors = config.biomes[nearestIsland.biome];
             
@@ -1173,31 +1206,31 @@ function createChunk(chunkX, chunkZ, callback) {
                 color = new THREE.Color(biomeColors.snow);
             }
             
-            // Cas spécial pour l'île volcanique: lave au sommet
+            // Special case for volcanic island: lava at top
             if (nearestIsland.biome === 'volcanic' && height > nearestIsland.mountainHeight * 0.8) {
-                // Mélanger avec la couleur de la lave
+                // Mix with lava color
                 const lavaFactor = Math.min(1, (height - nearestIsland.mountainHeight * 0.8) / 50);
                 color.lerp(new THREE.Color(0xFF4500), lavaFactor);
             }
         }
         
-        // Ajouter une légère variation de couleur pour plus de réalisme
+        // Add slight color variation for more realism
         const variation = (Math.random() - 0.5) * 0.05;
         color.r = Math.max(0, Math.min(1, color.r + variation));
         color.g = Math.max(0, Math.min(1, color.g + variation));
         color.b = Math.max(0, Math.min(1, color.b + variation));
         
-        // Assigner la couleur
+        // Assign color
         colors[i] = color.r;
         colors[i + 1] = color.g;
         colors[i + 2] = color.b;
     }
     
-    // Mettre à jour la géométrie
+    // Update geometry
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.computeVertexNormals();
     
-    // Créer le matériau
+    // Create material
     const material = new THREE.MeshStandardMaterial({
         vertexColors: true,
         flatShading: true,
@@ -1205,7 +1238,7 @@ function createChunk(chunkX, chunkZ, callback) {
         metalness: 0.1
     });
     
-    // Créer le mesh
+    // Create mesh
     const terrainMesh = new THREE.Mesh(geometry, material);
     terrainMesh.receiveShadow = config.enableShadows;
     terrainMesh.castShadow = config.enableShadows;
@@ -1213,11 +1246,11 @@ function createChunk(chunkX, chunkZ, callback) {
     chunk.objects.push(terrainMesh);
     scene.add(terrainMesh);
     
-    // Ajouter des arbres et des maisons
+    // Add trees and houses
     addTreesToChunk(chunk);
     addHousesToChunk(chunk);
     
-    // Appliquer le fade-in à tous les objets du chunk
+    // Apply fade-in to all chunk objects
     chunk.objects.forEach(obj => {
         if (obj.material) {
             if (Array.isArray(obj.material)) {
@@ -1232,15 +1265,15 @@ function createChunk(chunkX, chunkZ, callback) {
         }
     });
 
-    // Stocker le chunk
+    // Store chunk
     terrain.set(`${chunkX},${chunkZ}`, chunk);
 
-    // Animer le fade-in
+    // Animate fade-in
     fadeInChunk(chunk, callback);
 }
 
 /**
- * Anime le fade-in d'un chunk
+ * Animates fade-in of a chunk
  */
 function fadeInChunk(chunk, callback) {
     const startTime = performance.now();
@@ -1249,7 +1282,7 @@ function fadeInChunk(chunk, callback) {
         const progress = (performance.now() - startTime) / CHUNK_FADE_DURATION;
         
         if (progress >= 1) {
-            // Animation terminée
+            // Animation completed
             chunk.objects.forEach(obj => {
                 if (obj.material) {
                     if (Array.isArray(obj.material)) {
@@ -1267,7 +1300,7 @@ function fadeInChunk(chunk, callback) {
             return;
         }
         
-        // Mettre à jour l'opacité
+        // Update opacity
         const opacity = progress;
         chunk.objects.forEach(obj => {
             if (obj.material) {
@@ -1288,7 +1321,7 @@ function fadeInChunk(chunk, callback) {
 }
 
 /**
- * Anime le fade-out d'un chunk
+ * Animates fade-out of a chunk
  */
 function fadeOutChunk(chunk, callback) {
     const startTime = performance.now();
@@ -1297,12 +1330,12 @@ function fadeOutChunk(chunk, callback) {
         const progress = (performance.now() - startTime) / (CHUNK_FADE_DURATION / 2);
         
         if (progress >= 1) {
-            // Animation terminée
+            // Animation completed
             if (callback) callback();
             return;
         }
         
-        // Mettre à jour l'opacité
+        // Update opacity
         const opacity = 1 - progress;
         chunk.objects.forEach(obj => {
             if (obj.material) {
@@ -1325,14 +1358,14 @@ function fadeOutChunk(chunk, callback) {
 }
 
 /**
- * Génère des îles pour un chunk spécifique
+ * Generates islands for a specific chunk
  */
 function generateIslandsForChunk(chunkX, chunkZ) {
-    // Utiliser un seed basé sur les coordonnées du chunk pour une génération cohérente
+    // Use seed based on chunk coordinates for consistent generation
     const rng = new seedrandom(`${chunkX},${chunkZ}`);
     
     const islands = [];
-    const numIslands = 1 + Math.floor(rng() * 2); // 1-2 îles par chunk
+    const numIslands = 1 + Math.floor(rng() * 2); // 1-2 islands per chunk
     
     for (let i = 0; i < numIslands; i++) {
         islands.push({
@@ -1363,7 +1396,7 @@ function generateIslandsForChunk(chunkX, chunkZ) {
 }
 
 /**
- * Crée une grille pour le débogage
+ * Creates grid for debugging
  */
 export function createGrid() {
     const gridSize = 2000;
@@ -1373,14 +1406,14 @@ export function createGrid() {
 }
 
 /**
- * Ajoute des habitations sur les îles
+ * Adds houses to islands
  */
 function addHouses() {
-    // Créer des géométries de base pour les maisons
+    // Create base geometries for houses
     const baseGeometry = new THREE.BoxGeometry(1, 1, 1);
     const roofGeometry = new THREE.ConeGeometry(1, 1, 4);
     
-    // Matériaux pour les maisons
+    // Materials for houses
     const wallMaterials = {
         temperate: new THREE.MeshStandardMaterial({ color: 0xE5D3B3, flatShading: true }),
         tropical: new THREE.MeshStandardMaterial({ color: 0xFFE4C4, flatShading: true }),
@@ -1397,27 +1430,27 @@ function addHouses() {
         snowy: new THREE.MeshStandardMaterial({ color: 0x4682B4, flatShading: true })
     };
     
-    // Pour chaque île
+    // For each island
     for (const island of config.islands) {
-        // Nombre de maisons adapté à la taille de l'île
+        // Number of houses adapted to island size
         const numHouses = Math.floor(config.numHousesPerIsland * (island.radius / 400));
         
-        // Ajouter des maisons
+        // Add houses
         for (let i = 0; i < numHouses; i++) {
-            // Position aléatoire sur l'île (éviter les montagnes et l'eau)
+            // Random position on island (avoid mountains and water)
             let attempts = 0;
             let validPosition = false;
             let x, z, height;
             
             while (!validPosition && attempts < 50) {
                 const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * island.radius * 0.6; // Rester loin des bords
+                const radius = Math.random() * island.radius * 0.6; // Stay away from edges
                 
                 x = Math.cos(angle) * radius + island.center.x;
                 z = Math.sin(angle) * radius + island.center.z;
                 height = getTerrainHeightAtPosition(x, z);
                 
-                // Vérifier si la position est valide (pas dans l'eau, pas trop en hauteur)
+                // Check if position is valid (not in water, not too high)
                 if (height > config.waterLevel + 2 && height < 50) {
                     validPosition = true;
                 }
@@ -1426,14 +1459,14 @@ function addHouses() {
             
             if (!validPosition) continue;
             
-            // Créer un groupe pour la maison
+            // Create house group
             const houseGroup = new THREE.Group();
             
-            // Taille aléatoire pour la maison
+            // Random house size
             const houseWidth = config.houseMinSize + Math.random() * (config.houseMaxSize - config.houseMinSize);
             const houseHeight = houseWidth * 0.8;
             
-            // Base de la maison
+            // House base
             const base = new THREE.Mesh(baseGeometry, wallMaterials[island.biome]);
             base.scale.set(houseWidth, houseHeight, houseWidth);
             base.position.y = houseHeight / 2;
@@ -1441,7 +1474,7 @@ function addHouses() {
             base.receiveShadow = config.enableShadows;
             houseGroup.add(base);
             
-            // Toit
+            // Roof
             const roof = new THREE.Mesh(roofGeometry, roofMaterials[island.biome]);
             roof.scale.set(houseWidth * 1.2, houseHeight * 0.6, houseWidth * 1.2);
             roof.position.y = houseHeight + (houseHeight * 0.3);
@@ -1449,13 +1482,13 @@ function addHouses() {
             roof.receiveShadow = config.enableShadows;
             houseGroup.add(roof);
             
-            // Positionner la maison
+            // Position house
             houseGroup.position.set(x, height, z);
             
-            // Rotation aléatoire
+            // Random rotation
             houseGroup.rotation.y = Math.random() * Math.PI * 2;
             
-            // Ajouter à la scène
+            // Add to scene
             scene.add(houseGroup);
         }
     }

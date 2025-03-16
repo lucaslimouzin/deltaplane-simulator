@@ -9,7 +9,7 @@ from urllib.parse import urlparse, parse_qs
 
 # Configuration
 PORT = 8000
-MAX_PLAYERS = 10
+MAX_PLAYERS = 1000000
 WEBSOCKET_PORT = 8001
 
 # Stockage des joueurs connectés
@@ -76,14 +76,6 @@ async def websocket_handler(websocket, path):
         # Attendre le message d'authentification
         auth_message = await websocket.recv()
         auth_data = json.loads(auth_message)
-        
-        # Vérifier si le serveur est plein
-        if player_count >= MAX_PLAYERS:
-            await websocket.send(json.dumps({
-                "type": "error",
-                "message": "Le serveur est plein (maximum 10 joueurs)"
-            }))
-            return
         
         # Enregistrer le nouveau joueur
         player_id = auth_data.get("id", str(id(websocket)))

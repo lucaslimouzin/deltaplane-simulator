@@ -1,46 +1,46 @@
 import * as THREE from 'three';
 
 /**
- * Classe représentant un deltaplane
+ * Class representing a hang glider
  */
 export class Deltaplane {
     /**
-     * Crée une instance de Deltaplane
-     * @param {THREE.Scene} scene - La scène Three.js
+     * Creates a hang glider instance
+     * @param {THREE.Scene} scene - The Three.js scene
      */
     constructor(scene) {
         this.scene = scene;
         this.mesh = null;
-        this.voile = null; // Référence à la voile pour pouvoir la manipuler séparément
+        this.voile = null; // Reference to the sail for separate manipulation
         this.velocity = new THREE.Vector3(0, 0, 0);
         this.camera = null;
-        this.currentLookAt = null; // Point de visée actuel pour l'interpolation de la caméra
+        this.currentLookAt = null; // Current look-at point for camera interpolation
         
-        // Système de visualisation du vent - complètement désactivé
+        // Wind visualization system - completely disabled
         this.windParticles = null;
         this.windParticlesCount = 0;
         this.windParticlesVisible = false;
         this.windParticlesData = null;
         
-        // Contrôles (uniquement pour l'orientation de la voile)
-        this.pitchUp = false;    // Cabrer (lever le nez)
-        this.pitchDown = false;  // Piquer (baisser le nez)
-        this.rollLeft = false;   // Incliner à gauche
-        this.rollRight = false;  // Incliner à droite
-        this.yawLeft = false;    // Tourner à gauche
-        this.yawRight = false;   // Tourner à droite
+        // Controls (only for sail orientation)
+        this.pitchUp = false;    // Pitch up (raise nose)
+        this.pitchDown = false;  // Pitch down (lower nose)
+        this.rollLeft = false;   // Roll left
+        this.rollRight = false;  // Roll right
+        this.yawLeft = false;    // Turn left
+        this.yawRight = false;   // Turn right
         
-        // Paramètres de vol
+        // Flight parameters
         this.airDensity = 1.2; // kg/m³
         this.wingArea = 15; // m²
         this.liftCoefficient = 2.0;
         this.dragCoefficient = 0.001;
-        this.weight = 100; // kg (pilote + deltaplane)
-        this.lastYaw = 0; // Pour suivre la rotation en lacet
-        this.minAltitude = 250; // Altitude minimum en mètres (augmentée de 200 à 250)
-        this.maxAltitude = 500; // Altitude maximum en mètres
+        this.weight = 100; // kg (pilot + hang glider)
+        this.lastYaw = 0; // To track yaw rotation
+        this.minAltitude = 250; // Minimum altitude in meters
+        this.maxAltitude = 500; // Maximum altitude in meters
         
-        // Paramètres de vent - désactivés
+        // Wind parameters - disabled
         this.windEnabled = false;
         this.windDirection = new THREE.Vector3(0, 0, 0);
         this.windSpeed = 0;
@@ -49,33 +49,34 @@ export class Deltaplane {
         this.thermalRadius = 0;
         this.thermalPositions = [];
         
-        // Paramètres de collision
-        this.terrain = null; // Référence au terrain, sera définie plus tard
-        this.isColliding = false; // État de collision
-        this.collisionPoint = null; // Point de collision
-        this.collisionNormal = null; // Normale à la surface au point de collision
-        this.collisionDamage = 0; // Dommages cumulés suite aux collisions
-        this.maxCollisionDamage = 100; // Dommages maximum avant destruction
+        // Collision parameters
+        this.terrain = null; // Reference to terrain, will be set later
+        this.isColliding = false; // Collision state
+        this.collisionPoint = null; // Collision point
+        this.collisionNormal = null; // Surface normal at collision point
+        this.collisionDamage = 0; // Cumulative collision damage
+        this.maxCollisionDamage = 100; // Maximum damage before destruction
         
-        // Ajout de quaternions pour gérer les rotations de manière plus stable
+        // Add quaternions for more stable rotation handling
         this.pitchQuaternion = new THREE.Quaternion();
         this.yawQuaternion = new THREE.Quaternion();
         this.rollQuaternion = new THREE.Quaternion();
         this.targetQuaternion = new THREE.Quaternion();
         
-        // Axes de rotation
+        // Rotation axes
         this.PITCH_AXIS = new THREE.Vector3(1, 0, 0);
         this.YAW_AXIS = new THREE.Vector3(0, 1, 0);
         this.ROLL_AXIS = new THREE.Vector3(0, 0, 1);
         
-        // Ajout des variables pour le calcul des FPS
+        // Variables for FPS calculation
         this.lastTime = performance.now();
         this.currentFPS = 0;
+        this.playerCount = 0;  // Initialize player count
         
-        // Création du deltaplane
+        // Create the hang glider
         this.createModel();
         
-        // Création des thermiques aléatoires
+        // Create random thermals
         this.createThermals();
     }
     
@@ -344,8 +345,8 @@ export class Deltaplane {
     }
     
     /**
-     * Met à jour la position et la rotation du deltaplane
-     * @param {number} delta - Temps écoulé depuis la dernière mise à jour
+     * Updates the hang glider's position and rotation
+     * @param {number} delta - Time elapsed since last update
      */
     update(delta) {
         try {
@@ -363,39 +364,39 @@ export class Deltaplane {
             
             // Application des contrôles d'orientation de la voile
             if (this.pitchUp) {
-                // Cabrer (lever le nez) pour monter
+                // Pitch up (raise nose) for climb
                 this.mesh.rotation.x += 1.0 * delta;
             } else if (this.pitchDown) {
-                // Piquer (baisser le nez) pour descendre
+                // Pitch down (lower nose) for descend
                 this.mesh.rotation.x -= 1.0 * delta;
             } else {
-                // Si aucune touche n'est pressée, revenir progressivement à l'horizontale
-                const returnSpeed = 0.5 * delta; // Réduit de 1.0 à 0.5 pour un retour plus doux
-                const smoothFactor = 0.1; // Facteur de lissage pour l'interpolation
+                // If no key is pressed, gradually return to horizontal
+                const returnSpeed = 0.5 * delta; // Reduced from 1.0 to 0.5 for a smoother return
+                const smoothFactor = 0.1; // Smoothing factor for interpolation
                 
-                // Interpolation douce vers 0
+                // Smooth interpolation towards 0
                 this.mesh.rotation.x += (0 - this.mesh.rotation.x) * smoothFactor;
                 
-                // Éviter les micro-oscillations près de 0
+                // Prevent micro-oscillations near 0
                 if (Math.abs(this.mesh.rotation.x) < 0.01) {
                     this.mesh.rotation.x = 0;
                 }
             }
             
             if (this.rollLeft) {
-                // Incliner à gauche
+                // Roll left
                 this.mesh.rotation.z += 0.5 * delta;
             } else if (this.rollRight) {
-                // Incliner à droite
+                // Roll right
                 this.mesh.rotation.z -= 0.5 * delta;
             } else {
-                // Si aucune touche n'est pressée, revenir progressivement à l'horizontale
-                const smoothFactor = 0.1; // Même facteur de lissage que pour le pitch
+                // If no key is pressed, gradually return to horizontal
+                const smoothFactor = 0.1; // Same smoothing factor as for pitch
                 
-                // Interpolation douce vers 0
+                // Smooth interpolation towards 0
                 this.mesh.rotation.z += (0 - this.mesh.rotation.z) * smoothFactor;
                 
-                // Éviter les micro-oscillations près de 0
+                // Prevent micro-oscillations near 0
                 if (Math.abs(this.mesh.rotation.z) < 0.01) {
                     this.mesh.rotation.z = 0;
                 }
@@ -404,24 +405,24 @@ export class Deltaplane {
             // Gestion du lacet avec protection contre les rotations extrêmes
             if (this.yawLeft) {
                 const newYaw = this.mesh.rotation.y + rotationSpeed * delta;
-                // Normaliser l'angle entre -PI et PI
+                // Normalize angle between -PI and PI
                 this.mesh.rotation.y = Math.atan2(Math.sin(newYaw), Math.cos(newYaw));
             }
             if (this.yawRight) {
                 const newYaw = this.mesh.rotation.y - rotationSpeed * delta;
-                // Normaliser l'angle entre -PI et PI
+                // Normalize angle between -PI and PI
                 this.mesh.rotation.y = Math.atan2(Math.sin(newYaw), Math.cos(newYaw));
             }
             
-            // Limites strictes de rotation pour éviter les positions impossibles
+            // Strict rotation limits to prevent impossible positions
             this.mesh.rotation.x = Math.max(-Math.PI/4, Math.min(Math.PI/4, this.mesh.rotation.x));
             this.mesh.rotation.z = Math.max(-Math.PI/4, Math.min(Math.PI/4, this.mesh.rotation.z));
             
-            // Vérification supplémentaire pour empêcher le retournement
+            // Additional check to prevent flipping
             const upVector = new THREE.Vector3(0, 1, 0);
             upVector.applyEuler(this.mesh.rotation);
             if (upVector.y < 0) {
-                // Corriger l'orientation si le deltaplane est retourné
+                // Correct orientation if hang glider is flipped
                 this.mesh.rotation.x = Math.max(-Math.PI/4, Math.min(Math.PI/4, this.mesh.rotation.x));
                 this.mesh.rotation.z = Math.max(-Math.PI/4, Math.min(Math.PI/4, this.mesh.rotation.z));
             }
@@ -468,12 +469,12 @@ export class Deltaplane {
             
             // Application de la portance - RÉACTIVÉE pour permettre de monter/descendre en cabrant/piquant
             // Amplification de l'effet vertical pour un impact plus prononcé sur l'altitude
-            const liftVector = liftDirection.multiplyScalar(liftForce * delta * 3.0); // Multiplié par 3 pour un effet plus fort
+            const liftVector = liftDirection.multiplyScalar(liftForce * delta * 3.0); // Multiplied by 3 for a stronger effect
             this.velocity.add(liftVector);
             
             // Ajout d'une force verticale directe basée sur l'angle de tangage
             // Cela garantit un effet immédiat sur l'altitude
-            const pitchEffect = 200 * Math.sin(this.mesh.rotation.x); // Force verticale directe
+            const pitchEffect = 200 * Math.sin(this.mesh.rotation.x); // Direct vertical force
             this.velocity.y += pitchEffect * delta;
             
             // Calcul de la traînée (D = 0.5 * rho * v² * S * CD)
@@ -488,103 +489,103 @@ export class Deltaplane {
             }
             
             // Propulsion constante dans la direction du deltaplane
-            const maxSpeed = 200; // Vitesse maximum en km/h
-            const currentSpeed = this.velocity.length() * 3.6; // Convertir en km/h
+            const maxSpeed = 200; // Vitesse maximum in km/h
+            const currentSpeed = this.velocity.length() * 3.6; // Convert to km/h
             
-            // Réduire la propulsion si on approche de la vitesse maximum
+            // Reduce propulsion if approaching maximum speed
             const speedRatio = currentSpeed / maxSpeed;
             const propulsionForce = 150 * Math.max(0, 1 - speedRatio);
             
-            // Créer un vecteur de direction horizontale (en ignorant la composante Y)
+            // Create a horizontal direction vector (ignoring Y component)
             const forwardDirection = new THREE.Vector3(0, 0, -1);
             forwardDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.mesh.rotation.y);
             const horizontalDirection = new THREE.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
             
-            // Appliquer la propulsion uniquement horizontalement
+            // Apply propulsion only horizontally
             const propulsionVector = horizontalDirection.multiplyScalar(propulsionForce * delta);
             this.velocity.add(propulsionVector);
             
-            // Limiter la vitesse maximum
+            // Limit maximum speed
             if (currentSpeed > maxSpeed) {
                 const reduction = maxSpeed / currentSpeed;
                 this.velocity.multiplyScalar(reduction);
             }
             
-            // Ajouter une résistance de l'air progressive
+            // Add progressive air resistance
             const airResistance = Math.pow(speedRatio, 2) * 0.02;
             this.velocity.multiplyScalar(1 - airResistance);
             
-            // Ne plus stabiliser l'altitude pour permettre de monter/descendre naturellement
+            // Don't stabilize altitude to allow natural climb/descend
             
-            // Effet de l'inclinaison latérale (virage)
-            // Plus on est incliné, plus on tourne
+            // Lateral inclination effect (turn)
+            // The more inclined, the more turning
             const turnFactor = Math.sin(this.mesh.rotation.z) * 2.0;
             
-            // Rotation du vecteur vitesse pour simuler un virage
-            // Mais seulement si on n'est pas en train de cabrer/piquer
+            // Rotate velocity vector to simulate a turn
+            // But only if not climbing/pitching
             if (Math.abs(turnFactor) > 0.01) {
                 const turnAxis = new THREE.Vector3(0, 1, 0);
                 const turnAngle = turnFactor * delta;
                 this.velocity.applyAxisAngle(turnAxis, turnAngle);
                 
-                // Ajout d'une légère rotation en lacet (yaw) pour un virage plus naturel
-                // Utiliser un quaternion pour cette rotation pour éviter les problèmes de gimbal lock
+                // Add a slight yaw (yaw) rotation for a more natural turn
+                // Use quaternion for this rotation to avoid gimbal lock issues
                 const yawCorrection = new THREE.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
                 this.mesh.quaternion.multiply(yawCorrection);
                 
-                // Mettre à jour les angles d'Euler après la correction
+                // Update Euler angles after correction
                 this.mesh.rotation.setFromQuaternion(this.mesh.quaternion, 'YXZ');
             }
             
-            // Position avant mise à jour pour détecter les collisions
+            // Position before update for collision detection
             const previousPosition = this.mesh.position.clone();
             
-            // Application de la vitesse à la position
+            // Apply velocity to position
             this.mesh.position.x += this.velocity.x * delta;
             this.mesh.position.y += this.velocity.y * delta;
             this.mesh.position.z += this.velocity.z * delta;
             
-            // Vérification de l'altitude minimum
+            // Check minimum altitude
             if (this.mesh.position.y < this.minAltitude) {
                 this.mesh.position.y = this.minAltitude;
                 
-                // Si on descend trop bas, annuler la vitesse verticale négative
+                // If descending too low, cancel negative vertical velocity
                 if (this.velocity.y < 0) {
                     this.velocity.y = 0;
                     
-                    // Ajouter une légère poussée vers le haut pour éviter de rester collé au sol
+                    // Add a slight upward push to prevent sticking to the ground
                     this.velocity.y += 5;
                 }
             }
             
-            // Vérification de l'altitude maximum
+            // Check maximum altitude
             if (this.mesh.position.y > this.maxAltitude) {
                 this.mesh.position.y = this.maxAltitude;
                 
-                // Si on monte trop haut, annuler la vitesse verticale positive
+                // If climbing too high, cancel positive vertical velocity
                 if (this.velocity.y > 0) {
                     this.velocity.y = 0;
                     
-                    // Ajouter une légère poussée vers le bas pour éviter de rester collé au plafond
+                    // Add a slight downward push to prevent sticking to the ceiling
                     this.velocity.y -= 5;
                 }
             }
             
-            // Détection de collision avec le terrain
+            // Collision detection with terrain
             this.checkTerrainCollision(previousPosition, delta);
             
             // Suppression de la friction pour maintenir une vitesse constante
             // this.velocity.x *= 0.999;
             // this.velocity.z *= 0.999;
             
-            // Création ou mise à jour du panneau d'informations de vol (toujours visible)
+            // Create or update flight information panel (always visible)
             let infoDiv = document.getElementById('flight-info');
             if (!infoDiv) {
                 infoDiv = document.createElement('div');
                 infoDiv.id = 'flight-info';
                 infoDiv.style.position = 'absolute';
-                infoDiv.style.bottom = '250px'; // Positionné au-dessus des contrôles
-                infoDiv.style.left = '20px'; // Positionné à gauche
+                infoDiv.style.bottom = '250px'; // Positioned above controls
+                infoDiv.style.left = '20px'; // Positioned to the left
                 infoDiv.style.padding = '10px';
                 infoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
                 infoDiv.style.borderRadius = '5px';
@@ -597,22 +598,22 @@ export class Deltaplane {
                 infoDiv.style.width = '200px';
                 infoDiv.style.backdropFilter = 'blur(5px)';
                 infoDiv.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-                infoDiv.style.maxHeight = '60vh'; // Hauteur maximale réduite
+                infoDiv.style.maxHeight = '60vh'; // Maximum reduced height
                 infoDiv.style.overflowY = 'auto';
                 document.body.appendChild(infoDiv);
             }
             
             // Formatage des informations de vol
-            const speedKmh = Math.round(airSpeed * 3.6); // m/s en km/h
+            const speedKmh = Math.round(airSpeed * 3.6); // m/s in km/h
             const altitude = Math.round(this.mesh.position.y);
             const terrainHeight = this.terrain ? Math.round(this.getTerrainHeightAtPosition(this.mesh.position.x, this.mesh.position.z)) : 0;
             const heightAboveTerrain = Math.round(altitude - terrainHeight);
             const windInfo = this.windEnabled ? 
                 `${Math.round(this.windSpeed * 3.6)} km/h (${this.getWindDirectionName()})` : 
-                'désactivé';
+                'disabled';
             const thermalInfo = this.thermalStrength > 0 ? 
                 `+${Math.round(this.thermalStrength * 3.6)} km/h` : 
-                'Aucun';
+                'None';
             const angleOfAttackDeg = Math.round(angleOfAttack * 180 / Math.PI);
             const inclinaisonDeg = Math.round(this.mesh.rotation.z * 180 / Math.PI);
             
@@ -623,52 +624,32 @@ export class Deltaplane {
             const validAngleOfAttackDeg = isNaN(angleOfAttackDeg) ? 0 : angleOfAttackDeg;
             const validInclinaisonDeg = isNaN(inclinaisonDeg) ? 0 : inclinaisonDeg;
             
-            // Style pour les étiquettes et les valeurs - format plus compact
+            // Style for labels and values - more compact format
             const labelStyle = 'color: #8adbff; display: inline-block; width: 100px; font-size: 13px;';
             const valueStyle = 'color: #ffffff; font-weight: bold; font-size: 13px;';
             const sectionStyle = 'margin-bottom: 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 5px;';
             
-            // Contenu HTML avec mise en forme plus compacte
+            // Compact HTML content with styling
             infoDiv.innerHTML = `
-                <div style="text-align: center; font-size: 14px; margin-bottom: 8px; color: #ffcc00;">INFORMATIONS DE VOL</div>
+                <div style="text-align: center; font-size: 14px; margin-bottom: 8px; color: #ffcc00;">INFORMATION</div>
                 <div style="${sectionStyle}">
                     <div><span style="${labelStyle}">FPS:</span> <span style="${valueStyle}">${this.currentFPS}</span></div>
-                    <div><span style="${labelStyle}">Altitude:</span> <span style="${valueStyle}">${validAltitude} m</span></div>
-                    <div><span style="${labelStyle}">Hauteur/terrain:</span> <span style="${valueStyle}">${validHeightAboveTerrain} m</span></div>
-                </div>
-                <div style="${sectionStyle}">
-                    <div><span style="${labelStyle}">Vitesse:</span> <span style="${valueStyle}">${validSpeedKmh} km/h</span></div>
-                    <div><span style="${labelStyle}">Angle d'attaque:</span> <span style="${valueStyle}">${validAngleOfAttackDeg}°</span></div>
-                    <div><span style="${labelStyle}">Inclinaison:</span> <span style="${valueStyle}">${validInclinaisonDeg}°</span></div>
-                </div>
-                <div style="${sectionStyle}">
-                    <div><span style="${labelStyle}">Vent:</span> <span style="${valueStyle}">${windInfo}</span></div>
-                    <div><span style="${labelStyle}">Effet du vent:</span> <span style="${valueStyle}">${windAngleEffect > 0 ? 'Pousse à droite' : windAngleEffect < 0 ? 'Pousse à gauche' : 'Neutre'}</span></div>
-                    <div><span style="${labelStyle}">Portance:</span> <span style="${valueStyle}">${Math.round(windLiftEffect * 10)}</span></div>
-                </div>
-                <div>
-                    <div><span style="${labelStyle}">Thermique:</span> <span style="${valueStyle}">${thermalInfo}</span></div>
+                    <div><span style="${labelStyle}">Online:</span> <span style="${valueStyle}">${this.playerCount}</span></div>
+                    <div><span style="${labelStyle}">Controls:</span> <span style="${valueStyle}">← →</span></div>
                 </div>
             `;
             
-            // Changer la couleur en cas de collision
+            // Change background color on collision
             if (this.isColliding) {
                 infoDiv.style.backgroundColor = 'rgba(200, 0, 0, 0.8)';
-                infoDiv.innerHTML = `
-                    <div style="text-align: center; color: #ff0000; font-size: 16px; margin-bottom: 5px;">⚠️ COLLISION! ⚠️</div>
-                    <div style="text-align: center; margin-bottom: 5px;">Dommages: ${Math.round(this.collisionDamage)}%</div>
-                    ${infoDiv.innerHTML}
-                `;
-            } else if (heightAboveTerrain < 20) {
-                infoDiv.style.backgroundColor = 'rgba(200, 100, 0, 0.7)'; // Avertissement si on est proche du sol
             } else {
                 infoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
             }
 
-            // Ajouter l'appel à checkVoileCollision
+            // Add sail collision check
             this.checkVoileCollision();
         } catch (error) {
-            console.error('Erreur lors de la mise à jour du deltaplane:', error);
+            console.error('Error updating hang glider:', error);
         }
     }
     
@@ -702,33 +683,33 @@ export class Deltaplane {
             mainCamera.position.copy(targetPosition);
         }
         
-        // Facteurs de lissage adaptatifs
+        // Smoothing factors
         const distanceToTarget = mainCamera.position.distanceTo(targetPosition);
-        const baseSmooth = 0.1; // Lissage de base
-        const speedFactor = this.velocity.length() / 300; // Facteur basé sur la vitesse
+        const baseSmooth = 0.1; // Base smoothing
+        const speedFactor = this.velocity.length() / 300; // Factor based on speed
         const smoothFactor = Math.min(baseSmooth + speedFactor * 0.1, 0.3);
         
-        // Interpolation de la position avec un lissage adaptatif
+        // Interpolate position with smoothing
         mainCamera.position.lerp(targetPosition, smoothFactor);
         
-        // Point vers lequel la caméra regarde (légèrement devant le deltaplane)
-        const lookAheadDistance = 20 * (this.velocity.length() / 300); // Distance de regard devant, proportionnelle à la vitesse
+        // Point towards which the camera looks (slightly in front of the hang glider)
+        const lookAheadDistance = 20 * (this.velocity.length() / 300); // Look ahead distance, proportional to speed
         const lookAtTarget = this.mesh.position.clone().add(
             direction.multiplyScalar(lookAheadDistance)
         );
         
-        // Initialiser le point de visée si nécessaire
+        // Initialize look-at point if necessary
         if (!this.currentLookAt) {
             this.currentLookAt = lookAtTarget.clone();
         }
         
-        // Interpolation du point de visée avec le même lissage adaptatif
+        // Interpolate look-at point with the same smoothing
         this.currentLookAt.lerp(lookAtTarget, smoothFactor);
         
-        // La caméra regarde le point interpolé
+        // The camera looks at the interpolated point
         mainCamera.lookAt(this.currentLookAt);
         
-        // Sauvegarder la dernière position pour le prochain frame
+        // Save last position for next frame
         this.lastCameraPosition = mainCamera.position.clone();
     }
     
@@ -748,13 +729,13 @@ export class Deltaplane {
      * @returns {string} Nom de la direction du vent
      */
     getWindDirectionName() {
-        return 'Aucun vent';
+        return 'No wind';
     }
     
     /**
      * Change la direction et la vitesse du vent - désactivé
      * @param {THREE.Vector3} direction - Direction du vent
-     * @param {number} speed - Vitesse du vent en m/s
+     * @param {number} speed - Vitesse du vent in m/s
      */
     setWind(direction, speed) {
         // Fonction désactivée
@@ -781,7 +762,7 @@ export class Deltaplane {
         const terrainHeight = this.getTerrainHeightAtPosition(this.mesh.position.x, this.mesh.position.z);
         
         // Vérifier si on est sous le terrain ou très proche du sol
-        const isOnGround = this.mesh.position.y <= terrainHeight + 0.5; // 0.5 mètre au-dessus du sol est considéré comme "au sol"
+        const isOnGround = this.mesh.position.y <= terrainHeight + 0.5; // 0.5 meter above ground is considered "on ground"
         
         if (isOnGround) {
             // On est en collision avec le terrain ou au sol
@@ -792,11 +773,11 @@ export class Deltaplane {
             const verticalSpeed = Math.abs(this.velocity.y);
             
             // Si on est en train de rouler (vitesse verticale faible)
-            const isRolling = verticalSpeed < 3.0; // Moins de 3 m/s en vitesse verticale
+            const isRolling = verticalSpeed < 3.0; // Less than 3 m/s in vertical speed
             
             if (isRolling) {
                 // Mode roulement sur le sol
-                this.mesh.position.y = terrainHeight + 0.1; // Maintenir légèrement au-dessus du sol
+                this.mesh.position.y = terrainHeight + 0.1; // Keep slightly above ground
                 
                 // Appliquer une friction au sol pour ralentir progressivement
                 this.velocity.x *= 0.98;
@@ -817,11 +798,11 @@ export class Deltaplane {
                     this.collisionDamage = Math.max(0, this.collisionDamage);
                 }
             } else {
-                // Collision avec impact
+                // Collision with impact
                 
                 // Calculer les dommages en fonction de la vitesse d'impact
                 // Plus on va vite, plus les dommages sont importants
-                const damageMultiplier = 0.5; // Ajuster selon la difficulté souhaitée
+                const damageMultiplier = 0.5; // Adjust based on desired difficulty
                 const newDamage = verticalSpeed * damageMultiplier;
                 this.collisionDamage += newDamage;
                 
@@ -848,10 +829,10 @@ export class Deltaplane {
                     );
                     
                     // Appliquer une perte d'énergie au rebond
-                    const energyLoss = 0.5; // 50% de perte d'énergie
+                    const energyLoss = 0.5; // 50% energy loss
                     this.velocity.copy(reflection.multiplyScalar(energyLoss));
                     
-                    // Réduction supplémentaire de la vitesse horizontale
+                    // Additional speed reduction
                     this.velocity.x *= 0.8;
                     this.velocity.z *= 0.8;
                 }

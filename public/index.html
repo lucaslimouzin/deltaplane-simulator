@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Simulateur de Deltaplane - Mode Multijoueur</title>
+    <title>Hang Glider Simulator - Multiplayer Mode</title>
     <link rel="icon" href="favicon.png" type="image/png">
     <style>
         body {
@@ -26,16 +26,6 @@
             z-index: 100;
             pointer-events: none;
             text-shadow: 1px 1px 2px black;
-        }
-        #controls {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            color: white;
-            background-color: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 100;
         }
         #debug {
             position: absolute;
@@ -93,23 +83,14 @@
     </style>
 </head>
 <body>
-    <!-- Écran de chargement -->
+    <!-- Loading screen -->
     <div id="loading">
-        <h1>Simulateur de Deltaplane</h1>
-        <p>Mode Multijoueur</p>
+        <h1>Hang Glider Simulator</h1>
         <div class="spinner"></div>
     </div>
     
-    <div id="info">Simulateur de Deltaplane</div>
-    <div id="controls">
-        <p>Contrôles:</p>
-        <p>Flèche haut - Piquer vers l'avant (descendre)</p>
-        <p>Flèche bas - Cabrer (monter)</p>
-        <p>Flèche gauche - Incliner à gauche</p>
-        <p>Flèche droite - Incliner à droite</p>
-        <p>R - Réinitialiser la position</p>
-    </div>
-    <div id="debug">Chargement...</div>
+    <div id="info">Hang Glider Simulator</div>
+    <div id="debug">Loading...</div>
     <script>
         // Rediriger les messages de console vers l'élément de débogage
         const debugElement = document.getElementById('debug');

@@ -2,13 +2,13 @@ import * as THREE from 'three';
 import { Deltaplane } from './deltaplane.js';
 
 /**
- * Classe gérant les fonctionnalités multijoueur
+ * Class managing multiplayer functionality
  */
 export class MultiplayerManager {
     /**
-     * Crée une instance du gestionnaire multijoueur
-     * @param {THREE.Scene} scene - La scène Three.js
-     * @param {Deltaplane} localPlayer - Le deltaplane du joueur local
+     * Creates a multiplayer manager instance
+     * @param {THREE.Scene} scene - The Three.js scene
+     * @param {Deltaplane} localPlayer - The local player's hang glider
      */
     constructor(scene, localPlayer) {
         this.scene = scene;
@@ -20,18 +20,19 @@ export class MultiplayerManager {
         this.remotePlayers = {};
         this.playerCount = 0;
         this.lastUpdateTime = 0;
-        this.updateInterval = 50; // Envoyer les mises à jour toutes les 50ms
+        this.updateInterval = 50; // Send updates every 50ms
         
-        // Pas de référence à l'élément HTML pour les joueurs connectés
+        // No HTML element reference for connected players
     }
     
     /**
-     * Crée l'interface de connexion
-     * @returns {Promise} Une promesse résolue lorsque le joueur se connecte
+     * Creates a multiplayer manager instance
+     * @param {THREE.Scene} scene - The Three.js scene
+     * @param {Deltaplane} localPlayer - The local player's hang glider
      */
     createLoginUI() {
         return new Promise((resolve) => {
-            // Créer l'élément de fond
+            // Create background element
             const overlay = document.createElement('div');
             overlay.style.position = 'fixed';
             overlay.style.top = '0';
@@ -44,7 +45,7 @@ export class MultiplayerManager {
             overlay.style.alignItems = 'center';
             overlay.style.zIndex = '1000';
             
-            // Créer le formulaire de connexion
+            // Create login form
             const loginForm = document.createElement('div');
             loginForm.style.backgroundColor = 'white';
             loginForm.style.padding = '20px';
@@ -52,22 +53,22 @@ export class MultiplayerManager {
             loginForm.style.width = '300px';
             loginForm.style.textAlign = 'center';
             
-            // Titre
+            // Title
             const title = document.createElement('h2');
-            title.textContent = 'Simulateur de Deltaplane';
+            title.textContent = 'Hang Glider Simulator';
             title.style.marginBottom = '20px';
             title.style.color = '#333';
             
-            // Sous-titre
+            // Subtitle (empty)
             const subtitle = document.createElement('p');
-            subtitle.textContent = 'Mode Multijoueur (max 10 joueurs)';
+            subtitle.textContent = '';
             subtitle.style.marginBottom = '20px';
             subtitle.style.color = '#666';
             
-            // Champ de saisie du pseudo
+            // Username input field
             const nameInput = document.createElement('input');
             nameInput.type = 'text';
-            nameInput.placeholder = 'Entrez votre pseudo';
+            nameInput.placeholder = 'Enter your username';
             nameInput.style.width = '100%';
             nameInput.style.padding = '10px';
             nameInput.style.marginBottom = '20px';
@@ -75,9 +76,9 @@ export class MultiplayerManager {
             nameInput.style.border = '1px solid #ddd';
             nameInput.style.borderRadius = '5px';
             
-            // Bouton de connexion
+            // Play button
             const playButton = document.createElement('button');
-            playButton.textContent = 'Jouer';
+            playButton.textContent = 'Play';
             playButton.style.backgroundColor = '#4CAF50';
             playButton.style.color = 'white';
             playButton.style.padding = '10px 20px';
@@ -87,49 +88,49 @@ export class MultiplayerManager {
             playButton.style.fontSize = '16px';
             playButton.style.width = '100%';
             
-            // Message d'erreur
+            // Error message
             const errorMessage = document.createElement('p');
             errorMessage.style.color = 'red';
             errorMessage.style.marginTop = '10px';
             errorMessage.style.display = 'none';
             
-            // Ajouter les éléments au formulaire
+            // Add elements to form
             loginForm.appendChild(title);
             loginForm.appendChild(subtitle);
             loginForm.appendChild(nameInput);
             loginForm.appendChild(playButton);
             loginForm.appendChild(errorMessage);
             
-            // Ajouter le formulaire à l'overlay
+            // Add form to overlay
             overlay.appendChild(loginForm);
             
-            // Ajouter l'overlay au document
+            // Add overlay to document
             document.body.appendChild(overlay);
             
-            // Focus sur le champ de saisie
+            // Focus on input field
             nameInput.focus();
             
-            // Gérer le clic sur le bouton de connexion
+            // Handle play button click
             playButton.addEventListener('click', () => {
                 const name = nameInput.value.trim();
                 
                 if (name.length < 3) {
-                    errorMessage.textContent = 'Le pseudo doit contenir au moins 3 caractères';
+                    errorMessage.textContent = 'Username must contain at least 3 characters';
                     errorMessage.style.display = 'block';
                     return;
                 }
                 
-                // Stocker le nom du joueur
+                // Store player name
                 this.playerName = name;
                 
-                // Supprimer l'overlay
+                // Remove overlay
                 document.body.removeChild(overlay);
                 
-                // Résoudre la promesse
+                // Resolve promise
                 resolve(name);
             });
             
-            // Gérer la touche Entrée
+            // Handle Enter key
             nameInput.addEventListener('keypress', (event) => {
                 if (event.key === 'Enter') {
                     playButton.click();
@@ -139,24 +140,24 @@ export class MultiplayerManager {
     }
     
     /**
-     * Connecte le joueur au serveur WebSocket
+     * Connects the player to the WebSocket server
      */
     async connect() {
-        // Afficher l'interface de connexion et attendre que le joueur entre son pseudo
+        // Display connection interface and wait for player to enter username
         await this.createLoginUI();
         
-        // Se connecter au serveur WebSocket
+        // Connect to WebSocket server
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsHost = window.location.hostname || 'localhost';
-        const wsPort = 8001; // Port du serveur WebSocket
+        const wsPort = 8001; // WebSocket server port
         
         this.socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}`);
         
-        // Gérer l'ouverture de la connexion
+        // Handle connection opening
         this.socket.onopen = () => {
-            console.log('Connexion WebSocket établie');
+            console.log('WebSocket connection established');
             
-            // Envoyer les informations du joueur
+            // Send player information
             this.socket.send(JSON.stringify({
                 type: 'auth',
                 name: this.playerName,
@@ -243,53 +244,53 @@ export class MultiplayerManager {
      * Met à jour le compteur de joueurs (méthode simplifiée)
      */
     updatePlayerCount() {
-        // Ne fait rien, le panneau des joueurs connectés a été supprimé
+        this.localPlayer.playerCount = this.playerCount;
         console.log(`Nombre de joueurs connectés: ${this.playerCount}`);
     }
     
     /**
-     * Ajoute un joueur distant à la scène
-     * @param {Object} playerData - Les données du joueur distant
+     * Adds a remote player to the scene
+     * @param {Object} playerData - Remote player data
      */
     addRemotePlayer(playerData) {
-        // Vérifier si le joueur existe déjà
+        // Check if player already exists
         if (this.remotePlayers[playerData.id]) {
             return;
         }
         
-        console.log(`Ajout du joueur distant: ${playerData.name} (${playerData.id})`);
+        console.log(`Adding remote player: ${playerData.name} (${playerData.id})`);
         
-        // Créer un nouveau deltaplane pour le joueur distant
-        // Utiliser une version simplifiée pour éviter d'ajouter des éléments de terrain
+        // Create a new hang glider for the remote player
+        // Use a simplified version to avoid adding terrain elements
         const remotePlayer = {
             mesh: new THREE.Group()
         };
         
-        // Créer un modèle simplifié de deltaplane
+        // Create a simplified hang glider model
         this.createSimpleDeltaplane(remotePlayer.mesh);
         
-        // Ajouter le deltaplane à la scène
+        // Add hang glider to the scene
         this.scene.add(remotePlayer.mesh);
         
-        // Positionner le deltaplane
+        // Position the hang glider
         remotePlayer.mesh.position.set(
             playerData.position.x,
             playerData.position.y,
             playerData.position.z
         );
         
-        // Orienter le deltaplane
+        // Orient the hang glider
         remotePlayer.mesh.rotation.set(
             playerData.rotation.x,
             playerData.rotation.y,
             playerData.rotation.z
         );
         
-        // Ajouter un texte avec le nom du joueur
+        // Add text with player name
         const nameTag = this.createPlayerNameTag(playerData.name);
         remotePlayer.mesh.add(nameTag);
         
-        // Stocker le joueur distant
+        // Store remote player
         this.remotePlayers[playerData.id] = {
             deltaplane: remotePlayer,
             nameTag: nameTag,
@@ -319,22 +320,22 @@ export class MultiplayerManager {
     }
     
     /**
-     * Crée un modèle simplifié de deltaplane
-     * @param {THREE.Group} group - Le groupe auquel ajouter le modèle
+     * Creates a simplified hang glider model
+     * @param {THREE.Group} group - The group to add the model to
      */
     createSimpleDeltaplane(group) {
-        // Création de la voile triangulaire
+        // Create triangular sail
         const voileGeometry = new THREE.BufferGeometry();
         const voileVertices = new Float32Array([
-            0, 0, -5,    // pointe arrière
-            -10, 0, 5,   // coin gauche
-            10, 0, 5     // coin droit
+            0, 0, -5,    // rear point
+            -10, 0, 5,   // left corner
+            10, 0, 5     // right corner
         ]);
         voileGeometry.setAttribute('position', new THREE.BufferAttribute(voileVertices, 3));
         voileGeometry.computeVertexNormals();
         
         const voileMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0xff0000, // Rouge pour les autres joueurs
+            color: 0xff0000, // Red for other players
             side: THREE.DoubleSide,
             flatShading: true,
             roughness: 0.7,
@@ -345,7 +346,7 @@ export class MultiplayerManager {
         voile.castShadow = true;
         group.add(voile);
         
-        // Création de la structure rectangulaire verticale (mât)
+        // Create vertical rectangular structure (mast)
         const structureGeometry = new THREE.BoxGeometry(0.8, 5, 0.8);
         const structureMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x888888,
@@ -363,46 +364,46 @@ export class MultiplayerManager {
     }
     
     /**
-     * Crée un texte 3D pour afficher le nom du joueur
-     * @param {string} name - Le nom du joueur
-     * @returns {THREE.Object3D} L'objet 3D contenant le texte
+     * Creates 3D text to display player name
+     * @param {string} name - Player name
+     * @returns {THREE.Object3D} The 3D object containing the text
      */
     createPlayerNameTag(name) {
-        // Créer un canvas pour le texte
+        // Create canvas for text
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.width = 256;
         canvas.height = 64;
         
-        // Dessiner le fond
+        // Draw background
         context.fillStyle = 'rgba(0, 0, 0, 0.5)';
         context.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Dessiner le texte
+        // Draw text
         context.font = 'bold 24px Arial';
         context.fillStyle = 'white';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(name, canvas.width / 2, canvas.height / 2);
         
-        // Créer une texture à partir du canvas
+        // Create texture from canvas
         const texture = new THREE.CanvasTexture(canvas);
         
-        // Créer un matériau avec la texture
+        // Create material with texture
         const material = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
             side: THREE.DoubleSide
         });
         
-        // Créer un plan pour afficher le texte
+        // Create plane to display text
         const geometry = new THREE.PlaneGeometry(5, 1.25);
         const mesh = new THREE.Mesh(geometry, material);
         
-        // Positionner le texte au-dessus du deltaplane
+        // Position text above hang glider
         mesh.position.set(0, 5, 0);
         
-        // Faire en sorte que le texte soit toujours face à la caméra
+        // Make text always face camera
         mesh.rotation.x = -Math.PI / 2;
         
         return mesh;
@@ -425,24 +426,24 @@ export class MultiplayerManager {
     }
     
     /**
-     * Met à jour la position d'un joueur distant
-     * @param {string} playerId - L'ID du joueur à mettre à jour
-     * @param {Object} position - La nouvelle position
-     * @param {Object} rotation - La nouvelle rotation
+     * Updates a remote player's position
+     * @param {string} playerId - ID of player to update
+     * @param {Object} position - New position
+     * @param {Object} rotation - New rotation
      */
     updateRemotePlayerPosition(playerId, position, rotation) {
         const remotePlayer = this.remotePlayers[playerId];
         
         if (remotePlayer) {
-            // Stocker la dernière position et rotation connues
+            // Store last known position and rotation
             remotePlayer.lastPosition.copy(remotePlayer.deltaplane.mesh.position);
             remotePlayer.lastRotation.copy(remotePlayer.deltaplane.mesh.rotation);
             
-            // Définir la position et rotation cibles
+            // Set target position and rotation
             remotePlayer.targetPosition.set(position.x, position.y, position.z);
             remotePlayer.targetRotation.set(rotation.x, rotation.y, rotation.z);
             
-            // Réinitialiser le facteur d'interpolation
+            // Reset interpolation factor
             remotePlayer.interpolationFactor = 0;
         }
     }
@@ -476,29 +477,29 @@ export class MultiplayerManager {
     }
     
     /**
-     * Met à jour les positions des joueurs distants avec interpolation
-     * @param {number} delta - Le temps écoulé depuis la dernière mise à jour
+     * Updates remote player positions with interpolation
+     * @param {number} delta - Time elapsed since last update
      */
     update(delta) {
-        // Envoyer la position du joueur local
+        // Send local player position
         this.sendPlayerPosition();
         
-        // Mettre à jour les positions des joueurs distants
+        // Update remote player positions
         for (const id in this.remotePlayers) {
             const remotePlayer = this.remotePlayers[id];
             
-            // Incrémenter le facteur d'interpolation
-            remotePlayer.interpolationFactor += delta * 5; // Ajuster la vitesse d'interpolation
+            // Increment interpolation factor
+            remotePlayer.interpolationFactor += delta * 5; // Adjust interpolation speed
             remotePlayer.interpolationFactor = Math.min(remotePlayer.interpolationFactor, 1);
             
-            // Interpoler la position
+            // Interpolate position
             remotePlayer.deltaplane.mesh.position.lerpVectors(
                 remotePlayer.lastPosition,
                 remotePlayer.targetPosition,
                 remotePlayer.interpolationFactor
             );
             
-            // Interpoler la rotation (plus complexe)
+            // Interpolate rotation (more complex)
             remotePlayer.deltaplane.mesh.rotation.x = this.lerpAngle(
                 remotePlayer.lastRotation.x,
                 remotePlayer.targetRotation.x,
@@ -517,7 +518,7 @@ export class MultiplayerManager {
                 remotePlayer.interpolationFactor
             );
             
-            // Faire en sorte que le nom du joueur soit toujours face à la caméra
+            // Make player name always face camera
             if (remotePlayer.nameTag) {
                 remotePlayer.nameTag.lookAt(this.localPlayer.camera.position);
             }
@@ -525,21 +526,21 @@ export class MultiplayerManager {
     }
     
     /**
-     * Interpole entre deux angles
-     * @param {number} a - Premier angle
-     * @param {number} b - Deuxième angle
-     * @param {number} t - Facteur d'interpolation (0-1)
-     * @returns {number} Angle interpolé
+     * Interpole between two angles
+     * @param {number} a - First angle
+     * @param {number} b - Second angle
+     * @param {number} t - Interpolation factor (0-1)
+     * @returns {number} Interpolated angle
      */
     lerpAngle(a, b, t) {
-        // Calculer la différence entre les angles
+        // Calculate angle difference
         let diff = b - a;
         
-        // Normaliser la différence
+        // Normalize difference
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
         
-        // Interpoler
+        // Interpolate
         return a + diff * t;
     }
     
