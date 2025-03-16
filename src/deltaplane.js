@@ -92,9 +92,9 @@ export class Deltaplane {
             // Création de la voile triangulaire
             const voileGeometry = new THREE.BufferGeometry();
             const voileVertices = new Float32Array([
-                0, 0, -5,    // pointe arrière
-                -10, 0, 5,   // coin gauche
-                10, 0, 5     // coin droit
+                0, 0, -10,    // pointe avant
+                -15, 0, 5,   // coin gauche
+                15, 0, 5     // coin droit
             ]);
             voileGeometry.setAttribute('position', new THREE.BufferAttribute(voileVertices, 3));
             voileGeometry.computeVertexNormals();
@@ -102,7 +102,7 @@ export class Deltaplane {
             const voileMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0x00ff00,
                 side: THREE.DoubleSide,
-                flatShading: true, // Activer le flat shading pour un look low poly
+                flatShading: true,
                 roughness: 0.7,
                 metalness: 0.1
             });
@@ -111,69 +111,181 @@ export class Deltaplane {
             this.voile.castShadow = true;
             this.mesh.add(this.voile);
             
-            // Création de la structure rectangulaire verticale (mât)
-            // Orientée vers l'avant (direction de la flèche)
-            const structureGeometry = new THREE.BoxGeometry(0.8, 5, 0.8);
-            const structureMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x888888,
-                flatShading: true, // Activer le flat shading pour un look low poly
-                metalness: 0.3,
-                roughness: 0.7
-            });
+            // Création de l'armature
+            const armatureGroup = new THREE.Group();
             
-            const structure = new THREE.Mesh(structureGeometry, structureMaterial);
-            // Positionner la structure pour qu'elle parte des roues et pointe vers l'avant
-            structure.position.y = -2; // Légèrement au-dessus des roues
-            structure.position.z = 2.5; // Vers l'avant (direction de la flèche)
-            structure.rotation.x = Math.PI / 4; // Inclinaison vers l'avant
-            structure.castShadow = true;
-            this.mesh.add(structure);
-            
-            // Création d'une barre transversale pour le pilote
-            const barreTransversaleGeometry = new THREE.BoxGeometry(15, 0.5, 0.5);
-            const barreTransversaleMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x888888,
-                flatShading: true, // Activer le flat shading pour un look low poly
-                metalness: 0.3,
-                roughness: 0.7
-            });
-            
-            const barreTransversale = new THREE.Mesh(barreTransversaleGeometry, barreTransversaleMaterial);
-            barreTransversale.position.y = -3; // Au niveau du pilote
-            barreTransversale.position.z = 0;
-            barreTransversale.castShadow = true;
-            this.mesh.add(barreTransversale);
-            
-            // Création des roues
-            const roueGeometry = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 8);
-            const roueMaterial = new THREE.MeshStandardMaterial({ 
+            // Barre horizontale pour le pilote
+            const barreGeometry = new THREE.BoxGeometry(20, 0.3, 0.3);
+            const barreMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0x333333,
-                flatShading: true, // Activer le flat shading pour un look low poly
-                metalness: 0.2,
+                flatShading: true,
+                metalness: 0.3,
+                roughness: 0.7
+            });
+            
+            const barre = new THREE.Mesh(barreGeometry, barreMaterial);
+            barre.position.y = -3;
+            barre.position.z = -2;
+            barre.castShadow = true;
+            armatureGroup.add(barre);
+
+            // Montants verticaux
+            const montantGeometry = new THREE.BoxGeometry(0.3, 2.5, 0.3);
+            
+            // Montant gauche
+            const montantGauche = new THREE.Mesh(montantGeometry, barreMaterial);
+            montantGauche.position.set(-10, -1.75, -2);
+            montantGauche.castShadow = true;
+            armatureGroup.add(montantGauche);
+            
+            // Montant droit
+            const montantDroit = new THREE.Mesh(montantGeometry, barreMaterial);
+            montantDroit.position.set(10, -1.75, -2);
+            montantDroit.castShadow = true;
+            armatureGroup.add(montantDroit);
+            
+            this.mesh.add(armatureGroup);
+            
+            // Création du personnage (pilote)
+            const piloteGroup = new THREE.Group();
+            
+            // Corps du pilote - plus vertical
+            const corpsGeometry = new THREE.CylinderGeometry(1.2, 1.2, 6, 4);
+            const corpsMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2244aa,
+                flatShading: true,
                 roughness: 0.8
             });
-            
-            // Création d'un groupe pour les roues
-            const rouesGroup = new THREE.Group();
-            rouesGroup.position.y = -4.5; // Position verticale des roues
-            this.mesh.add(rouesGroup);
-            
-            // Roue gauche
-            const roueGauche = new THREE.Mesh(roueGeometry, roueMaterial);
-            roueGauche.rotation.z = Math.PI / 2; // Rotation correcte pour que l'axe soit horizontal
-            roueGauche.position.set(-5, 0, 0); // Position à gauche
-            roueGauche.castShadow = true;
-            rouesGroup.add(roueGauche);
-            
-            // Roue droite
-            const roueDroite = new THREE.Mesh(roueGeometry, roueMaterial);
-            roueDroite.rotation.z = Math.PI / 2; // Rotation correcte pour que l'axe soit horizontal
-            roueDroite.position.set(5, 0, 0); // Position à droite
-            roueDroite.castShadow = true;
-            rouesGroup.add(roueDroite);
+            const corps = new THREE.Mesh(corpsGeometry, corpsMaterial);
+            corps.position.y = -2;
+            corps.rotation.x = -Math.PI * 0.1;
+            corps.castShadow = true;
+            piloteGroup.add(corps);
+
+            // Tête du pilote
+            const teteGeometry = new THREE.SphereGeometry(1.2, 4, 4);
+            const teteMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffdbac,
+                flatShading: true,
+                roughness: 0.7
+            });
+            const tete = new THREE.Mesh(teteGeometry, teteMaterial);
+            tete.position.y = 1.6;
+            tete.castShadow = true;
+            piloteGroup.add(tete);
+
+            // Bras du pilote en U
+            const brasGeometry = new THREE.CylinderGeometry(0.45, 0.45, 3.6, 3);
+            const brasMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2244aa,
+                flatShading: true,
+                roughness: 0.8
+            });
+
+            // Bras gauche - partie horizontale
+            const brasGaucheHorizontal = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.45, 0.45, 2.4, 3),
+                brasMaterial
+            );
+            brasGaucheHorizontal.rotation.z = Math.PI / 2;
+            brasGaucheHorizontal.position.set(-1.2, 0, 0);
+            brasGaucheHorizontal.castShadow = true;
+            piloteGroup.add(brasGaucheHorizontal);
+
+            // Bras gauche - partie verticale
+            const brasGaucheVertical = new THREE.Mesh(brasGeometry, brasMaterial);
+            brasGaucheVertical.position.set(-2.4, 1.8, 0);
+            brasGaucheVertical.castShadow = true;
+            piloteGroup.add(brasGaucheVertical);
+
+            // Bras droit - partie horizontale
+            const brasDroitHorizontal = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.45, 0.45, 2.4, 3),
+                brasMaterial
+            );
+            brasDroitHorizontal.rotation.z = -Math.PI / 2;
+            brasDroitHorizontal.position.set(1.2, 0, 0);
+            brasDroitHorizontal.castShadow = true;
+            piloteGroup.add(brasDroitHorizontal);
+
+            // Bras droit - partie verticale
+            const brasDroitVertical = new THREE.Mesh(brasGeometry, brasMaterial);
+            brasDroitVertical.position.set(2.4, 1.8, 0);
+            brasDroitVertical.castShadow = true;
+            piloteGroup.add(brasDroitVertical);
+
+            // Mains du pilote
+            const mainGeometry = new THREE.SphereGeometry(0.6, 4, 4);
+            const mainMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffdbac,
+                flatShading: true,
+                roughness: 0.7
+            });
+
+            // Main gauche
+            const mainGauche = new THREE.Mesh(mainGeometry, mainMaterial);
+            mainGauche.position.set(-2.4, 3.6, 0);
+            mainGauche.castShadow = true;
+            piloteGroup.add(mainGauche);
+
+            // Main droite
+            const mainDroite = new THREE.Mesh(mainGeometry, mainMaterial);
+            mainDroite.position.set(2.4, 3.6, 0);
+            mainDroite.castShadow = true;
+            piloteGroup.add(mainDroite);
+
+            // Jambes du pilote
+            const jambeGeometry = new THREE.CylinderGeometry(0.45, 0.45, 3.6, 3);
+            const jambeMaterial = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                flatShading: true,
+                roughness: 0.8
+            });
+
+            // Jambe gauche
+            const jambeGauche = new THREE.Mesh(jambeGeometry, jambeMaterial);
+            jambeGauche.position.set(-0.8, -6, 0); // Descendu de -4.4 à -6
+            jambeGauche.rotation.z = 0;
+            jambeGauche.castShadow = true;
+            piloteGroup.add(jambeGauche);
+
+            // Jambe droite
+            const jambeDroite = new THREE.Mesh(jambeGeometry, jambeMaterial);
+            jambeDroite.position.set(0.8, -6, 0); // Descendu de -4.4 à -6
+            jambeDroite.rotation.z = 0;
+            jambeDroite.castShadow = true;
+            piloteGroup.add(jambeDroite);
+
+            // Position initiale du pilote
+            piloteGroup.position.set(0, -6.5, -2); // Remonté de -7.5 à -6.5
+            this.piloteGroup = piloteGroup; // Garder une référence au groupe du pilote
+            this.mesh.add(piloteGroup);
+
+            // Ajout de la méthode pour vérifier la collision avec la voile
+            this.checkVoileCollision = () => {
+                // Obtenir la position globale de la tête du pilote
+                const worldPos = new THREE.Vector3();
+                tete.getWorldPosition(worldPos);
+                
+                // Convertir en coordonnées locales de la voile
+                const localPos = worldPos.clone();
+                this.voile.worldToLocal(localPos);
+                
+                // Si la tête est au-dessus de la voile (y > 0), la ramener en dessous
+                if (localPos.y > -1) {
+                    // Calculer la nouvelle position Y dans l'espace local
+                    const newLocalY = -1;
+                    
+                    // Convertir en coordonnées globales
+                    const newWorldPos = new THREE.Vector3(worldPos.x, worldPos.y + (newLocalY - localPos.y), worldPos.z);
+                    
+                    // Mettre à jour la position du groupe du pilote
+                    this.piloteGroup.position.y += (newLocalY - localPos.y);
+                }
+            };
             
             // Orientation initiale du deltaplane
-            this.mesh.rotation.x = Math.PI / 10; // Légère inclinaison vers l'avant
+            this.mesh.rotation.x = Math.PI / 12;
             
             // Ajout d'une caméra à la suite du deltaplane (pour le mode pilotage)
             this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
@@ -224,7 +336,7 @@ export class Deltaplane {
         this.mesh.position.set(0, this.minAltitude, 0); // Hauteur de réinitialisation à l'altitude minimum
         
         // Réinitialiser la rotation avec des quaternions
-        this.mesh.rotation.set(Math.PI / 10, 0, 0);
+        this.mesh.rotation.set(Math.PI / 12, 0, 0);
         this.mesh.quaternion.setFromEuler(this.mesh.rotation);
         
         this.velocity.set(0, 0, 0);
@@ -552,6 +664,9 @@ export class Deltaplane {
             } else {
                 infoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
             }
+
+            // Ajouter l'appel à checkVoileCollision
+            this.checkVoileCollision();
         } catch (error) {
             console.error('Erreur lors de la mise à jour du deltaplane:', error);
         }
