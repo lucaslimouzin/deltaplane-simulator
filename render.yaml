@@ -10,6 +10,13 @@ services:
       npm run build
       echo "Verifying build output..."
       ls -la public/js/
+      echo "Creating deployment directory structure..."
+      mkdir -p /opt/render/project/src/public/js
+      echo "Copying files to deployment directory..."
+      cp -r public/* /opt/render/project/src/public/
+      echo "Verifying deployment directory..."
+      ls -la /opt/render/project/src/public/
+      ls -la /opt/render/project/src/public/js/
       echo "Installing Python dependencies..."
       pip install -r requirements.txt
       echo "=== Build process completed ==="

@@ -171,17 +171,37 @@ async def broadcast_player_left(player_id, player_name):
 app = web.Application()
 
 # Configure static files with correct path
-static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public')
+static_path = os.path.join(os.getcwd(), 'public')
 print("\n=== Static Files Configuration ===")
 print(f"Static files path: {static_path}")
+
+# Check directory permissions and contents
 if os.path.exists(static_path):
-    print(f"Public directory contents: {os.listdir(static_path)}")
+    print(f"Public directory exists")
+    print(f"Directory permissions: {oct(os.stat(static_path).st_mode)[-3:]}")
+    print(f"Contents: {os.listdir(static_path)}")
+    
     js_path = os.path.join(static_path, 'js')
     if os.path.exists(js_path):
-        print(f"JS directory contents: {os.listdir(js_path)}")
+        print(f"JS directory exists")
+        print(f"JS directory permissions: {oct(os.stat(js_path).st_mode)[-3:]}")
+        print(f"JS contents: {os.listdir(js_path)}")
 else:
-    print(f"Warning: Static path {static_path} does not exist!")
-print("===============================\n")
+    print(f"Warning: {static_path} does not exist!")
+    print(f"Parent directory contents: {os.listdir(os.path.dirname(static_path))}")
+
+@web.middleware
+async def debug_middleware(request, handler):
+    print(f"Incoming request: {request.method} {request.path}")
+    try:
+        response = await handler(request)
+        print(f"Response status: {response.status}")
+        return response
+    except Exception as e:
+        print(f"Error handling request: {e}")
+        raise
+
+app.middlewares.append(debug_middleware)
 
 # Add routes
 app.router.add_get('/ws', websocket_handler)  # WebSocket endpoint
