@@ -3,9 +3,16 @@ services:
     name: deltaplane-simulator
     env: python
     buildCommand: |
+      echo "=== Starting build process ==="
+      echo "Installing Node.js dependencies..."
       npm install
+      echo "Building JavaScript bundle..."
       npm run build
+      echo "Verifying build output..."
+      ls -la public/js/
+      echo "Installing Python dependencies..."
       pip install -r requirements.txt
+      echo "=== Build process completed ==="
     startCommand: python server_multiplayer.py
     envVars:
       - key: PYTHON_VERSION

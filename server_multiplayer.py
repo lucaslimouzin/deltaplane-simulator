@@ -13,6 +13,13 @@ import aiohttp
 PORT = int(os.environ.get('PORT', 8000))
 MAX_PLAYERS = 1000000
 
+# Print environment information
+print("=== Environment Information ===")
+print(f"Current working directory: {os.getcwd()}")
+print(f"Directory contents: {os.listdir('.')}")
+print(f"PORT: {PORT}")
+print("============================")
+
 # Player storage
 connected_players = {}
 player_count = 0
@@ -164,13 +171,22 @@ async def broadcast_player_left(player_id, player_name):
 app = web.Application()
 
 # Configure static files with correct path
-static_path = os.path.join(os.path.dirname(__file__), 'public')
-print(f"Serving static files from: {static_path}")
+static_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public')
+print("\n=== Static Files Configuration ===")
+print(f"Static files path: {static_path}")
+if os.path.exists(static_path):
+    print(f"Public directory contents: {os.listdir(static_path)}")
+    js_path = os.path.join(static_path, 'js')
+    if os.path.exists(js_path):
+        print(f"JS directory contents: {os.listdir(js_path)}")
+else:
+    print(f"Warning: Static path {static_path} does not exist!")
+print("===============================\n")
 
 # Add routes
 app.router.add_get('/ws', websocket_handler)  # WebSocket endpoint
 app.router.add_static('/', path=static_path)  # Serve static files from 'public' directory
 
 if __name__ == '__main__':
-    print(f"Server starting on port {PORT}")
+    print(f"\nServer starting on port {PORT}")
     web.run_app(app, host='0.0.0.0', port=PORT) 
