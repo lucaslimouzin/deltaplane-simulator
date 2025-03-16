@@ -9,14 +9,15 @@ services:
       echo "Building JavaScript bundle..."
       npm run build
       echo "Verifying build output..."
-      ls -la public/js/
-      echo "Creating deployment directory structure..."
-      mkdir -p /opt/render/project/src/public/js
-      echo "Copying files to deployment directory..."
-      cp -r public/* /opt/render/project/src/public/
-      echo "Verifying deployment directory..."
-      ls -la /opt/render/project/src/public/
-      ls -la /opt/render/project/src/public/js/
+      ls -la public/
+      echo "Creating js directory if it doesn't exist..."
+      mkdir -p public/js
+      echo "Moving bundle files..."
+      mv dist/bundle.js* public/js/
+      echo "Setting permissions..."
+      chmod -R 755 public/
+      echo "Final directory structure:"
+      ls -R public/
       echo "Installing Python dependencies..."
       pip install -r requirements.txt
       echo "=== Build process completed ==="

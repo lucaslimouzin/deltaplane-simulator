@@ -210,20 +210,26 @@ async def static_file_handler(request):
         print(f"Error serving {path}: {str(e)}")
         raise web.HTTPInternalServerError(text=str(e))
 
-# Création et configuration de l'application
+# Create and configure the application
 app = web.Application()
 
 # Middleware de débogage pour afficher les requêtes et réponses
 @web.middleware
 async def debug_middleware(request, handler):
-    print(f"Incoming request: {request.method} {request.path}")
+    print(f"\n=== Request Debug ===")
+    print(f"Method: {request.method}")
+    print(f"Path: {request.path}")
+    print(f"Headers: {dict(request.headers)}")
     try:
         response = await handler(request)
         print(f"Response status: {response.status}")
+        print(f"Response headers: {dict(response.headers)}")
         return response
     except Exception as e:
         print(f"Error handling request: {e}")
         raise
+    finally:
+        print("===================\n")
 
 app.middlewares.append(debug_middleware)
 
@@ -241,12 +247,18 @@ print(f"Static files path: {static_path}")
 if os.path.exists(static_path):
     print("Public directory exists")
     print(f"Directory permissions: {oct(os.stat(static_path).st_mode)[-3:]}")
+    print(f"Owner UID: {os.stat(static_path).st_uid}")
+    print(f"Owner GID: {os.stat(static_path).st_gid}")
     print(f"Contents: {os.listdir(static_path)}")
-    js_path = os.path.join(static_path, 'js')
-    if os.path.exists(js_path):
-        print("JS directory exists")
-        print(f"JS directory permissions: {oct(os.stat(js_path).st_mode)[-3:]}")
-        print(f"JS contents: {os.listdir(js_path)}")
+    
+    # List all files recursively
+    print("\nAll files in public directory:")
+    for root, dirs, files in os.walk(static_path):
+        print(f"\nDirectory: {root}")
+        print(f"Permissions: {oct(os.stat(root).st_mode)[-3:]}")
+        for file in files:
+            file_path = os.path.join(root, file)
+            print(f"  - {file} (permissions: {oct(os.stat(file_path).st_mode)[-3:]})")
 else:
     print(f"Warning: {static_path} does not exist!")
     print(f"Parent directory contents: {os.listdir(os.path.dirname(static_path))}")
