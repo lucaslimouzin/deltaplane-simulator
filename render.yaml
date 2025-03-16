@@ -9,15 +9,21 @@ services:
       ls -la
       echo "Installing Node.js dependencies..."
       npm install
+      echo "Creating necessary directories..."
+      mkdir -p /opt/render/project/src/public/js
       echo "Building JavaScript bundle..."
       npm run build
       echo "Verifying build output..."
       echo "public directory contents:"
-      ls -la public/
+      ls -la /opt/render/project/src/public/
       echo "public/js directory contents:"
-      ls -la public/js/
+      ls -la /opt/render/project/src/public/js/
+      echo "Copying public directory to the correct location..."
+      cp -r public/* /opt/render/project/src/public/
       echo "Setting permissions..."
-      chmod -R 755 public/
+      chmod -R 755 /opt/render/project/src/public/
+      echo "Final directory structure:"
+      ls -R /opt/render/project/src/public/
       echo "Installing Python dependencies..."
       pip install -r requirements.txt
       echo "=== Build process completed ==="

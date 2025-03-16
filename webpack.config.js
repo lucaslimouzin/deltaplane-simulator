@@ -1,12 +1,17 @@
 const path = require('path');
 
+const isProduction = process.env.NODE_ENV === 'production';
+const outputPath = isProduction 
+  ? '/opt/render/project/src/public/js'
+  : path.resolve(__dirname, 'public/js');
+
 module.exports = {
   entry: './src/index.js',
   output: {
     filename: 'bundle.js',
-    path: path.resolve(__dirname, 'public/js'),
+    path: outputPath,
   },
-  mode: 'development',
+  mode: process.env.NODE_ENV || 'development',
   devtool: 'source-map',
   module: {
     rules: [
