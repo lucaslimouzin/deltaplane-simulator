@@ -163,9 +163,13 @@ async def broadcast_player_left(player_id, player_name):
 # Create and configure the application
 app = web.Application()
 
+# Configure static files with correct path
+static_path = os.path.join(os.path.dirname(__file__), 'public')
+print(f"Serving static files from: {static_path}")
+
 # Add routes
 app.router.add_get('/ws', websocket_handler)  # WebSocket endpoint
-app.router.add_static('/', path='public')  # Serve static files from 'public' directory
+app.router.add_static('/', path=static_path)  # Serve static files from 'public' directory
 
 if __name__ == '__main__':
     print(f"Server starting on port {PORT}")

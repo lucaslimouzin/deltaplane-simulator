@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: deltaplane-simulator
+    env: python
+    buildCommand: |
+      npm install
+      npm run build
+      pip install -r requirements.txt
+    startCommand: python server_multiplayer.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: NODE_VERSION
+        value: 18.0.0
+    healthCheckPath: /
+    autoDeploy: true 
