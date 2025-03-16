@@ -149,9 +149,9 @@ export class MultiplayerManager {
         // Connect to WebSocket server
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsHost = window.location.hostname || 'localhost';
-        const wsPort = window.location.port || '8000';  // Use same port as HTTP in production
+        const wsPort = window.location.port || '8000';
         
-        this.socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}`);
+        this.socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}/ws`);
         
         // Handle connection opening
         this.socket.onopen = () => {

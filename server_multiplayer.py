@@ -6,141 +6,97 @@ import http.server
 import socketserver
 import threading
 from urllib.parse import urlparse, parse_qs
+from aiohttp import web
+import aiohttp
 
 # Configuration
-PORT = int(os.environ.get('PORT', 8000))  # Use environment variable for port in production
+PORT = int(os.environ.get('PORT', 8000))
 MAX_PLAYERS = 1000000
-WEBSOCKET_PORT = PORT  # Use same port for WebSocket in production
 
-# Stockage des joueurs connectés
+# Player storage
 connected_players = {}
 player_count = 0
 
-# Serveur HTTP pour servir les fichiers statiques
-class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        print(f"GET request received for: {self.path}")
-        
-        # Servir le fichier index.html pour la racine
-        if self.path == '/':
-            self.path = '/public/index.html'
-            print(f"Redirection vers: {self.path}")
-        # Rediriger bundle.js vers le bon emplacement
-        elif self.path.startswith('/js/bundle.js'):
-            # Préserver les paramètres de requête pour éviter le cache
-            query_params = ''
-            if '?' in self.path:
-                query_params = self.path[self.path.index('?'):]
-            self.path = f'/public/js/bundle.js{query_params}'
-            print(f"Redirection vers: {self.path}")
-        # Rediriger bundle.js.map vers le bon emplacement
-        elif self.path.startswith('/js/bundle.js.map'):
-            self.path = '/public/js/bundle.js.map'
-            print(f"Redirection vers: {self.path}")
-        # Rediriger favicon.png vers le bon emplacement
-        elif self.path == '/favicon.png':
-            self.path = '/public/favicon.png'
-            print(f"Redirection vers: {self.path}")
-        # Sinon, servir les fichiers normalement
-        
-        try:
-            # Utiliser le gestionnaire par défaut pour servir les fichiers
-            return http.server.SimpleHTTPRequestHandler.do_GET(self)
-        except Exception as e:
-            print(f"Erreur lors du traitement de la requête: {e}")
-            self.send_error(500, f"Erreur interne du serveur: {e}")
-            
-    def end_headers(self):
-        # Ajouter des en-têtes pour désactiver la mise en cache
-        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-        self.send_header('Pragma', 'no-cache')
-        self.send_header('Expires', '0')
-        http.server.SimpleHTTPRequestHandler.end_headers(self)
-
-# Démarrer le serveur HTTP dans un thread séparé
-def start_http_server():
-    # Utiliser "0.0.0.0" pour écouter sur toutes les interfaces réseau
-    with socketserver.TCPServer(("0.0.0.0", PORT), HttpRequestHandler) as httpd:
-        print(f"Serveur HTTP démarré sur le port {PORT}")
-        print(f"Ouvrez votre navigateur à l'adresse: http://localhost:{PORT}")
-        print(f"Pour accéder depuis d'autres ordinateurs du réseau local, utilisez l'adresse IP de cet ordinateur")
-        httpd.serve_forever()
-
-# Gestionnaire de connexions WebSocket
-async def websocket_handler(websocket, path):
+# WebSocket handler
+async def websocket_handler(request):
     global player_count
     player_id = None
     player_name = None
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
     
     try:
-        # Attendre le message d'authentification
-        auth_message = await websocket.recv()
+        # Wait for authentication message
+        auth_message = await ws.receive_str()
         auth_data = json.loads(auth_message)
         
-        # Enregistrer le nouveau joueur
-        player_id = auth_data.get("id", str(id(websocket)))
-        player_name = auth_data.get("name", f"Joueur_{player_id}")
+        # Register new player
+        player_id = auth_data.get("id", str(id(ws)))
+        player_name = auth_data.get("name", f"Player_{player_id}")
         
-        print(f"Nouveau joueur connecté: {player_name} (ID: {player_id})")
+        print(f"New player connected: {player_name} (ID: {player_id})")
         
-        # Stocker la connexion du joueur
+        # Store player connection
         connected_players[player_id] = {
-            "websocket": websocket,
+            "websocket": ws,
             "name": player_name,
             "position": auth_data.get("position", {"x": 0, "y": 100, "z": 0}),
             "rotation": auth_data.get("rotation", {"x": 0, "y": 0, "z": 0})
         }
         
         player_count += 1
-        print(f"Nombre de joueurs connectés: {player_count}")
+        print(f"Number of connected players: {player_count}")
         
-        # Informer le joueur qu'il est connecté
-        await websocket.send(json.dumps({
+        # Inform player they are connected
+        await ws.send_str(json.dumps({
             "type": "connected",
             "id": player_id,
             "name": player_name,
             "playerCount": player_count
         }))
         
-        # Informer tous les joueurs du nouveau joueur
+        # Inform all players about new player
         await broadcast_player_joined(player_id)
         
-        # Envoyer la liste des joueurs existants au nouveau joueur
-        await send_player_list(websocket)
+        # Send existing player list to new player
+        await send_player_list(ws)
         
-        # Boucle principale pour recevoir les mises à jour de position
-        async for message in websocket:
-            data = json.loads(message)
-            
-            if data["type"] == "position":
-                # Mettre à jour la position du joueur
-                connected_players[player_id]["position"] = data["position"]
-                connected_players[player_id]["rotation"] = data["rotation"]
+        # Main loop for position updates
+        async for msg in ws:
+            if msg.type == web.WSMsgType.TEXT:
+                data = json.loads(msg.data)
                 
-                # Diffuser la mise à jour à tous les autres joueurs
-                await broadcast_position_update(player_id, data["position"], data["rotation"])
+                if data["type"] == "position":
+                    # Update player position
+                    connected_players[player_id]["position"] = data["position"]
+                    connected_players[player_id]["rotation"] = data["rotation"]
+                    
+                    # Broadcast update to all other players
+                    await broadcast_position_update(player_id, data["position"], data["rotation"])
+            elif msg.type == web.WSMsgType.ERROR:
+                print(f'WebSocket connection closed with exception {ws.exception()}')
     
-    except websockets.exceptions.ConnectionClosed:
-        print(f"Connexion fermée pour {player_name}")
     except Exception as e:
-        print(f"Erreur: {e}")
+        print(f"Error: {e}")
     finally:
-        # Nettoyer lorsque le joueur se déconnecte
+        # Cleanup when player disconnects
         if player_id and player_id in connected_players:
             del connected_players[player_id]
             player_count -= 1
-            print(f"Joueur déconnecté: {player_name} (ID: {player_id})")
-            print(f"Nombre de joueurs connectés: {player_count}")
+            print(f"Player disconnected: {player_name} (ID: {player_id})")
+            print(f"Number of connected players: {player_count}")
             
-            # Informer les autres joueurs de la déconnexion
+            # Inform other players about disconnection
             await broadcast_player_left(player_id, player_name)
+    
+    return ws
 
-# Envoyer la liste des joueurs connectés à un client
-async def send_player_list(websocket):
+# Send player list to a client
+async def send_player_list(ws):
     players_info = []
     
     for pid, player in connected_players.items():
-        if player["websocket"] != websocket:  # Ne pas inclure le joueur lui-même
+        if player["websocket"] != ws:  # Don't include the player themselves
             players_info.append({
                 "id": pid,
                 "name": player["name"],
@@ -148,20 +104,20 @@ async def send_player_list(websocket):
                 "rotation": player["rotation"]
             })
     
-    await websocket.send(json.dumps({
+    await ws.send_str(json.dumps({
         "type": "playerList",
         "players": players_info,
         "playerCount": player_count
     }))
     
-    print(f"Liste des joueurs envoyée: {len(players_info)} joueurs")
+    print(f"Player list sent: {len(players_info)} players")
 
-# Diffuser un message à tous les joueurs sauf l'expéditeur
+# Broadcast position update to all players except sender
 async def broadcast_position_update(sender_id, position, rotation):
     for player_id, player in connected_players.items():
         if player_id != sender_id:
             try:
-                await player["websocket"].send(json.dumps({
+                await player["websocket"].send_str(json.dumps({
                     "type": "playerMove",
                     "id": sender_id,
                     "position": position,
@@ -169,16 +125,16 @@ async def broadcast_position_update(sender_id, position, rotation):
                     "playerCount": player_count
                 }))
             except:
-                pass  # Ignorer les erreurs de diffusion
+                pass  # Ignore broadcast errors
 
-# Diffuser un message quand un joueur rejoint
+# Broadcast when a player joins
 async def broadcast_player_joined(new_player_id):
     new_player = connected_players[new_player_id]
     
     for player_id, player in connected_players.items():
         if player_id != new_player_id:
             try:
-                await player["websocket"].send(json.dumps({
+                await player["websocket"].send_str(json.dumps({
                     "type": "playerJoined",
                     "id": new_player_id,
                     "name": new_player["name"],
@@ -186,44 +142,31 @@ async def broadcast_player_joined(new_player_id):
                     "rotation": new_player["rotation"],
                     "playerCount": player_count
                 }))
-                print(f"Notification de nouveau joueur envoyée à {player['name']}")
+                print(f"New player notification sent to {player['name']}")
             except:
-                pass  # Ignorer les erreurs de diffusion
+                pass  # Ignore broadcast errors
 
-# Diffuser un message quand un joueur quitte
+# Broadcast when a player leaves
 async def broadcast_player_left(player_id, player_name):
     for _, player in connected_players.items():
         try:
-            await player["websocket"].send(json.dumps({
+            await player["websocket"].send_str(json.dumps({
                 "type": "playerLeft",
                 "id": player_id,
                 "name": player_name,
                 "playerCount": player_count
             }))
-            print(f"Notification de départ envoyée à {player['name']}")
+            print(f"Leave notification sent to {player['name']}")
         except:
-            pass  # Ignorer les erreurs de diffusion
+            pass  # Ignore broadcast errors
 
-# Démarrer le serveur WebSocket
-async def start_websocket_server():
-    # Utiliser "0.0.0.0" pour écouter sur toutes les interfaces réseau
-    async with websockets.serve(websocket_handler, "0.0.0.0", WEBSOCKET_PORT):
-        print(f"Serveur WebSocket démarré sur le port {WEBSOCKET_PORT}")
-        print(f"Pour accéder depuis d'autres ordinateurs du réseau local, utilisez l'adresse IP de cet ordinateur")
-        await asyncio.Future()  # Exécuter indéfiniment
+# Create and configure the application
+app = web.Application()
 
-# Fonction principale
-def main():
-    # Démarrer le serveur HTTP dans un thread séparé
-    http_thread = threading.Thread(target=start_http_server)
-    http_thread.daemon = True
-    http_thread.start()
-    
-    # Démarrer le serveur WebSocket dans la boucle principale
-    try:
-        asyncio.run(start_websocket_server())
-    except KeyboardInterrupt:
-        print("Serveur arrêté.")
+# Add routes
+app.router.add_get('/ws', websocket_handler)  # WebSocket endpoint
+app.router.add_static('/', path='public')  # Serve static files from 'public' directory
 
-if __name__ == "__main__":
-    main() 
+if __name__ == '__main__':
+    print(f"Server starting on port {PORT}")
+    web.run_app(app, host='0.0.0.0', port=PORT) 
