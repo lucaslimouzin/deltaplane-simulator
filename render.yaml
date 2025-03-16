@@ -15,7 +15,7 @@ services:
       echo "Creating js directory..."
       mkdir -p /opt/render/project/src/public/js
       echo "Building JavaScript bundle..."
-      NODE_ENV=production webpack
+      NODE_ENV=production npm run build
       echo "Verifying build output..."
       echo "public directory contents:"
       ls -la /opt/render/project/src/public/
