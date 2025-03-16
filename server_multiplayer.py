@@ -8,9 +8,9 @@ import threading
 from urllib.parse import urlparse, parse_qs
 
 # Configuration
-PORT = 8000
+PORT = 8000  # Fixed port for local development
 MAX_PLAYERS = 1000000
-WEBSOCKET_PORT = 8001
+WEBSOCKET_PORT = 8001  # Fixed WebSocket port for local development
 
 # Stockage des joueurs connectés
 connected_players = {}
@@ -24,7 +24,7 @@ class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         # Servir le fichier index.html pour la racine
         if self.path == '/':
             self.path = '/public/index.html'
-            print(f"Redirection vers: {self.path}")
+            print(f"Redirecting to: {self.path}")
         # Rediriger bundle.js vers le bon emplacement
         elif self.path.startswith('/js/bundle.js'):
             # Préserver les paramètres de requête pour éviter le cache
@@ -32,27 +32,27 @@ class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             if '?' in self.path:
                 query_params = self.path[self.path.index('?'):]
             self.path = f'/public/js/bundle.js{query_params}'
-            print(f"Redirection vers: {self.path}")
+            print(f"Redirecting to: {self.path}")
         # Rediriger bundle.js.map vers le bon emplacement
         elif self.path.startswith('/js/bundle.js.map'):
             self.path = '/public/js/bundle.js.map'
-            print(f"Redirection vers: {self.path}")
+            print(f"Redirecting to: {self.path}")
         # Rediriger favicon.png vers le bon emplacement
         elif self.path == '/favicon.png':
             self.path = '/public/favicon.png'
-            print(f"Redirection vers: {self.path}")
+            print(f"Redirecting to: {self.path}")
         # Sinon, servir les fichiers normalement
         
         try:
             # Utiliser le gestionnaire par défaut pour servir les fichiers
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
         except Exception as e:
-            print(f"Erreur lors du traitement de la requête: {e}")
-            self.send_error(500, f"Erreur interne du serveur: {e}")
+            print(f"Error processing request: {e}")
+            self.send_error(500, f"Internal server error: {e}")
             
     def end_headers(self):
         # Ajouter des en-têtes pour désactiver la mise en cache
-        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
         self.send_header('Pragma', 'no-cache')
         self.send_header('Expires', '0')
         http.server.SimpleHTTPRequestHandler.end_headers(self)
@@ -61,9 +61,9 @@ class HttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 def start_http_server():
     # Utiliser "0.0.0.0" pour écouter sur toutes les interfaces réseau
     with socketserver.TCPServer(("0.0.0.0", PORT), HttpRequestHandler) as httpd:
-        print(f"Serveur HTTP démarré sur le port {PORT}")
-        print(f"Ouvrez votre navigateur à l'adresse: http://localhost:{PORT}")
-        print(f"Pour accéder depuis d'autres ordinateurs du réseau local, utilisez l'adresse IP de cet ordinateur")
+        print(f"HTTP Server started on port {PORT}")
+        print(f"Open your browser at: http://localhost:{PORT}")
+        print(f"To access from other computers on the local network, use this computer's IP address")
         httpd.serve_forever()
 
 # Gestionnaire de connexions WebSocket
