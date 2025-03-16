@@ -9,17 +9,18 @@ services:
       ls -la
       echo "Installing Node.js dependencies..."
       npm install
-      echo "Creating necessary directories..."
+      echo "Copying static files first..."
+      mkdir -p /opt/render/project/src/public
+      cp -r public/* /opt/render/project/src/public/
+      echo "Creating js directory..."
       mkdir -p /opt/render/project/src/public/js
       echo "Building JavaScript bundle..."
-      npm run build
+      NODE_ENV=production webpack
       echo "Verifying build output..."
       echo "public directory contents:"
       ls -la /opt/render/project/src/public/
       echo "public/js directory contents:"
       ls -la /opt/render/project/src/public/js/
-      echo "Copying public directory to the correct location..."
-      cp -r public/* /opt/render/project/src/public/
       echo "Setting permissions..."
       chmod -R 755 /opt/render/project/src/public/
       echo "Final directory structure:"
