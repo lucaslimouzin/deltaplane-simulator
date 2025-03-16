@@ -1,81 +1,102 @@
-# Simulateur de Deltaplane
+# Hang Glider Simulator
 
-Un simulateur de deltaplane en 3D créé avec Three.js et servi par un serveur Python. Ce simulateur utilise un style low poly pour les graphismes et propose une physique de vol simplifiée basée uniquement sur l'orientation de la voile.
+A 3D hang glider simulator created with Three.js and served by a Python server. This simulator uses a low poly style for graphics and features simplified flight physics based solely on sail orientation.
 
-## Prérequis
+## Prerequisites
 
-- Node.js (v14 ou supérieur)
-- npm (v6 ou supérieur)
-- Python (v3.6 ou supérieur)
+- Node.js (v14 or higher)
+- npm (v6 or higher)
+- Python (v3.6 or higher)
 
 ## Installation
 
-1. Clonez ce dépôt :
+1. Clone this repository:
 ```
-git clone <url-du-repo>
+git clone <repo-url>
 cd planeur
 ```
 
-2. Installez les dépendances :
+2. Install Node.js dependencies:
 ```
 npm install
 ```
 
-3. Construisez l'application :
+3. Install Python dependencies:
+```
+pip install -r requirements.txt
+```
+
+4. Build the application:
 ```
 npm run build
 ```
 
-## Lancement
+## Running the Application
 
-1. Démarrez le serveur Python :
+1. Start the Python server:
 ```
 npm start
 ```
-ou
+or
 ```
 python server.py
 ```
 
-2. Ouvrez votre navigateur à l'adresse : [http://localhost:8000](http://localhost:8000)
+2. Open your browser at: [http://localhost:8000](http://localhost:8000)
 
-## Contrôles
+## Controls
 
-- **Flèche haut** : Piquer vers l'avant (descendre)
-- **Flèche bas** : Cabrer (monter)
-- **Flèche gauche** : Incliner à gauche (tourner à gauche)
-- **Flèche droite** : Incliner à droite (tourner à droite)
-- **R** : Réinitialiser la position
+- **Up Arrow**: Pitch down (descend)
+- **Down Arrow**: Pitch up (ascend)
+- **Left Arrow**: Roll left (turn left)
+- **Right Arrow**: Roll right (turn right)
+- **R**: Reset position
 
-## Développement
+## Development
 
-Pour développer en mode "watch" (reconstruction automatique lors des modifications) :
+For development in "watch" mode (automatic rebuild on changes):
 ```
 npm run watch
 ```
 
-## Fonctionnalités
+## Features
 
-- Simulation de vol en deltaplane avec physique simplifiée
-- Terrain généré procéduralement avec style low poly
-- Montagnes, forêts et plans d'eau
-- Arbres placés de manière réaliste (touchant le sol ou d'autres arbres)
-- Nuages low poly
-- Effets de vent et thermiques
-- Détection de collision avec le terrain
-- Caméra qui suit le deltaplane de manière fluide
+- Hang glider flight simulation with simplified physics
+- Procedurally generated terrain with low poly style
+- Mountains, forests, and water bodies
+- Realistically placed trees (touching ground or other trees)
+- Low poly clouds
+- Wind effects and thermals
+- Terrain collision detection
+- Smooth camera following the hang glider
+- Multiplayer support
 
-## Structure du projet
+## Project Structure
 
-- `public/` : Fichiers statiques servis par le serveur
-  - `index.html` : Page HTML principale
-  - `js/` : JavaScript compilé
-- `src/` : Code source
-  - `index.js` : Point d'entrée de l'application
-  - `deltaplane.js` : Classe pour le deltaplane et sa physique
-  - `terrain.js` : Génération du terrain et des éléments environnementaux
-- `server.py` : Serveur Python pour servir l'application
+- `public/` : Static files served by the server
+  - `index.html` : Main HTML page
+  - `js/` : Compiled JavaScript
+- `src/` : Source code
+  - `index.js` : Application entry point
+  - `deltaplane.js` : Hang glider class and physics
+  - `terrain.js` : Terrain and environmental elements generation
+  - `multiplayer.js` : Multiplayer functionality
+- `server_multiplayer.py` : WebSocket server for multiplayer
+- `server.py` : HTTP server for serving the application
+- `requirements.txt` : Python dependencies
 
-## Licence
+## Dependencies
+
+### Python Dependencies
+Listed in requirements.txt:
+- websockets>=11.0.3 : For WebSocket connections
+
+### Node.js Dependencies
+Listed in package.json:
+- three.js : For 3D graphics
+- webpack : For bundling
+- Other development dependencies
+
+## License
 
 MIT 
