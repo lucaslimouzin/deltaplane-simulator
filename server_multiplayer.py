@@ -1,6 +1,7 @@
 import os
 import json
 from aiohttp import web
+import mimetypes
 
 # Configuration
 PORT = int(os.environ.get('PORT', 8000))
@@ -159,6 +160,56 @@ async def broadcast_player_left(player_id, player_name):
         except Exception as e:
             print(f"Error broadcasting leave to a player: {e}")
 
+# Custom static file handler
+async def static_file_handler(request):
+    print(f"Handling static file request: {request.path}")
+    
+    # Map root path to index.html
+    path = request.path
+    if path == '/' or path == '':
+        path = '/index.html'
+    
+    # Remove leading slash
+    if path.startswith('/'):
+        path = path[1:]
+    
+    # Construct full file path
+    static_path = os.path.join(os.getcwd(), 'public')
+    full_path = os.path.join(static_path, path)
+    print(f"Full path: {full_path}")
+    
+    try:
+        if not os.path.exists(full_path):
+            print(f"File not found: {full_path}")
+            raise web.HTTPNotFound()
+        
+        # Check if path is trying to access parent directories
+        if '..' in path:
+            print(f"Suspicious path detected: {path}")
+            raise web.HTTPForbidden()
+        
+        # Get file mime type
+        content_type = mimetypes.guess_type(full_path)[0]
+        if content_type is None:
+            content_type = 'application/octet-stream'
+        
+        # Read and return file
+        with open(full_path, 'rb') as f:
+            data = f.read()
+            
+        print(f"Successfully serving {path} ({content_type})")
+        return web.Response(body=data, content_type=content_type)
+        
+    except web.HTTPNotFound:
+        print(f"404 Not Found: {path}")
+        raise
+    except web.HTTPForbidden:
+        print(f"403 Forbidden: {path}")
+        raise
+    except Exception as e:
+        print(f"Error serving {path}: {str(e)}")
+        raise web.HTTPInternalServerError(text=str(e))
+
 # Création et configuration de l'application
 app = web.Application()
 
@@ -178,6 +229,7 @@ app.middlewares.append(debug_middleware)
 
 # Configuration des routes
 app.router.add_get('/ws', websocket_handler)  # Point d'accès WebSocket
+app.router.add_get('/{path:.*}', static_file_handler)  # Static files handler
 
 # Configuration du répertoire des fichiers statiques
 static_path = os.path.join(os.getcwd(), 'public')
