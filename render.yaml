@@ -4,20 +4,20 @@ services:
     env: python
     buildCommand: |
       echo "=== Starting build process ==="
+      echo "Current directory: $(pwd)"
+      echo "Directory contents before build:"
+      ls -la
       echo "Installing Node.js dependencies..."
       npm install
       echo "Building JavaScript bundle..."
       npm run build
       echo "Verifying build output..."
+      echo "public directory contents:"
       ls -la public/
-      echo "Creating js directory if it doesn't exist..."
-      mkdir -p public/js
-      echo "Moving bundle files..."
-      mv dist/bundle.js* public/js/
+      echo "public/js directory contents:"
+      ls -la public/js/
       echo "Setting permissions..."
       chmod -R 755 public/
-      echo "Final directory structure:"
-      ls -R public/
       echo "Installing Python dependencies..."
       pip install -r requirements.txt
       echo "=== Build process completed ==="

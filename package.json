@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Tests désactivés\" && exit 0",
-    "build": "webpack",
+    "build": "mkdir -p public/js && webpack",
     "watch": "webpack --watch",
     "start": "python server.py"
   },
