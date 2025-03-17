@@ -4,7 +4,8 @@ from aiohttp import web
 import mimetypes
 
 # Configuration
-PORT = int(os.environ.get('PORT', 8000))
+PORT = 8000  # Port fixe pour le développement local
+WEBSOCKET_PORT = 8001  # Port WebSocket fixe pour le développement local
 MAX_PLAYERS = 1000000  # Limite de joueurs, à utiliser si nécessaire
 
 # Affichage des informations d'environnement

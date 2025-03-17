@@ -147,11 +147,11 @@ export class MultiplayerManager {
         await this.createLoginUI();
         
         // Connect to WebSocket server
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsHost = window.location.hostname || 'localhost';
-        const wsPort = window.location.port || '8000';
+        const wsProtocol = 'ws:';  // Toujours utiliser ws en local
+        const wsHost = 'localhost';
+        const wsPort = '8001';  // Port WebSocket fixe pour le développement local
         
-        this.socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}/ws`);
+        this.socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}`);
         
         // Handle connection opening
         this.socket.onopen = () => {
