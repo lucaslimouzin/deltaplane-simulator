@@ -4,8 +4,17 @@ from aiohttp import web
 import mimetypes
 
 # Configuration
-PORT = 8000  # Port fixe pour le développement local
-WEBSOCKET_PORT = 8001  # Port WebSocket fixe pour le développement local
+PORT = int(os.environ.get('PORT', 8000))  # Utilise la variable d'environnement PORT ou 8000 par défaut
+IS_DEVELOPMENT = os.environ.get('NODE_ENV') != 'production'
+
+if IS_DEVELOPMENT:
+    print("=== Development Environment ===")
+    PORT = 8000  # Port fixe pour le développement
+    WEBSOCKET_PORT = 8001  # Port WebSocket fixe pour le développement
+else:
+    print("=== Production Environment ===")
+    WEBSOCKET_PORT = PORT  # Même port que HTTP en production
+
 MAX_PLAYERS = 1000000  # Limite de joueurs, à utiliser si nécessaire
 
 # Affichage des informations d'environnement
@@ -13,6 +22,7 @@ print("=== Environment Information ===")
 print(f"Current working directory: {os.getcwd()}")
 print(f"Directory contents: {os.listdir('.')}")
 print(f"PORT: {PORT}")
+print(f"WEBSOCKET_PORT: {WEBSOCKET_PORT}")
 print("============================")
 
 # Stockage des joueurs connectés

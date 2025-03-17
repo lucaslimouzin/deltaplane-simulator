@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Deltaplane } from './deltaplane.js';
+import { config } from '../config.js';
 
 /**
  * Class managing multiplayer functionality
@@ -146,12 +147,16 @@ export class MultiplayerManager {
         // Display connection interface and wait for player to enter username
         await this.createLoginUI();
         
-        // Connect to WebSocket server
-        const wsProtocol = 'ws:';  // Toujours utiliser ws en local
-        const wsHost = 'localhost';
-        const wsPort = '8001';  // Port WebSocket fixe pour le développement local
+        // Connect to WebSocket server using configuration
+        const wsProtocol = config.websocket.protocol;
+        const wsHost = config.server.host;
+        const wsPort = config.server.websocketPort;
+        const wsPath = config.websocket.path;
         
-        this.socket = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}`);
+        const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}${wsPath}`;
+        console.log('Connecting to WebSocket server:', wsUrl);
+        
+        this.socket = new WebSocket(wsUrl);
         
         // Handle connection opening
         this.socket.onopen = () => {
