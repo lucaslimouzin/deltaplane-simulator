@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: deltaplane-simulator
+    env: python
+    buildCommand: |
+      echo "=== Starting build process ==="
+      echo "Current directory: $(pwd)"
+      echo "Directory contents before build:"
+      ls -la
+      echo "Installing Node.js dependencies..."
+      npm install
+      echo "Copying static files first..."
+      mkdir -p /opt/render/project/src/public
+      cp -r public/* /opt/render/project/src/public/
+      echo "Creating js directory..."
+      mkdir -p /opt/render/project/src/public/js
+      echo "Building JavaScript bundle..."
+      NODE_ENV=production npm run build
+      echo "Verifying build output..."
+      echo "public directory contents:"
+      ls -la /opt/render/project/src/public/
+      echo "public/js directory contents:"
+      ls -la /opt/render/project/src/public/js/
+      echo "Setting permissions..."
+      chmod -R 755 /opt/render/project/src/public/
+      echo "Final directory structure:"
+      ls -R /opt/render/project/src/public/
+      echo "Installing Python dependencies..."
+      pip install -r requirements.txt
+      echo "=== Build process completed ==="
+    startCommand: python server_multiplayer.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: NODE_VERSION
+        value: 18.0.0
+    healthCheckPath: /
+    autoDeploy: true 
