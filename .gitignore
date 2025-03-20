@@ -35,4 +35,5 @@ yarn-error.log*
 
 # Cache
 .npm
-.eslintcache 
+.eslintcache public/js/bundle.js
+public/js/bundle.js.map
