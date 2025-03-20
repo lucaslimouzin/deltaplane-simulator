@@ -19,11 +19,11 @@ async def broadcast_position_update(sender_id, position, rotation):
                 ws = player["websocket"]
                 if not ws.closed:
                     await ws.send_json({
-                        "type": "playerMove",
-                        "id": sender_id,
-                        "position": position,
-                        "rotation": rotation,
-                        "playerCount": player_count
+                    "type": "playerMove",
+                    "id": sender_id,
+                    "position": position,
+                    "rotation": rotation,
+                    "playerCount": player_count
                     })
             except Exception as e:
                 print(f"Error broadcasting position update: {e}")
@@ -36,12 +36,12 @@ async def broadcast_player_joined(new_player_id):
                 ws = player["websocket"]
                 if not ws.closed:
                     await ws.send_json({
-                        "type": "playerJoined",
-                        "id": new_player_id,
-                        "name": new_player["name"],
-                        "position": new_player["position"],
-                        "rotation": new_player["rotation"],
-                        "playerCount": player_count
+                    "type": "playerJoined",
+                    "id": new_player_id,
+                    "name": new_player["name"],
+                    "position": new_player["position"],
+                    "rotation": new_player["rotation"],
+                    "playerCount": player_count
                     })
             except Exception as e:
                 print(f"Error broadcasting player joined: {e}")
@@ -52,10 +52,10 @@ async def broadcast_player_left(player_id, player_name):
             ws = player["websocket"]
             if not ws.closed:
                 await ws.send_json({
-                    "type": "playerLeft",
-                    "id": player_id,
-                    "name": player_name,
-                    "playerCount": player_count
+                "type": "playerLeft",
+                "id": player_id,
+                "name": player_name,
+                "playerCount": player_count
                 })
         except Exception as e:
             print(f"Error broadcasting player left: {e}")
@@ -160,7 +160,7 @@ async def websocket_handler(request):
                     print(f'WebSocket connection closed by client {player_name}')
                     break
         
-        except Exception as e:
+    except Exception as e:
             print(f"Error handling WebSocket for {player_name}: {e}")
         finally:
             if player_id and player_id in connected_players:

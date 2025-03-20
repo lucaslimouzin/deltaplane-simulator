@@ -5,18 +5,18 @@ import seedrandom from 'seedrandom';
 
 // Terrain configuration
 const TERRAIN_SIZE = 2000;         // Size of each chunk
-const RENDER_DISTANCE = 2;         // Render distance in chunks (2 = 5x5 grid)
-const PRELOAD_DISTANCE = 3;        // Preload distance (3 = 7x7 grid)
-const CHUNK_FADE_DURATION = 1000;  // Fade-in duration in milliseconds
-const CHUNK_LOAD_DELAY = 50;       // Delay between each chunk load
-const MAX_CHUNKS_PER_FRAME = 2;    // Maximum number of chunks to load per frame
-const PRELOAD_EXTRA_DISTANCE = 2;  // Extra preload distance in movement direction
+const RENDER_DISTANCE = 2;         // Render distance in chunks (reduced from 3)
+const PRELOAD_DISTANCE = 2;        // Preload distance (reduced from 3)
+const CHUNK_FADE_DURATION = 500;   // Fade-in duration reduced to 500ms
+const CHUNK_LOAD_DELAY = 100;      // Increased delay between chunk loads
+const MAX_CHUNKS_PER_FRAME = 1;    // Reduced to 1 chunk per frame
+const PRELOAD_EXTRA_DISTANCE = 1;  // Reduced extra preload distance
 
 const config = {
     // General parameters
     terrainSize: TERRAIN_SIZE,
-    waterSize: 14000,          // Water plane size (increased to cover 5x5 chunks)
-    waterLevel: -0.5,          // Water level slightly lowered to avoid z-fighting
+    waterSize: 12000,          // Reduced water plane size
+    waterLevel: -0.5,
     
     // Island shape parameters
     islandShapeComplexity: 0.7,    // Island shape complexity (0-1)
@@ -51,9 +51,9 @@ const config = {
     
     // Fog parameters
     fogColor: 0x87ceeb,       // Fog color (sky blue)
-    fogNear: 2500,             // Distance where fog starts (increased from 100)
-    fogFar: 6000,              // Distance where fog ends (increased from 3000)
-    fogDensity: 0.0005,        // Exponential fog density (reduced from 0.002)
+    fogNear: 2000,            // Reduced fog start distance
+    fogFar: 6000,             // Reduced fog end distance
+    fogDensity: 0.0005,       // Increased fog density for better culling
     
     // Configuration of chunks
     chunks: Array(25).fill(null).map((_, index) => {
@@ -113,17 +113,24 @@ const config = {
     }),
     
     // Terrain parameters
-    terrainSegments: 120,      // Number of segments for the terrain (increased for more detail)
+    terrainSegments: 80,      // Reduced segments for better performance (was 120)
     
     // Tree parameters
-    numTreesPerIsland: 80,     // Number of trees per island
+    numTreesPerIsland: 50,    // Reduced number of trees (was 80)
     treeMinHeight: 8,          // Minimum tree height
     treeMaxHeight: 20,         // Maximum tree height
     
     // House parameters
-    numHousesPerIsland: 15,
+    numHousesPerIsland: 10,   // Reduced number of houses (was 15)
     houseMinSize: 5,
     houseMaxSize: 10,
+    
+    // LOD (Level of Detail) parameters
+    lodLevels: {
+        near: { distance: 2000, detail: 1.0 },    // Full detail
+        medium: { distance: 4000, detail: 0.5 },   // Half detail
+        far: { distance: 6000, detail: 0.25 }      // Quarter detail
+    },
     
     // Biome colors
     biomes: {
@@ -160,12 +167,60 @@ const config = {
             treeColor: 0x556B2F    // Dark olive green for leaves
         },
         snowy: {
-            beach: 0xE6E6FA,
-            grass: 0xF0F8FF,
-            forest: 0xF5F5F5,
-            mountain: 0xDCDCDC,
-            snow: 0xFFFFFF,
-            treeColor: 0x90EE90
+            beach: 0xE6E6FA,       // Light purple
+            grass: 0xF0F8FF,       // White blue
+            forest: 0xF5F5F5,      // White
+            mountain: 0xDCDCDC,    // Light gray
+            snow: 0xFFFFFF,        // Pure white
+            treeColor: 0x90EE90    // Light green
+        },
+        savanna: {
+            beach: 0xF4D03F,       // Golden yellow
+            grass: 0xDAA520,       // Golden grass
+            forest: 0x796307,      // Dark olive
+            mountain: 0xCD853F,    // Peru brown
+            snow: 0xFFF8DC,        // Cornsilk
+            treeColor: 0x556B2F    // Dark olive green
+        },
+        jungle: {
+            beach: 0xFFE4B5,       // Moccasin
+            grass: 0x228B22,       // Forest green
+            forest: 0x006400,      // Dark green
+            mountain: 0x8B4513,    // Saddle brown
+            snow: 0x98FB98,        // Pale green
+            treeColor: 0x228B22    // Forest green
+        },
+        tundra: {
+            beach: 0xD3D3D3,       // Light gray
+            grass: 0x708090,       // Slate gray
+            forest: 0x2F4F4F,      // Dark slate gray
+            mountain: 0x4F4F4F,    // Gray
+            snow: 0xF0FFFF,        // Azure
+            treeColor: 0x2F4F4F    // Dark slate gray
+        },
+        village: {
+            beach: 0xE6CCB3,       // Light beige (pavés)
+            grass: 0x90EE90,       // Light green (jardins)
+            forest: 0x228B22,      // Forest green (parcs)
+            mountain: 0xB8860B,    // Dark golden (toits)
+            snow: 0xDCDCDC,        // Light gray (routes)
+            treeColor: 0x228B22    // Forest green
+        },
+        city: {
+            beach: 0x808080,       // Gray (trottoirs)
+            grass: 0x98FB98,       // Pale green (espaces verts)
+            forest: 0x006400,      // Dark green (parcs urbains)
+            mountain: 0x696969,    // Dim gray (buildings)
+            snow: 0x363636,        // Dark gray (routes)
+            treeColor: 0x006400    // Dark green
+        },
+        megalopolis: {
+            beach: 0x4A4A4A,       // Dark gray (béton)
+            grass: 0x2E8B57,       // Sea green (parcs modernes)
+            forest: 0x004225,      // Very dark green (zones vertes)
+            mountain: 0x1C1C1C,    // Very dark gray (gratte-ciels)
+            snow: 0x0F0F0F,        // Almost black (routes)
+            treeColor: 0x2E8B57    // Sea green
         }
     },
     
@@ -556,11 +611,11 @@ function createIslands() {
  * Adds trees to a specific chunk
  */
 function addTreesToChunk(chunk) {
-    // Create shared geometries for trees
+    // Create shared geometries
     const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, 1, 4, 1);
     const leavesGeometry = new THREE.TetrahedronGeometry(3, 0);
     
-    // Create material for trunks
+    // Create shared materials
     const trunkMaterial = new THREE.MeshStandardMaterial({
         color: config.colors.trunkColor,
         flatShading: true,
@@ -568,103 +623,68 @@ function addTreesToChunk(chunk) {
         metalness: 0.0
     });
     
-    // For each island, add trees adapted to its biome
-    for (const island of chunk.islands) {
-        // Create material for leaves based on biome
-        const leavesMaterial = new THREE.MeshStandardMaterial({
-            color: config.biomes[island.biome].treeColor,
+    const leavesMaterials = {};
+    
+    // Pre-create materials for each biome
+    for (const biome in config.biomes) {
+        leavesMaterials[biome] = new THREE.MeshStandardMaterial({
+            color: config.biomes[biome].treeColor,
             flatShading: true,
             roughness: 0.8,
             metalness: 0.0
         });
+    }
+    
+    // For each island
+    for (const island of chunk.islands) {
+        const numTrees = island.numTrees || Math.floor(config.numTreesPerIsland * (island.radius / 400));
+        const leavesMaterial = leavesMaterials[island.biome];
         
-        // Number of trees adapted to island size
-        const numTrees = Math.floor(config.numTreesPerIsland * (island.radius / 400));
+        // Create instanced mesh for trunks and leaves
+        const trunkInstanced = new THREE.InstancedMesh(trunkGeometry, trunkMaterial, numTrees);
+        const leavesInstanced = new THREE.InstancedMesh(leavesGeometry, leavesMaterial, numTrees);
         
-        // Add trees
+        const matrix = new THREE.Matrix4();
+        const position = new THREE.Vector3();
+        const scale = new THREE.Vector3();
+        const rotation = new THREE.Euler();
+        
         for (let i = 0; i < numTrees; i++) {
-            // Random position on island
             const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * island.radius * 0.8; // Avoid edges
+            const radius = Math.random() * island.radius * 0.8;
             
-            const x = Math.cos(angle) * radius + island.center.x;
-            const z = Math.sin(angle) * radius + island.center.z;
+            position.x = Math.cos(angle) * radius + island.center.x;
+            position.z = Math.sin(angle) * radius + island.center.z;
+            position.y = getTerrainHeightAtPosition(position.x, position.z);
             
-            // Get terrain height at this position
-            const height = getTerrainHeightAtPosition(x, z);
+            if (position.y <= config.waterLevel + 2 || position.y > 100) continue;
             
-            // Do not place trees in water or on mountain
-            if (height <= config.waterLevel + 2 || height > 100) continue;
+            // Trunk
+            const treeHeight = config.treeMinHeight + Math.random() * (config.treeMaxHeight - config.treeMinHeight);
+            scale.set(1, treeHeight, 1);
+            rotation.y = Math.random() * Math.PI * 2;
             
-            // Create tree group
-            const treeGroup = new THREE.Group();
+            matrix.makeRotationFromEuler(rotation);
+            matrix.scale(scale);
+            matrix.setPosition(position.x, position.y + treeHeight / 2, position.z);
+            trunkInstanced.setMatrixAt(i, matrix);
             
-            // Random tree height (adapted to biome)
-            let treeMinHeight = config.treeMinHeight;
-            let treeMaxHeight = config.treeMaxHeight;
-            
-            // Adjust tree height based on biome
-            if (island.biome === 'tropical') {
-                treeMinHeight = 10; // Larger trees in tropics
-                treeMaxHeight = 25;
-            } else if (island.biome === 'desert') {
-                treeMinHeight = 5; // Smaller trees in desert
-                treeMaxHeight = 12;
-            }
-            
-            const treeHeight = treeMinHeight + Math.random() * (treeMaxHeight - treeMinHeight);
-            
-            // Create trunk
-            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-            trunk.scale.set(1, treeHeight, 1);
-            trunk.position.y = treeHeight / 2;
-            trunk.castShadow = config.enableShadows;
-            treeGroup.add(trunk);
-            
-            // Create leaves (adapted shape for biome)
-            let leaves;
-            
-            if (island.biome === 'tropical') {
-                // Tropical trees with multiple leaf layers
-                const leavesGroup = new THREE.Group();
-                
-                for (let j = 0; j < 3; j++) {
-                    const leafLayer = new THREE.Mesh(leavesGeometry, leavesMaterial);
-                    const scale = 2.5 - j * 0.5;
-                    leafLayer.scale.set(scale, scale, scale);
-                    leafLayer.position.y = treeHeight - j * 3;
-                    leafLayer.castShadow = config.enableShadows;
-                    leavesGroup.add(leafLayer);
-                }
-                
-                treeGroup.add(leavesGroup);
-            } else if (island.biome === 'desert') {
-                // Cactus or desert trees (finer)
-                trunk.scale.set(0.7, treeHeight, 0.7);
-                
-                leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-                leaves.scale.set(1.5, 1.5, 1.5);
-                leaves.position.y = treeHeight + 1;
-                leaves.castShadow = config.enableShadows;
-                treeGroup.add(leaves);
-            } else {
-                // Standard trees
-                leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-                leaves.scale.set(2, 2, 2);
-                leaves.position.y = treeHeight + 2;
-                leaves.castShadow = config.enableShadows;
-                treeGroup.add(leaves);
-            }
-            
-            // Position tree
-            treeGroup.position.set(x, height, z);
-            
-            // Random rotation
-            treeGroup.rotation.y = Math.random() * Math.PI * 2;
-            
-            // Add to scene
-            scene.add(treeGroup);
+            // Leaves
+            scale.set(2, 2, 2);
+            matrix.makeRotationFromEuler(rotation);
+            matrix.scale(scale);
+            matrix.setPosition(position.x, position.y + treeHeight + 2, position.z);
+            leavesInstanced.setMatrixAt(i, matrix);
         }
+        
+        trunkInstanced.castShadow = config.enableShadows;
+        trunkInstanced.receiveShadow = config.enableShadows;
+        leavesInstanced.castShadow = config.enableShadows;
+        leavesInstanced.receiveShadow = config.enableShadows;
+        
+        scene.add(trunkInstanced);
+        scene.add(leavesInstanced);
+        chunk.objects.push(trunkInstanced, leavesInstanced);
     }
 }
 
@@ -672,88 +692,97 @@ function addTreesToChunk(chunk) {
  * Adds houses to a specific chunk
  */
 function addHousesToChunk(chunk) {
-    // Create base geometries for houses
+    // Create shared geometries
     const baseGeometry = new THREE.BoxGeometry(1, 1, 1);
     const roofGeometry = new THREE.ConeGeometry(1, 1, 4);
+    const skyscraperGeometry = new THREE.BoxGeometry(1, 1, 1);
     
-    // Materials for houses
-    const wallMaterials = {
-        temperate: new THREE.MeshStandardMaterial({ color: 0xE5D3B3, flatShading: true }),
-        tropical: new THREE.MeshStandardMaterial({ color: 0xFFE4C4, flatShading: true }),
-        desert: new THREE.MeshStandardMaterial({ color: 0xDEB887, flatShading: true }),
-        volcanic: new THREE.MeshStandardMaterial({ color: 0x8B4513, flatShading: true }),
-        snowy: new THREE.MeshStandardMaterial({ color: 0xF5F5F5, flatShading: true })
-    };
-    
-    const roofMaterials = {
-        temperate: new THREE.MeshStandardMaterial({ color: 0x8B4513, flatShading: true }),
-        tropical: new THREE.MeshStandardMaterial({ color: 0xCD853F, flatShading: true }),
-        desert: new THREE.MeshStandardMaterial({ color: 0xD2691E, flatShading: true }),
-        volcanic: new THREE.MeshStandardMaterial({ color: 0x696969, flatShading: true }),
-        snowy: new THREE.MeshStandardMaterial({ color: 0x4682B4, flatShading: true })
+    // Pre-create all materials
+    const materials = {
+        village: {
+            wall: new THREE.MeshStandardMaterial({ color: 0xE5D3B3, flatShading: true }),
+            roof: new THREE.MeshStandardMaterial({ color: 0x8B4513, flatShading: true })
+        },
+        city: {
+            wall: new THREE.MeshStandardMaterial({ color: 0xA0A0A0, flatShading: true }),
+            roof: new THREE.MeshStandardMaterial({ color: 0x696969, flatShading: true })
+        },
+        megalopolis: {
+            wall: new THREE.MeshStandardMaterial({ color: 0x505050, flatShading: true }),
+            roof: new THREE.MeshStandardMaterial({ color: 0x303030, flatShading: true })
+        }
     };
     
     // For each island
     for (const island of chunk.islands) {
-        // Number of houses adapted to island size
-        const numHouses = Math.floor(config.numHousesPerIsland * (island.radius / 400));
+        const numBuildings = island.numBuildings || config.numHousesPerIsland;
         
-        // Add houses
-        for (let i = 0; i < numHouses; i++) {
-            // Random position on island (avoid mountains and water)
-            let attempts = 0;
-            let validPosition = false;
-            let x, z, height;
+        // Create instanced meshes based on biome type
+        let buildingInstances;
+        
+        switch(island.biome) {
+            case 'village':
+                buildingInstances = new THREE.InstancedMesh(baseGeometry, materials.village.wall, numBuildings);
+                break;
+            case 'city':
+                buildingInstances = new THREE.InstancedMesh(skyscraperGeometry, materials.city.wall, numBuildings);
+                break;
+            case 'megalopolis':
+                buildingInstances = new THREE.InstancedMesh(skyscraperGeometry, materials.megalopolis.wall, numBuildings);
+                break;
+            default:
+                buildingInstances = new THREE.InstancedMesh(baseGeometry, materials.village.wall, numBuildings);
+        }
+        
+        const matrix = new THREE.Matrix4();
+        const position = new THREE.Vector3();
+        const scale = new THREE.Vector3();
+        const rotation = new THREE.Euler();
+        
+        for (let i = 0; i < numBuildings; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * island.radius * 0.6;
             
-            while (!validPosition && attempts < 50) {
-                const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * island.radius * 0.6; // Stay away from edges
-                
-                x = Math.cos(angle) * radius + island.center.x;
-                z = Math.sin(angle) * radius + island.center.z;
-                height = getTerrainHeightAtPosition(x, z);
-                
-                // Check if position is valid (not in water, not too high)
-                if (height > config.waterLevel + 2 && height < 50) {
-                    validPosition = true;
-                }
-                attempts++;
+            position.x = Math.cos(angle) * radius + island.center.x;
+            position.z = Math.sin(angle) * radius + island.center.z;
+            position.y = getTerrainHeightAtPosition(position.x, position.z);
+            
+            if (position.y <= config.waterLevel + 2 || position.y > 50) continue;
+            
+            let buildingWidth, buildingHeight;
+            
+            switch(island.biome) {
+                case 'village':
+                    buildingWidth = 5 + Math.random() * 5;
+                    buildingHeight = buildingWidth * 0.8;
+                    break;
+                case 'city':
+                    buildingWidth = 8 + Math.random() * 7;
+                    buildingHeight = buildingWidth * 2;
+                    break;
+                case 'megalopolis':
+                    buildingWidth = 10 + Math.random() * 10;
+                    buildingHeight = buildingWidth * 4;
+                    break;
+                default:
+                    buildingWidth = config.houseMinSize + Math.random() * (config.houseMaxSize - config.houseMinSize);
+                    buildingHeight = buildingWidth * 0.8;
             }
             
-            if (!validPosition) continue;
+            scale.set(buildingWidth, buildingHeight, buildingWidth);
+            rotation.y = Math.random() * Math.PI * 2;
             
-            // Create house group
-            const houseGroup = new THREE.Group();
-            
-            // Random house size
-            const houseWidth = config.houseMinSize + Math.random() * (config.houseMaxSize - config.houseMinSize);
-            const houseHeight = houseWidth * 0.8;
-            
-            // House base
-            const base = new THREE.Mesh(baseGeometry, wallMaterials[island.biome]);
-            base.scale.set(houseWidth, houseHeight, houseWidth);
-            base.position.y = houseHeight / 2;
-            base.castShadow = config.enableShadows;
-            base.receiveShadow = config.enableShadows;
-            houseGroup.add(base);
-            
-            // Roof
-            const roof = new THREE.Mesh(roofGeometry, roofMaterials[island.biome]);
-            roof.scale.set(houseWidth * 1.2, houseHeight * 0.6, houseWidth * 1.2);
-            roof.position.y = houseHeight + (houseHeight * 0.3);
-            roof.castShadow = config.enableShadows;
-            roof.receiveShadow = config.enableShadows;
-            houseGroup.add(roof);
-            
-            // Position house
-            houseGroup.position.set(x, height, z);
-            
-            // Random rotation
-            houseGroup.rotation.y = Math.random() * Math.PI * 2;
-            
-            // Add to scene
-            scene.add(houseGroup);
+            matrix.makeRotationFromEuler(rotation);
+            matrix.scale(scale);
+            matrix.setPosition(position.x, position.y + buildingHeight / 2, position.z);
+            buildingInstances.setMatrixAt(i, matrix);
         }
+        
+        buildingInstances.castShadow = config.enableShadows;
+        buildingInstances.receiveShadow = config.enableShadows;
+        
+        scene.add(buildingInstances);
+        chunk.objects.push(buildingInstances);
     }
 }
 
@@ -1039,12 +1068,33 @@ function createChunk(chunkX, chunkZ, callback) {
         objects: [] // For storing all Three.js objects in this chunk
     };
 
-    // Create terrain geometry
+    // Calculer la distance au chunk
+    const distanceToCamera = Math.sqrt(
+        Math.pow((chunkX * TERRAIN_SIZE) - camera.position.x, 2) +
+        Math.pow((chunkZ * TERRAIN_SIZE) - camera.position.z, 2)
+    );
+    
+    // Déterminer le niveau de détail
+    let segmentCount = config.terrainSegments;
+    let treeMultiplier = 1;
+    let buildingMultiplier = 1;
+    
+    if (distanceToCamera > config.lodLevels.far.distance) {
+        segmentCount = Math.floor(config.terrainSegments * config.lodLevels.far.detail);
+        treeMultiplier = 0.25;
+        buildingMultiplier = 0.25;
+    } else if (distanceToCamera > config.lodLevels.medium.distance) {
+        segmentCount = Math.floor(config.terrainSegments * config.lodLevels.medium.detail);
+        treeMultiplier = 0.5;
+        buildingMultiplier = 0.5;
+    }
+    
+    // Create terrain geometry with adjusted detail level
     const geometry = new THREE.PlaneGeometry(
         TERRAIN_SIZE,
         TERRAIN_SIZE,
-        config.terrainSegments,
-        config.terrainSegments
+        segmentCount,
+        segmentCount
     );
     
     geometry.rotateX(-Math.PI / 2);
@@ -1391,30 +1441,63 @@ function generateIslandsForChunk(chunkX, chunkZ) {
     const rng = new seedrandom(`${chunkX},${chunkZ}`);
     
     const islands = [];
-    const numIslands = 1 + Math.floor(rng() * 2); // 1-2 islands per chunk
+    const numIslands = 2 + Math.floor(rng() * 3); // 2-4 islands per chunk
+    
+    const possibleBiomes = [
+        'temperate', 'tropical', 'desert', 'volcanic', 'snowy',
+        'savanna', 'jungle', 'tundra', 'village', 'city', 'megalopolis'
+    ];
     
     for (let i = 0; i < numIslands; i++) {
+        // Ajuster la taille des îles pour éviter les chevauchements
+        const radius = 150 + rng() * 100;
+        
+        // Répartir les îles plus uniformément dans le chunk
+        const angle = (i / numIslands) * Math.PI * 2 + rng() * (Math.PI / 2);
+        const distanceFromCenter = (TERRAIN_SIZE * 0.3) * (0.5 + rng() * 0.5);
+        const x = (chunkX * TERRAIN_SIZE) + Math.cos(angle) * distanceFromCenter;
+        const z = (chunkZ * TERRAIN_SIZE) + Math.sin(angle) * distanceFromCenter;
+        
+        // Ajuster le nombre de bâtiments en fonction du biome
+        const biome = possibleBiomes[Math.floor(rng() * possibleBiomes.length)];
+        let numBuildings;
+        
+        switch(biome) {
+            case 'village':
+                numBuildings = 15 + Math.floor(rng() * 10); // 15-25 bâtiments
+                break;
+            case 'city':
+                numBuildings = 30 + Math.floor(rng() * 20); // 30-50 bâtiments
+                break;
+            case 'megalopolis':
+                numBuildings = 50 + Math.floor(rng() * 30); // 50-80 bâtiments
+                break;
+            default:
+                numBuildings = config.numHousesPerIsland;
+        }
+        
         islands.push({
             center: {
-                x: (chunkX * TERRAIN_SIZE) + (rng() * TERRAIN_SIZE * 0.8 - TERRAIN_SIZE * 0.4),
-                z: (chunkZ * TERRAIN_SIZE) + (rng() * TERRAIN_SIZE * 0.8 - TERRAIN_SIZE * 0.4)
+                x: x,
+                z: z
             },
-            radius: 250 + rng() * 150,
-            mountainHeight: 150 + rng() * 200,
-            biome: ['temperate', 'tropical', 'desert', 'volcanic', 'snowy'][Math.floor(rng() * 5)],
+            radius: radius,
+            mountainHeight: 100 + rng() * 150,
+            biome: biome,
             hasMountain: rng() > 0.3,
             mountains: rng() > 0.5 ? [
                 {
-                    x: rng() * 200 - 100,
-                    z: rng() * 200 - 100,
-                    height: 200 + rng() * 150
+                    x: rng() * 100 - 50,
+                    z: rng() * 100 - 50,
+                    height: 150 + rng() * 100
                 },
                 {
-                    x: rng() * 200 - 100,
-                    z: rng() * 200 - 100,
-                    height: 150 + rng() * 150
+                    x: rng() * 100 - 50,
+                    z: rng() * 100 - 50,
+                    height: 100 + rng() * 100
                 }
-            ] : undefined
+            ] : undefined,
+            numBuildings: numBuildings // Ajouter le nombre de bâtiments
         });
     }
     
