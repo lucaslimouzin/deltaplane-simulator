@@ -2,9 +2,7 @@ const path = require('path');
 const webpack = require('webpack');
 
 const isProduction = process.env.NODE_ENV === 'production';
-const outputPath = isProduction 
-  ? '/opt/render/project/src/public/js'
-  : path.resolve(__dirname, 'public/js');
+const outputPath = path.resolve(__dirname, 'public/js');
 
 module.exports = {
   entry: './src/index.js',
