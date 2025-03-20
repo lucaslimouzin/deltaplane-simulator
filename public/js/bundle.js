@@ -66,16 +66,17 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   config: () => (/* binding */ config)
 /* harmony export */ });
-// Configuration for production environment (Render.com)
+var _window;
+// Configuration pour l'environnement de production (Render.com)
 var config = {
   server: {
     port: process.env.PORT || 8000,
-    websocketPort: process.env.PORT || 8001,
-    host: 'deltaplane-simulator.onrender.com'
+    websocketPort: process.env.PORT || 8000,
+    host: process.env.HOST || '0.0.0.0'
   },
   websocket: {
-    protocol: 'wss:',
-    path: ''
+    protocol: ((_window = window) === null || _window === void 0 || (_window = _window.location) === null || _window === void 0 ? void 0 : _window.protocol) === 'https:' ? 'wss:' : 'ws:',
+    path: '/ws'
   }
 };
 
