@@ -8,9 +8,9 @@ services:
       pip install -r requirements.txt
     startCommand: python server_multiplayer.py
     envVars:
-      - key: RENDER
-        value: true
-      - key: PORT
-        value: 8000
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: NODE_VERSION
+        value: 18.0.0
     healthCheckPath: /
     autoDeploy: true 
