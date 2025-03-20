@@ -59025,8 +59025,38 @@ function updateChunks(centerX, centerZ) {
         _z2 = _key2$split$map2[1];
       var distance = Math.sqrt(Math.pow(_x2 - centerX, 2) + Math.pow(_z2 - centerZ, 2));
       if (distance > RENDER_DISTANCE + PRELOAD_EXTRA_DISTANCE) {
-        // Remove chunk
-        chunk.dispose();
+        // Remove chunk and dispose of its resources
+        if (chunk.mesh && chunk.mesh.geometry) {
+          chunk.mesh.geometry.dispose();
+        }
+        if (chunk.mesh && chunk.mesh.material) {
+          if (Array.isArray(chunk.mesh.material)) {
+            chunk.mesh.material.forEach(function (material) {
+              return material.dispose();
+            });
+          } else {
+            chunk.mesh.material.dispose();
+          }
+        }
+        if (chunk.mesh && chunk.mesh.parent) {
+          chunk.mesh.parent.remove(chunk.mesh);
+        }
+        // Dispose of any additional objects in the chunk
+        if (chunk.objects && Array.isArray(chunk.objects)) {
+          chunk.objects.forEach(function (obj) {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+              if (Array.isArray(obj.material)) {
+                obj.material.forEach(function (mat) {
+                  return mat.dispose();
+                });
+              } else {
+                obj.material.dispose();
+              }
+            }
+            if (obj.parent) obj.parent.remove(obj);
+          });
+        }
         terrain["delete"](_key2);
       }
     }

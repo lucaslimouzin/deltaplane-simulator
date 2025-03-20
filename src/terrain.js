@@ -967,8 +967,34 @@ function updateChunks(centerX, centerZ, velocity = new THREE.Vector3()) {
         );
         
         if (distance > RENDER_DISTANCE + PRELOAD_EXTRA_DISTANCE) {
-            // Remove chunk
-            chunk.dispose();
+            // Remove chunk and dispose of its resources
+            if (chunk.mesh && chunk.mesh.geometry) {
+                chunk.mesh.geometry.dispose();
+            }
+            if (chunk.mesh && chunk.mesh.material) {
+                if (Array.isArray(chunk.mesh.material)) {
+                    chunk.mesh.material.forEach(material => material.dispose());
+                } else {
+                    chunk.mesh.material.dispose();
+                }
+            }
+            if (chunk.mesh && chunk.mesh.parent) {
+                chunk.mesh.parent.remove(chunk.mesh);
+            }
+            // Dispose of any additional objects in the chunk
+            if (chunk.objects && Array.isArray(chunk.objects)) {
+                chunk.objects.forEach(obj => {
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) {
+                        if (Array.isArray(obj.material)) {
+                            obj.material.forEach(mat => mat.dispose());
+                        } else {
+                            obj.material.dispose();
+                        }
+                    }
+                    if (obj.parent) obj.parent.remove(obj);
+                });
+            }
             terrain.delete(key);
         }
     }
