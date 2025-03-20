@@ -2,7 +2,10 @@ services:
   - type: web
     name: deltaplane-simulator
     env: python
-    buildCommand: npm install && npm run build
+    buildCommand: |
+      npm install
+      npm run build
+      pip install -r requirements.txt
     startCommand: python server_multiplayer.py
     envVars:
       - key: RENDER
