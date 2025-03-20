@@ -59755,9 +59755,8 @@ function init() {
     // Initialize camera to follow hang glider
     deltaplane.updateCamera(camera);
 
-    // Start game without multiplayer
-    gameStarted = true;
-    animate();
+    // Start game with multiplayer login
+    startGame();
   } catch (error) {
     console.error('Error during initialization:', error);
   }
