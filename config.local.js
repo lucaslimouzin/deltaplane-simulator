@@ -1,10 +1,10 @@
 export const config = {
     // Server configuration
-    port: 10000,
-    websocketPort: 10000,
+    port: 8000,
+    websocketPort: 8001,
     host: 'localhost',
     protocol: 'ws:',
-    wsUrl: 'ws://localhost:10000/ws',  // Complete WebSocket URL for local testing
+    wsUrl: 'ws://localhost:8001/ws',  // Complete WebSocket URL for local testing
     
     // Game configuration
     maxPlayers: 100,
