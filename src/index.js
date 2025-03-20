@@ -68,11 +68,10 @@ function init() {
         // Initialize camera to follow hang glider
         deltaplane.updateCamera(camera);
         
-        // Create multiplayer manager
-        multiplayerManager = new MultiplayerManager(scene, deltaplane);
+        // Start game without multiplayer
+        gameStarted = true;
+        animate();
         
-        // Start game automatically (connect to server)
-        startGame();
     } catch (error) {
         console.error('Error during initialization:', error);
     }
@@ -134,11 +133,6 @@ function animate() {
         
         // Update camera to follow hang glider
         deltaplane.updateCamera(camera);
-        
-        // Update multiplayer manager if enabled
-        if (isMultiplayerMode) {
-            multiplayerManager.update(delta);
-        }
         
         // Render scene
         renderer.render(scene, camera);
