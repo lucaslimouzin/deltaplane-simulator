@@ -57413,8 +57413,15 @@ var MultiplayerManager = /*#__PURE__*/function () {
         // Title
         var title = document.createElement('h2');
         title.textContent = 'Glider Simulator';
-        title.style.marginBottom = '20px';
+        title.style.marginBottom = '10px';
         title.style.color = '#333';
+
+        // Credit line
+        var creditLine = document.createElement('div');
+        creditLine.style.marginBottom = '20px';
+        creditLine.style.color = '#666';
+        creditLine.style.fontSize = '14px';
+        creditLine.innerHTML = 'Created by <a href="https://x.com/givros" target="_blank" style="color: #4CAF50; text-decoration: none;">Givros</a>';
 
         // Subtitle
         var subtitle = document.createElement('p');
@@ -57453,6 +57460,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
 
         // Ajouter les éléments au formulaire
         loginForm.appendChild(title);
+        loginForm.appendChild(creditLine);
         loginForm.appendChild(subtitle);
         loginForm.appendChild(nameInput);
         loginForm.appendChild(playButton);
