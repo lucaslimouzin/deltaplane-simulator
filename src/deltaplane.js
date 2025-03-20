@@ -7,77 +7,81 @@ export class Deltaplane {
     /**
      * Creates a hang glider instance
      * @param {THREE.Scene} scene - The Three.js scene
+     * @param {boolean} isRemotePlayer - Whether this is a remote player
      */
-    constructor(scene) {
+    constructor(scene, isRemotePlayer = false) {
         this.scene = scene;
         this.mesh = null;
         this.voile = null; // Reference to the sail for separate manipulation
-        this.velocity = new THREE.Vector3(0, 0, 0);
-        this.camera = null;
-        this.currentLookAt = null; // Current look-at point for camera interpolation
+        this.isRemotePlayer = isRemotePlayer;
         
-        // Wind visualization system - completely disabled
-        this.windParticles = null;
-        this.windParticlesCount = 0;
-        this.windParticlesVisible = false;
-        this.windParticlesData = null;
+        // Ces propriétés ne sont nécessaires que pour le joueur local
+        if (!isRemotePlayer) {
+            this.velocity = new THREE.Vector3(0, 0, 0);
+            this.camera = null;
+            this.currentLookAt = null;
+            
+
+            
+            // Controls (only for sail orientation)
+            this.pitchUp = false;    // Pitch up (raise nose)
+            this.pitchDown = false;  // Pitch down (lower nose)
+            this.rollLeft = false;   // Roll left
+            this.rollRight = false;  // Roll right
+            this.yawLeft = false;    // Turn left
+            this.yawRight = false;   // Turn right
+            
+            // Flight parameters
+            this.airDensity = 1.2; // kg/m³
+            this.wingArea = 15; // m²
+            this.liftCoefficient = 2.0;
+            this.dragCoefficient = 0.001;
+            this.weight = 100; // kg (pilot + hang glider)
+            this.lastYaw = 0; // To track yaw rotation
+            this.minAltitude = 250; // Minimum altitude in meters
+            this.maxAltitude = 500; // Maximum altitude in meters
+            
+            // Wind parameters
+            this.windEnabled = false;
+            this.windDirection = new THREE.Vector3(0, 0, 0);
+            this.windSpeed = 0;
+            this.windVariation = 0;
+            this.thermalStrength = 0;
+            this.thermalRadius = 0;
+            this.thermalPositions = [];
+            
+            // Collision parameters
+            this.terrain = null;
+            this.isColliding = false;
+            this.collisionPoint = null;
+            this.collisionNormal = null;
+            this.collisionDamage = 0;
+            this.maxCollisionDamage = 100;
+            
+            // Add quaternions for more stable rotation handling
+            this.pitchQuaternion = new THREE.Quaternion();
+            this.yawQuaternion = new THREE.Quaternion();
+            this.rollQuaternion = new THREE.Quaternion();
+            this.targetQuaternion = new THREE.Quaternion();
+            
+            // Rotation axes
+            this.PITCH_AXIS = new THREE.Vector3(1, 0, 0);
+            this.YAW_AXIS = new THREE.Vector3(0, 1, 0);
+            this.ROLL_AXIS = new THREE.Vector3(0, 0, 1);
+            
+            // Variables for FPS calculation
+            this.lastTime = performance.now();
+            this.currentFPS = 0;
+            this.playerCount = 0;
+        }
         
-        // Controls (only for sail orientation)
-        this.pitchUp = false;    // Pitch up (raise nose)
-        this.pitchDown = false;  // Pitch down (lower nose)
-        this.rollLeft = false;   // Roll left
-        this.rollRight = false;  // Roll right
-        this.yawLeft = false;    // Turn left
-        this.yawRight = false;   // Turn right
-        
-        // Flight parameters
-        this.airDensity = 1.2; // kg/m³
-        this.wingArea = 15; // m²
-        this.liftCoefficient = 2.0;
-        this.dragCoefficient = 0.001;
-        this.weight = 100; // kg (pilot + hang glider)
-        this.lastYaw = 0; // To track yaw rotation
-        this.minAltitude = 250; // Minimum altitude in meters
-        this.maxAltitude = 500; // Maximum altitude in meters
-        
-        // Wind parameters - disabled
-        this.windEnabled = false;
-        this.windDirection = new THREE.Vector3(0, 0, 0);
-        this.windSpeed = 0;
-        this.windVariation = 0;
-        this.thermalStrength = 0;
-        this.thermalRadius = 0;
-        this.thermalPositions = [];
-        
-        // Collision parameters
-        this.terrain = null; // Reference to terrain, will be set later
-        this.isColliding = false; // Collision state
-        this.collisionPoint = null; // Collision point
-        this.collisionNormal = null; // Surface normal at collision point
-        this.collisionDamage = 0; // Cumulative collision damage
-        this.maxCollisionDamage = 100; // Maximum damage before destruction
-        
-        // Add quaternions for more stable rotation handling
-        this.pitchQuaternion = new THREE.Quaternion();
-        this.yawQuaternion = new THREE.Quaternion();
-        this.rollQuaternion = new THREE.Quaternion();
-        this.targetQuaternion = new THREE.Quaternion();
-        
-        // Rotation axes
-        this.PITCH_AXIS = new THREE.Vector3(1, 0, 0);
-        this.YAW_AXIS = new THREE.Vector3(0, 1, 0);
-        this.ROLL_AXIS = new THREE.Vector3(0, 0, 1);
-        
-        // Variables for FPS calculation
-        this.lastTime = performance.now();
-        this.currentFPS = 0;
-        this.playerCount = 0;  // Initialize player count
-        
-        // Create the hang glider
+        // Create the hang glider model
         this.createModel();
         
-        // Create random thermals
-        this.createThermals();
+        // Create random thermals only for local player
+        if (!isRemotePlayer) {
+            this.createThermals();
+        }
     }
     
     /**
@@ -87,7 +91,10 @@ export class Deltaplane {
         try {
             // Création d'un groupe pour contenir tous les éléments du deltaplane
             this.mesh = new THREE.Group();
-            this.mesh.position.y = this.minAltitude; // Hauteur initiale à l'altitude minimum
+            
+            // Position initiale différente selon le type de joueur
+            this.mesh.position.y = this.minAltitude;
+            
             this.scene.add(this.mesh);
             
             // Création de la voile triangulaire
@@ -101,7 +108,7 @@ export class Deltaplane {
             voileGeometry.computeVertexNormals();
             
             const voileMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x00ff00,
+                color: 0x00ff00, 
                 side: THREE.DoubleSide,
                 flatShading: true,
                 roughness: 0.7,
@@ -245,22 +252,42 @@ export class Deltaplane {
 
             // Jambe gauche
             const jambeGauche = new THREE.Mesh(jambeGeometry, jambeMaterial);
-            jambeGauche.position.set(-0.8, -6, 0); // Descendu de -4.4 à -6
+            jambeGauche.position.set(-0.8, -6, 0);
             jambeGauche.rotation.z = 0;
             jambeGauche.castShadow = true;
             piloteGroup.add(jambeGauche);
 
             // Jambe droite
             const jambeDroite = new THREE.Mesh(jambeGeometry, jambeMaterial);
-            jambeDroite.position.set(0.8, -6, 0); // Descendu de -4.4 à -6
+            jambeDroite.position.set(0.8, -6, 0);
             jambeDroite.rotation.z = 0;
             jambeDroite.castShadow = true;
             piloteGroup.add(jambeDroite);
 
             // Position initiale du pilote
-            piloteGroup.position.set(0, -6.5, -2); // Remonté de -7.5 à -6.5
-            this.piloteGroup = piloteGroup; // Garder une référence au groupe du pilote
+            piloteGroup.position.set(0, -6.5, -2);
+            this.piloteGroup = piloteGroup;
             this.mesh.add(piloteGroup);
+
+            // S'assurer que le pilote est visible
+            piloteGroup.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    child.visible = true;
+                }
+            });
+            
+            // Orientation initiale du deltaplane
+            this.mesh.rotation.x = Math.PI / 12;
+            
+            // Ajout d'une caméra seulement pour le joueur local
+            if (!this.isRemotePlayer) {
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+                this.mesh.add(this.camera);
+                this.camera.position.set(0, 2, 10);
+                this.camera.lookAt(0, 0, -10);
+            }
 
             // Ajout de la méthode pour vérifier la collision avec la voile
             this.checkVoileCollision = () => {
@@ -284,51 +311,12 @@ export class Deltaplane {
                     this.piloteGroup.position.y += (newLocalY - localPos.y);
                 }
             };
-            
-            // Orientation initiale du deltaplane
-            this.mesh.rotation.x = Math.PI / 12;
-            
-            // Ajout d'une caméra à la suite du deltaplane (pour le mode pilotage)
-            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-            this.mesh.add(this.camera);
-            this.camera.position.set(0, 2, 10); // Position derrière le deltaplane
-            this.camera.lookAt(0, 0, -10);
-            
-            // Système de particules désactivé
-            // this.createWindParticles();
+
         } catch (error) {
             console.error('Erreur lors de la création du deltaplane:', error);
         }
     }
     
-    /**
-     * Crée un système de particules pour visualiser les courants de vent
-     * @deprecated Fonctionnalité désactivée
-     */
-    createWindParticles() {
-        // Fonction désactivée
-        return;
-    }
-    
-    /**
-     * Met à jour le système de particules pour visualiser le vent
-     * @deprecated Fonctionnalité désactivée
-     * @param {number} delta - Temps écoulé depuis la dernière mise à jour
-     */
-    updateWindParticles(delta) {
-        // Fonction désactivée
-        return;
-    }
-    
-    /**
-     * Active ou désactive la visualisation des particules de vent
-     * @deprecated Fonctionnalité désactivée
-     * @param {boolean} visible - Visibilité des particules
-     */
-    toggleWindParticlesVisibility(visible) {
-        // Fonction désactivée
-        return;
-    }
     
     /**
      * Réinitialise la position et la vitesse du deltaplane
@@ -881,5 +869,13 @@ export class Deltaplane {
                 (Math.random() - 0.5) * 2000
             ));
         }
+    }
+    
+    /**
+     * Met à jour le nombre de joueurs
+     * @param {number} count - Le nombre de joueurs en ligne
+     */
+    updatePlayerCount(count) {
+        this.playerCount = count;
     }
 } 

@@ -1,6 +1,53 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ "./config.dev.js":
+/*!***********************!*\
+  !*** ./config.dev.js ***!
+  \***********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   config: () => (/* binding */ config)
+/* harmony export */ });
+// Configuration pour l'environnement de développement
+var config = {
+  server: {
+    port: 8000,
+    websocketPort: 8001,
+    host: 'localhost'
+  },
+  websocket: {
+    protocol: 'ws:',
+    path: ''
+  }
+};
+
+/***/ }),
+
+/***/ "./config.js":
+/*!*******************!*\
+  !*** ./config.js ***!
+  \*******************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   config: () => (/* binding */ config)
+/* harmony export */ });
+/* harmony import */ var _config_dev_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./config.dev.js */ "./config.dev.js");
+// En local, on utilise toujours la configuration de développement
+
+var config = _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
+
+// Pour le débogage
+//console.log('Active configuration:', config);
+
+/***/ }),
+
 /***/ "./node_modules/seedrandom/index.js":
 /*!******************************************!*\
   !*** ./node_modules/seedrandom/index.js ***!
@@ -56352,78 +56399,81 @@ var Deltaplane = /*#__PURE__*/function () {
   /**
    * Creates a hang glider instance
    * @param {THREE.Scene} scene - The Three.js scene
+   * @param {boolean} isRemotePlayer - Whether this is a remote player
    */
   function Deltaplane(scene) {
+    var isRemotePlayer = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
     _classCallCheck(this, Deltaplane);
     this.scene = scene;
     this.mesh = null;
     this.voile = null; // Reference to the sail for separate manipulation
-    this.velocity = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 0);
-    this.camera = null;
-    this.currentLookAt = null; // Current look-at point for camera interpolation
+    this.isRemotePlayer = isRemotePlayer;
 
-    // Wind visualization system - completely disabled
-    this.windParticles = null;
-    this.windParticlesCount = 0;
-    this.windParticlesVisible = false;
-    this.windParticlesData = null;
+    // Ces propriétés ne sont nécessaires que pour le joueur local
+    if (!isRemotePlayer) {
+      this.velocity = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 0);
+      this.camera = null;
+      this.currentLookAt = null;
 
-    // Controls (only for sail orientation)
-    this.pitchUp = false; // Pitch up (raise nose)
-    this.pitchDown = false; // Pitch down (lower nose)
-    this.rollLeft = false; // Roll left
-    this.rollRight = false; // Roll right
-    this.yawLeft = false; // Turn left
-    this.yawRight = false; // Turn right
+      // Controls (only for sail orientation)
+      this.pitchUp = false; // Pitch up (raise nose)
+      this.pitchDown = false; // Pitch down (lower nose)
+      this.rollLeft = false; // Roll left
+      this.rollRight = false; // Roll right
+      this.yawLeft = false; // Turn left
+      this.yawRight = false; // Turn right
 
-    // Flight parameters
-    this.airDensity = 1.2; // kg/m³
-    this.wingArea = 15; // m²
-    this.liftCoefficient = 2.0;
-    this.dragCoefficient = 0.001;
-    this.weight = 100; // kg (pilot + hang glider)
-    this.lastYaw = 0; // To track yaw rotation
-    this.minAltitude = 250; // Minimum altitude in meters
-    this.maxAltitude = 500; // Maximum altitude in meters
+      // Flight parameters
+      this.airDensity = 1.2; // kg/m³
+      this.wingArea = 15; // m²
+      this.liftCoefficient = 2.0;
+      this.dragCoefficient = 0.001;
+      this.weight = 100; // kg (pilot + hang glider)
+      this.lastYaw = 0; // To track yaw rotation
+      this.minAltitude = 250; // Minimum altitude in meters
+      this.maxAltitude = 500; // Maximum altitude in meters
 
-    // Wind parameters - disabled
-    this.windEnabled = false;
-    this.windDirection = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 0);
-    this.windSpeed = 0;
-    this.windVariation = 0;
-    this.thermalStrength = 0;
-    this.thermalRadius = 0;
-    this.thermalPositions = [];
+      // Wind parameters
+      this.windEnabled = false;
+      this.windDirection = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 0);
+      this.windSpeed = 0;
+      this.windVariation = 0;
+      this.thermalStrength = 0;
+      this.thermalRadius = 0;
+      this.thermalPositions = [];
 
-    // Collision parameters
-    this.terrain = null; // Reference to terrain, will be set later
-    this.isColliding = false; // Collision state
-    this.collisionPoint = null; // Collision point
-    this.collisionNormal = null; // Surface normal at collision point
-    this.collisionDamage = 0; // Cumulative collision damage
-    this.maxCollisionDamage = 100; // Maximum damage before destruction
+      // Collision parameters
+      this.terrain = null;
+      this.isColliding = false;
+      this.collisionPoint = null;
+      this.collisionNormal = null;
+      this.collisionDamage = 0;
+      this.maxCollisionDamage = 100;
 
-    // Add quaternions for more stable rotation handling
-    this.pitchQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
-    this.yawQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
-    this.rollQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
-    this.targetQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
+      // Add quaternions for more stable rotation handling
+      this.pitchQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
+      this.yawQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
+      this.rollQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
+      this.targetQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
 
-    // Rotation axes
-    this.PITCH_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(1, 0, 0);
-    this.YAW_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 1, 0);
-    this.ROLL_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 1);
+      // Rotation axes
+      this.PITCH_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(1, 0, 0);
+      this.YAW_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 1, 0);
+      this.ROLL_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 1);
 
-    // Variables for FPS calculation
-    this.lastTime = performance.now();
-    this.currentFPS = 0;
-    this.playerCount = 0; // Initialize player count
+      // Variables for FPS calculation
+      this.lastTime = performance.now();
+      this.currentFPS = 0;
+      this.playerCount = 0;
+    }
 
-    // Create the hang glider
+    // Create the hang glider model
     this.createModel();
 
-    // Create random thermals
-    this.createThermals();
+    // Create random thermals only for local player
+    if (!isRemotePlayer) {
+      this.createThermals();
+    }
   }
 
   /**
@@ -56436,7 +56486,9 @@ var Deltaplane = /*#__PURE__*/function () {
       try {
         // Création d'un groupe pour contenir tous les éléments du deltaplane
         this.mesh = new three__WEBPACK_IMPORTED_MODULE_0__.Group();
-        this.mesh.position.y = this.minAltitude; // Hauteur initiale à l'altitude minimum
+
+        // Position initiale différente selon le type de joueur
+        this.mesh.position.y = this.minAltitude;
         this.scene.add(this.mesh);
 
         // Création de la voile triangulaire
@@ -56585,22 +56637,42 @@ var Deltaplane = /*#__PURE__*/function () {
 
         // Jambe gauche
         var jambeGauche = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(jambeGeometry, jambeMaterial);
-        jambeGauche.position.set(-0.8, -6, 0); // Descendu de -4.4 à -6
+        jambeGauche.position.set(-0.8, -6, 0);
         jambeGauche.rotation.z = 0;
         jambeGauche.castShadow = true;
         piloteGroup.add(jambeGauche);
 
         // Jambe droite
         var jambeDroite = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(jambeGeometry, jambeMaterial);
-        jambeDroite.position.set(0.8, -6, 0); // Descendu de -4.4 à -6
+        jambeDroite.position.set(0.8, -6, 0);
         jambeDroite.rotation.z = 0;
         jambeDroite.castShadow = true;
         piloteGroup.add(jambeDroite);
 
         // Position initiale du pilote
-        piloteGroup.position.set(0, -6.5, -2); // Remonté de -7.5 à -6.5
-        this.piloteGroup = piloteGroup; // Garder une référence au groupe du pilote
+        piloteGroup.position.set(0, -6.5, -2);
+        this.piloteGroup = piloteGroup;
         this.mesh.add(piloteGroup);
+
+        // S'assurer que le pilote est visible
+        piloteGroup.traverse(function (child) {
+          if (child instanceof three__WEBPACK_IMPORTED_MODULE_0__.Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            child.visible = true;
+          }
+        });
+
+        // Orientation initiale du deltaplane
+        this.mesh.rotation.x = Math.PI / 12;
+
+        // Ajout d'une caméra seulement pour le joueur local
+        if (!this.isRemotePlayer) {
+          this.camera = new three__WEBPACK_IMPORTED_MODULE_0__.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+          this.mesh.add(this.camera);
+          this.camera.position.set(0, 2, 10);
+          this.camera.lookAt(0, 0, -10);
+        }
 
         // Ajout de la méthode pour vérifier la collision avec la voile
         this.checkVoileCollision = function () {
@@ -56624,56 +56696,9 @@ var Deltaplane = /*#__PURE__*/function () {
             _this.piloteGroup.position.y += newLocalY - localPos.y;
           }
         };
-
-        // Orientation initiale du deltaplane
-        this.mesh.rotation.x = Math.PI / 12;
-
-        // Ajout d'une caméra à la suite du deltaplane (pour le mode pilotage)
-        this.camera = new three__WEBPACK_IMPORTED_MODULE_0__.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-        this.mesh.add(this.camera);
-        this.camera.position.set(0, 2, 10); // Position derrière le deltaplane
-        this.camera.lookAt(0, 0, -10);
-
-        // Système de particules désactivé
-        // this.createWindParticles();
       } catch (error) {
         console.error('Erreur lors de la création du deltaplane:', error);
       }
-    }
-
-    /**
-     * Crée un système de particules pour visualiser les courants de vent
-     * @deprecated Fonctionnalité désactivée
-     */
-  }, {
-    key: "createWindParticles",
-    value: function createWindParticles() {
-      // Fonction désactivée
-      return;
-    }
-
-    /**
-     * Met à jour le système de particules pour visualiser le vent
-     * @deprecated Fonctionnalité désactivée
-     * @param {number} delta - Temps écoulé depuis la dernière mise à jour
-     */
-  }, {
-    key: "updateWindParticles",
-    value: function updateWindParticles(delta) {
-      // Fonction désactivée
-      return;
-    }
-
-    /**
-     * Active ou désactive la visualisation des particules de vent
-     * @deprecated Fonctionnalité désactivée
-     * @param {boolean} visible - Visibilité des particules
-     */
-  }, {
-    key: "toggleWindParticlesVisibility",
-    value: function toggleWindParticlesVisibility(visible) {
-      // Fonction désactivée
-      return;
     }
 
     /**
@@ -57221,6 +57246,16 @@ var Deltaplane = /*#__PURE__*/function () {
         this.thermalPositions.push(new three__WEBPACK_IMPORTED_MODULE_0__.Vector3((Math.random() - 0.5) * 2000, 0, (Math.random() - 0.5) * 2000));
       }
     }
+
+    /**
+     * Met à jour le nombre de joueurs
+     * @param {number} count - Le nombre de joueurs en ligne
+     */
+  }, {
+    key: "updatePlayerCount",
+    value: function updatePlayerCount(count) {
+      this.playerCount = count;
+    }
   }]);
 }();
 
@@ -57237,8 +57272,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   MultiplayerManager: () => (/* binding */ MultiplayerManager)
 /* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 /* harmony import */ var _deltaplane_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./deltaplane.js */ "./src/deltaplane.js");
+/* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../config.js */ "./config.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
@@ -57251,6 +57287,7 @@ function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = 
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+
 
 
 
@@ -57276,20 +57313,44 @@ var MultiplayerManager = /*#__PURE__*/function () {
     this.lastUpdateTime = 0;
     this.updateInterval = 50; // Send updates every 50ms
 
-    // No HTML element reference for connected players
+    // Initialize player count display
+    this.initPlayerCountDisplay();
   }
 
   /**
-   * Creates a multiplayer manager instance
-   * @param {THREE.Scene} scene - The Three.js scene
-   * @param {Deltaplane} localPlayer - The local player's hang glider
+   * Initialize the player count display
    */
   return _createClass(MultiplayerManager, [{
+    key: "initPlayerCountDisplay",
+    value: function initPlayerCountDisplay() {
+      // Create player count element if it doesn't exist
+      var playerCountElement = document.getElementById('player-count');
+      if (!playerCountElement) {
+        playerCountElement = document.createElement('div');
+        playerCountElement.id = 'player-count';
+        playerCountElement.style.position = 'fixed';
+        playerCountElement.style.top = '10px';
+        playerCountElement.style.right = '10px';
+        playerCountElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        playerCountElement.style.color = 'white';
+        playerCountElement.style.padding = '5px 10px';
+        playerCountElement.style.borderRadius = '5px';
+        playerCountElement.style.fontFamily = 'Arial, sans-serif';
+        playerCountElement.style.zIndex = '1000';
+      }
+    }
+
+    /**
+     * Creates a multiplayer manager instance
+     * @param {THREE.Scene} scene - The Three.js scene
+     * @param {Deltaplane} localPlayer - The local player's hang glider
+     */
+  }, {
     key: "createLoginUI",
     value: function createLoginUI() {
       var _this = this;
       return new Promise(function (resolve) {
-        // Create background element
+        // Créer l'élément de fond
         var overlay = document.createElement('div');
         overlay.style.position = 'fixed';
         overlay.style.top = '0';
@@ -57302,7 +57363,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
         overlay.style.alignItems = 'center';
         overlay.style.zIndex = '1000';
 
-        // Create login form
+        // Créer le formulaire de connexion
         var loginForm = document.createElement('div');
         loginForm.style.backgroundColor = 'white';
         loginForm.style.padding = '20px';
@@ -57316,13 +57377,13 @@ var MultiplayerManager = /*#__PURE__*/function () {
         title.style.marginBottom = '20px';
         title.style.color = '#333';
 
-        // Subtitle (empty)
+        // Subtitle
         var subtitle = document.createElement('p');
         subtitle.textContent = '';
         subtitle.style.marginBottom = '20px';
         subtitle.style.color = '#666';
 
-        // Username input field
+        // Input field for username
         var nameInput = document.createElement('input');
         nameInput.type = 'text';
         nameInput.placeholder = 'Enter your username';
@@ -57333,7 +57394,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
         nameInput.style.border = '1px solid #ddd';
         nameInput.style.borderRadius = '5px';
 
-        // Play button
+        // Connect button
         var playButton = document.createElement('button');
         playButton.textContent = 'Play';
         playButton.style.backgroundColor = '#4CAF50';
@@ -57345,48 +57406,48 @@ var MultiplayerManager = /*#__PURE__*/function () {
         playButton.style.fontSize = '16px';
         playButton.style.width = '100%';
 
-        // Error message
+        // Message d'erreur
         var errorMessage = document.createElement('p');
         errorMessage.style.color = 'red';
         errorMessage.style.marginTop = '10px';
         errorMessage.style.display = 'none';
 
-        // Add elements to form
+        // Ajouter les éléments au formulaire
         loginForm.appendChild(title);
         loginForm.appendChild(subtitle);
         loginForm.appendChild(nameInput);
         loginForm.appendChild(playButton);
         loginForm.appendChild(errorMessage);
 
-        // Add form to overlay
+        // Ajouter le formulaire à l'overlay
         overlay.appendChild(loginForm);
 
-        // Add overlay to document
+        // Ajouter l'overlay au document
         document.body.appendChild(overlay);
 
-        // Focus on input field
+        // Focus sur le champ de saisie
         nameInput.focus();
 
-        // Handle play button click
+        // Gérer le clic sur le bouton de connexion
         playButton.addEventListener('click', function () {
           var name = nameInput.value.trim();
           if (name.length < 3) {
-            errorMessage.textContent = 'Username must contain at least 3 characters';
+            errorMessage.textContent = 'Username must be at least 3 characters long';
             errorMessage.style.display = 'block';
             return;
           }
 
-          // Store player name
+          // Stocker le nom du joueur
           _this.playerName = name;
 
-          // Remove overlay
+          // Supprimer l'overlay
           document.body.removeChild(overlay);
 
-          // Resolve promise
+          // Résoudre la promesse
           resolve(name);
         });
 
-        // Handle Enter key
+        // Gérer la touche Entrée
         nameInput.addEventListener('keypress', function (event) {
           if (event.key === 'Enter') {
             playButton.click();
@@ -57403,112 +57464,155 @@ var MultiplayerManager = /*#__PURE__*/function () {
     value: (function () {
       var _connect = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
         var _this2 = this;
-        var wsProtocol, wsHost, wsPort;
+        var wsProtocol, wsHost, wsPort, wsPath, wsUrl;
         return _regeneratorRuntime().wrap(function _callee$(_context) {
           while (1) switch (_context.prev = _context.next) {
             case 0:
-              _context.next = 2;
+              _context.prev = 0;
+              _context.next = 3;
               return this.createLoginUI();
-            case 2:
-              // Connect to WebSocket server
-              wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-              wsHost = window.location.hostname || 'localhost';
-              wsPort = 8001; // WebSocket server port
-              this.socket = new WebSocket("".concat(wsProtocol, "//").concat(wsHost, ":").concat(wsPort));
+            case 3:
+              // Connect to WebSocket server using configuration
+              wsProtocol = _config_js__WEBPACK_IMPORTED_MODULE_1__.config.websocket.protocol;
+              wsHost = _config_js__WEBPACK_IMPORTED_MODULE_1__.config.server.host;
+              wsPort = _config_js__WEBPACK_IMPORTED_MODULE_1__.config.server.websocketPort;
+              wsPath = _config_js__WEBPACK_IMPORTED_MODULE_1__.config.websocket.path;
+              wsUrl = "".concat(wsProtocol, "//").concat(wsHost, ":").concat(wsPort).concat(wsPath);
+              return _context.abrupt("return", new Promise(function (resolve, reject) {
+                try {
+                  _this2.socket = new WebSocket(wsUrl);
 
-              // Handle connection opening
-              this.socket.onopen = function () {
-                console.log('WebSocket connection established');
+                  // Set timeout for connection
+                  var connectionTimeout = setTimeout(function () {
+                    reject(new Error('Connection timeout'));
+                  }, 5000);
 
-                // Send player information
-                _this2.socket.send(JSON.stringify({
-                  type: 'auth',
-                  name: _this2.playerName,
-                  position: {
-                    x: _this2.localPlayer.mesh.position.x,
-                    y: _this2.localPlayer.mesh.position.y,
-                    z: _this2.localPlayer.mesh.position.z
-                  },
-                  rotation: {
-                    x: _this2.localPlayer.mesh.rotation.x,
-                    y: _this2.localPlayer.mesh.rotation.y,
-                    z: _this2.localPlayer.mesh.rotation.z
-                  }
-                }));
-              };
+                  // Handle connection opening
+                  _this2.socket.onopen = function () {
+                    console.log('Connected to server');
+                    clearTimeout(connectionTimeout);
 
-              // Gérer les messages reçus
-              this.socket.onmessage = function (event) {
-                var data = JSON.parse(event.data);
-                switch (data.type) {
-                  case 'connected':
-                    _this2.playerId = data.id;
-                    _this2.playerCount = data.playerCount;
-                    _this2.connected = true;
-                    _this2.updatePlayerCount();
-                    console.log("Connect\xE9 avec l'ID: ".concat(_this2.playerId));
-                    break;
-                  case 'playerList':
-                    _this2.playerCount = data.playerCount;
-                    _this2.updatePlayerCount();
-
-                    // Créer les deltaplane des autres joueurs
-                    var _iterator = _createForOfIteratorHelper(data.players),
-                      _step;
-                    try {
-                      for (_iterator.s(); !(_step = _iterator.n()).done;) {
-                        var player = _step.value;
-                        _this2.addRemotePlayer(player);
+                    // Send player information
+                    var authMessage = {
+                      type: 'auth',
+                      name: _this2.playerName,
+                      position: {
+                        x: _this2.localPlayer.mesh.position.x,
+                        y: _this2.localPlayer.mesh.position.y,
+                        z: _this2.localPlayer.mesh.position.z
+                      },
+                      rotation: {
+                        x: _this2.localPlayer.mesh.rotation.x,
+                        y: _this2.localPlayer.mesh.rotation.y,
+                        z: _this2.localPlayer.mesh.rotation.z
                       }
-                    } catch (err) {
-                      _iterator.e(err);
-                    } finally {
-                      _iterator.f();
+                    };
+                    _this2.socket.send(JSON.stringify(authMessage));
+                  };
+
+                  // Gérer les messages reçus
+                  _this2.socket.onmessage = function (event) {
+                    var data = JSON.parse(event.data);
+
+                    // Special handling for the first 'connected' message to resolve the promise
+                    if (data.type === 'connected' && !_this2.connected) {
+                      _this2.playerId = data.id;
+                      _this2.playerCount = data.playerCount;
+                      _this2.connected = true;
+                      _this2.updatePlayerCount();
+                      console.log('Successfully connected to server');
+                      resolve();
                     }
-                    break;
-                  case 'playerJoined':
-                    _this2.playerCount = data.playerCount;
-                    _this2.updatePlayerCount();
-                    _this2.addRemotePlayer(data);
-                    break;
-                  case 'playerLeft':
-                    _this2.playerCount = data.playerCount;
-                    _this2.updatePlayerCount();
-                    _this2.removeRemotePlayer(data.id);
-                    break;
-                  case 'playerMove':
-                    _this2.updateRemotePlayerPosition(data.id, data.position, data.rotation);
-                    _this2.playerCount = data.playerCount;
-                    _this2.updatePlayerCount();
-                    break;
-                  case 'error':
-                    console.error("Erreur serveur: ".concat(data.message));
-                    alert("Erreur: ".concat(data.message));
-                    break;
+                    switch (data.type) {
+                      case 'connected':
+                        // Already handled above for first connection
+                        if (_this2.connected) {
+                          // Updates for reconnection scenarios
+                          _this2.playerCount = data.playerCount;
+                          _this2.updatePlayerCount();
+                        }
+                        break;
+                      case 'playerList':
+                        _this2.playerCount = data.playerCount;
+                        _this2.updatePlayerCount();
+
+                        // Create hang gliders for other players
+                        var _iterator = _createForOfIteratorHelper(data.players),
+                          _step;
+                        try {
+                          for (_iterator.s(); !(_step = _iterator.n()).done;) {
+                            var player = _step.value;
+                            _this2.addRemotePlayer(player);
+                          }
+                        } catch (err) {
+                          _iterator.e(err);
+                        } finally {
+                          _iterator.f();
+                        }
+                        break;
+                      case 'playerJoined':
+                        _this2.playerCount = data.playerCount;
+                        _this2.updatePlayerCount();
+                        _this2.addRemotePlayer(data);
+                        console.log('A new player has joined');
+                        break;
+                      case 'playerLeft':
+                        _this2.playerCount = data.playerCount;
+                        _this2.updatePlayerCount();
+                        _this2.removeRemotePlayer(data.id);
+                        console.log('A player has left');
+                        break;
+                      case 'playerMove':
+                        _this2.updateRemotePlayerPosition(data.id, data.position, data.rotation);
+                        _this2.playerCount = data.playerCount;
+                        _this2.updatePlayerCount();
+                        break;
+                      case 'error':
+                        console.error("Server error: ".concat(data.message));
+                        alert("Error: ".concat(data.message));
+                        break;
+                    }
+                  };
+
+                  // Handle errors
+                  _this2.socket.onerror = function (error) {
+                    console.error('WebSocket error:', error);
+                    _this2.connected = false;
+                    clearTimeout(connectionTimeout);
+                    reject(error);
+                  };
+
+                  // Handle connection closure
+                  _this2.socket.onclose = function (event) {
+                    console.log("WebSocket connection closed. Code: ".concat(event.code, ", Reason: ").concat(event.reason));
+                    _this2.connected = false;
+
+                    // If we're still waiting for connection, reject the promise
+                    if (!_this2.connected) {
+                      clearTimeout(connectionTimeout);
+                      reject(new Error("Connection closed: ".concat(event.reason || 'Unknown reason')));
+                    }
+
+                    // Remove all remote players
+                    for (var id in _this2.remotePlayers) {
+                      _this2.removeRemotePlayer(id);
+                    }
+                  };
+                } catch (err) {
+                  console.error('Error creating WebSocket connection:', err);
+                  reject(err);
                 }
-              };
-
-              // Gérer les erreurs
-              this.socket.onerror = function (error) {
-                console.error('Erreur WebSocket:', error);
-                _this2.connected = false;
-              };
-
-              // Gérer la fermeture de la connexion
-              this.socket.onclose = function () {
-                console.log('Connexion WebSocket fermée');
-                _this2.connected = false;
-
-                // Supprimer tous les joueurs distants
-                for (var id in _this2.remotePlayers) {
-                  _this2.removeRemotePlayer(id);
-                }
-              };
-            case 10:
+              }));
+            case 11:
+              _context.prev = 11;
+              _context.t0 = _context["catch"](0);
+              console.error('Erreur de connexion:', _context.t0);
+              throw _context.t0;
+            case 15:
             case "end":
               return _context.stop();
           }
-        }, _callee, this);
+        }, _callee, this, [[0, 11]]);
       }));
       function connect() {
         return _connect.apply(this, arguments);
@@ -57516,14 +57620,22 @@ var MultiplayerManager = /*#__PURE__*/function () {
       return connect;
     }()
     /**
-     * Met à jour le compteur de joueurs (méthode simplifiée)
+     * Update player count display
      */
     )
   }, {
     key: "updatePlayerCount",
     value: function updatePlayerCount() {
-      this.localPlayer.playerCount = this.playerCount;
-      console.log("Nombre de joueurs connect\xE9s: ".concat(this.playerCount));
+      // Update player count element
+      var playerCountElement = document.getElementById('player-count');
+      if (playerCountElement) {
+        playerCountElement.textContent = "Online: ".concat(this.playerCount);
+      }
+
+      // Update local player's player count
+      if (this.localPlayer) {
+        this.localPlayer.updatePlayerCount(this.playerCount);
+      }
     }
 
     /**
@@ -57537,86 +57649,35 @@ var MultiplayerManager = /*#__PURE__*/function () {
       if (this.remotePlayers[playerData.id]) {
         return;
       }
-      console.log("Adding remote player: ".concat(playerData.name, " (").concat(playerData.id, ")"));
+      console.log('New player joined the game');
 
-      // Create a new hang glider for the remote player
-      // Use a simplified version to avoid adding terrain elements
-      var remotePlayer = {
-        mesh: new three__WEBPACK_IMPORTED_MODULE_1__.Group()
-      };
+      // Create a new Deltaplane instance for the remote player
+      var remoteDeltaplane = new _deltaplane_js__WEBPACK_IMPORTED_MODULE_0__.Deltaplane(this.scene, true);
 
-      // Create a simplified hang glider model
-      this.createSimpleDeltaplane(remotePlayer.mesh);
-
-      // Add hang glider to the scene
-      this.scene.add(remotePlayer.mesh);
+      // Create the 3D model
+      remoteDeltaplane.createModel();
 
       // Position the hang glider
-      remotePlayer.mesh.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
+      remoteDeltaplane.mesh.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
 
       // Orient the hang glider
-      remotePlayer.mesh.rotation.set(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z);
+      remoteDeltaplane.mesh.rotation.set(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z);
 
       // Add text with player name
       var nameTag = this.createPlayerNameTag(playerData.name);
-      remotePlayer.mesh.add(nameTag);
+      remoteDeltaplane.mesh.add(nameTag);
 
       // Store remote player
       this.remotePlayers[playerData.id] = {
-        deltaplane: remotePlayer,
+        deltaplane: remoteDeltaplane,
         nameTag: nameTag,
         name: playerData.name,
-        lastPosition: new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(playerData.position.x, playerData.position.y, playerData.position.z),
-        lastRotation: new three__WEBPACK_IMPORTED_MODULE_1__.Euler(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z),
-        targetPosition: new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(playerData.position.x, playerData.position.y, playerData.position.z),
-        targetRotation: new three__WEBPACK_IMPORTED_MODULE_1__.Euler(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z),
+        lastPosition: new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(playerData.position.x, playerData.position.y, playerData.position.z),
+        lastRotation: new three__WEBPACK_IMPORTED_MODULE_2__.Euler(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z),
+        targetPosition: new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(playerData.position.x, playerData.position.y, playerData.position.z),
+        targetRotation: new three__WEBPACK_IMPORTED_MODULE_2__.Euler(playerData.rotation.x, playerData.rotation.y, playerData.rotation.z),
         interpolationFactor: 0
       };
-    }
-
-    /**
-     * Creates a simplified hang glider model
-     * @param {THREE.Group} group - The group to add the model to
-     */
-  }, {
-    key: "createSimpleDeltaplane",
-    value: function createSimpleDeltaplane(group) {
-      // Create triangular sail
-      var voileGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.BufferGeometry();
-      var voileVertices = new Float32Array([0, 0, -5,
-      // rear point
-      -10, 0, 5,
-      // left corner
-      10, 0, 5 // right corner
-      ]);
-      voileGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_1__.BufferAttribute(voileVertices, 3));
-      voileGeometry.computeVertexNormals();
-      var voileMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
-        color: 0xff0000,
-        // Red for other players
-        side: three__WEBPACK_IMPORTED_MODULE_1__.DoubleSide,
-        flatShading: true,
-        roughness: 0.7,
-        metalness: 0.1
-      });
-      var voile = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(voileGeometry, voileMaterial);
-      voile.castShadow = true;
-      group.add(voile);
-
-      // Create vertical rectangular structure (mast)
-      var structureGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(0.8, 5, 0.8);
-      var structureMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
-        color: 0x888888,
-        flatShading: true,
-        metalness: 0.3,
-        roughness: 0.7
-      });
-      var structure = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(structureGeometry, structureMaterial);
-      structure.position.y = -2;
-      structure.position.z = 2.5;
-      structure.rotation.x = Math.PI / 4;
-      structure.castShadow = true;
-      group.add(structure);
     }
 
     /**
@@ -57645,18 +57706,18 @@ var MultiplayerManager = /*#__PURE__*/function () {
       context.fillText(name, canvas.width / 2, canvas.height / 2);
 
       // Create texture from canvas
-      var texture = new three__WEBPACK_IMPORTED_MODULE_1__.CanvasTexture(canvas);
+      var texture = new three__WEBPACK_IMPORTED_MODULE_2__.CanvasTexture(canvas);
 
       // Create material with texture
-      var material = new three__WEBPACK_IMPORTED_MODULE_1__.MeshBasicMaterial({
+      var material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshBasicMaterial({
         map: texture,
         transparent: true,
-        side: three__WEBPACK_IMPORTED_MODULE_1__.DoubleSide
+        side: three__WEBPACK_IMPORTED_MODULE_2__.DoubleSide
       });
 
       // Create plane to display text
-      var geometry = new three__WEBPACK_IMPORTED_MODULE_1__.PlaneGeometry(5, 1.25);
-      var mesh = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(geometry, material);
+      var geometry = new three__WEBPACK_IMPORTED_MODULE_2__.PlaneGeometry(5, 1.25);
+      var mesh = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(geometry, material);
 
       // Position text above hang glider
       mesh.position.set(0, 5, 0);
@@ -57667,19 +57728,20 @@ var MultiplayerManager = /*#__PURE__*/function () {
     }
 
     /**
-     * Supprime un joueur distant de la scène
-     * @param {string} playerId - L'ID du joueur à supprimer
+     * Removes a remote player from the scene
+     * @param {string} playerId - ID of the player to remove
      */
   }, {
     key: "removeRemotePlayer",
     value: function removeRemotePlayer(playerId) {
       if (this.remotePlayers[playerId]) {
-        console.log("Suppression du joueur distant: ".concat(this.remotePlayers[playerId].name, " (").concat(playerId, ")"));
+        console.log('Player left the game');
 
-        // Supprimer le deltaplane de la scène
-        this.scene.remove(this.remotePlayers[playerId].deltaplane.mesh);
+        // Remove hang glider from scene
+        var deltaplane = this.remotePlayers[playerId].deltaplane;
+        deltaplane.dispose();
 
-        // Supprimer le joueur de la liste
+        // Remove player from list
         delete this.remotePlayers[playerId];
       }
     }
@@ -57709,7 +57771,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
     }
 
     /**
-     * Envoie la position du joueur local au serveur
+     * Sends the local player's position to the server
      */
   }, {
     key: "sendPlayerPosition",
@@ -57717,7 +57779,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
       if (this.connected && this.socket && this.socket.readyState === WebSocket.OPEN) {
         var now = Date.now();
 
-        // Limiter la fréquence des mises à jour
+        // Limit update frequency
         if (now - this.lastUpdateTime > this.updateInterval) {
           this.lastUpdateTime = now;
           this.socket.send(JSON.stringify({
@@ -57792,7 +57854,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
     }
 
     /**
-     * Déconnecte le joueur du serveur
+     * Disconnects the player from the server
      */
   }, {
     key: "disconnect",
@@ -59578,9 +59640,6 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
 
 
 
-// Debug message to verify if this version is loaded
-console.log("NEW VERSION OF INDEX.JS: Version with low poly terrain");
-
 // Global variables
 var camera, scene, renderer;
 var controls;
@@ -59684,9 +59743,6 @@ function onKeyDown(event) {
   // If game hasn't started, ignore keys
   if (!gameStarted) return;
 
-  // Display key code for debugging
-  console.log('Key pressed:', event.code);
-
   // Reset position with R key
   if (event.code === 'KeyR') {
     resetPosition();
@@ -59702,20 +59758,20 @@ function onKeyDown(event) {
     case 'ArrowUp':
       // Temporarily disabled
       //deltaplane.setControl('pitchUp', true);
-      console.log('Climb disabled');
+
       break;
     case 'ArrowDown':
       // Temporarily disabled
       //deltaplane.setControl('pitchDown', true);
-      console.log('Descend disabled');
+
       break;
     case 'ArrowLeft':
       deltaplane.setControl('rollLeft', true); // Roll left
-      console.log('Roll left enabled');
+
       break;
     case 'ArrowRight':
       deltaplane.setControl('rollRight', true); // Roll right
-      console.log('Roll right enabled');
+
       break;
   }
 }
@@ -59732,20 +59788,18 @@ function onKeyUp(event) {
     case 'ArrowUp':
       // Temporarily disabled
       //deltaplane.setControl('pitchUp', false);
-      console.log('Climb disabled');
+
       break;
     case 'ArrowDown':
       // Temporarily disabled
       //deltaplane.setControl('pitchDown', false);
-      console.log('Descend disabled');
+
       break;
     case 'ArrowLeft':
       deltaplane.setControl('rollLeft', false);
-      console.log('Roll left disabled');
       break;
     case 'ArrowRight':
       deltaplane.setControl('rollRight', false);
-      console.log('Roll right disabled');
       break;
   }
 }
