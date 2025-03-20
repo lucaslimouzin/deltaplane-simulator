@@ -57412,7 +57412,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
 
         // Title
         var title = document.createElement('h2');
-        title.textContent = 'Hang Glider Simulator';
+        title.textContent = 'Glider Simulator';
         title.style.marginBottom = '20px';
         title.style.color = '#333';
 

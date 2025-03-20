@@ -78,7 +78,7 @@ export class MultiplayerManager {
             
             // Title
             const title = document.createElement('h2');
-            title.textContent = 'Hang Glider Simulator';
+            title.textContent = 'Glider Simulator';
             title.style.marginBottom = '20px';
             title.style.color = '#333';
             
