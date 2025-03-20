@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { Minimap } from './minimap.js';
+
+// Déclarer la variable minimap au niveau global
+let minimap;
 
 /**
  * Class representing a hang glider

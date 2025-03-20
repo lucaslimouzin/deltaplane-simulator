@@ -56432,7 +56432,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Deltaplane: () => (/* binding */ Deltaplane)
 /* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var _minimap_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./minimap.js */ "./src/minimap.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
@@ -56440,6 +56441,10 @@ function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), 
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 
+
+
+// Déclarer la variable minimap au niveau global
+var minimap;
 
 /**
  * Class representing a hang glider
@@ -56460,7 +56465,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
     // Ces propriétés ne sont nécessaires que pour le joueur local
     if (!isRemotePlayer) {
-      this.velocity = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 0);
+      this.velocity = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
       this.camera = null;
       this.currentLookAt = null;
 
@@ -56484,7 +56489,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
       // Wind parameters
       this.windEnabled = false;
-      this.windDirection = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 0);
+      this.windDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
       this.windSpeed = 0;
       this.windVariation = 0;
       this.thermalStrength = 0;
@@ -56500,15 +56505,15 @@ var Deltaplane = /*#__PURE__*/function () {
       this.maxCollisionDamage = 100;
 
       // Add quaternions for more stable rotation handling
-      this.pitchQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
-      this.yawQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
-      this.rollQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
-      this.targetQuaternion = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion();
+      this.pitchQuaternion = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion();
+      this.yawQuaternion = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion();
+      this.rollQuaternion = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion();
+      this.targetQuaternion = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion();
 
       // Rotation axes
-      this.PITCH_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(1, 0, 0);
-      this.YAW_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 1, 0);
-      this.ROLL_AXIS = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 1);
+      this.PITCH_AXIS = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(1, 0, 0);
+      this.YAW_AXIS = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+      this.ROLL_AXIS = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 1);
 
       // Variables for FPS calculation
       this.lastTime = performance.now();
@@ -56534,165 +56539,165 @@ var Deltaplane = /*#__PURE__*/function () {
       var _this = this;
       try {
         // Création d'un groupe pour contenir tous les éléments du deltaplane
-        this.mesh = new three__WEBPACK_IMPORTED_MODULE_0__.Group();
+        this.mesh = new three__WEBPACK_IMPORTED_MODULE_1__.Group();
 
         // Position initiale différente selon le type de joueur
         this.mesh.position.y = this.minAltitude;
         this.scene.add(this.mesh);
 
         // Création de la voile triangulaire
-        var voileGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.BufferGeometry();
+        var voileGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.BufferGeometry();
         var voileVertices = new Float32Array([0, 0, -10,
         // pointe avant
         -15, 0, 5,
         // coin gauche
         15, 0, 5 // coin droit
         ]);
-        voileGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_0__.BufferAttribute(voileVertices, 3));
+        voileGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_1__.BufferAttribute(voileVertices, 3));
         voileGeometry.computeVertexNormals();
-        var voileMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshStandardMaterial({
+        var voileMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
           color: 0x00ff00,
-          side: three__WEBPACK_IMPORTED_MODULE_0__.DoubleSide,
+          side: three__WEBPACK_IMPORTED_MODULE_1__.DoubleSide,
           flatShading: true,
           roughness: 0.7,
           metalness: 0.1
         });
-        this.voile = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(voileGeometry, voileMaterial);
+        this.voile = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(voileGeometry, voileMaterial);
         this.voile.castShadow = true;
         this.mesh.add(this.voile);
 
         // Création de l'armature
-        var armatureGroup = new three__WEBPACK_IMPORTED_MODULE_0__.Group();
+        var armatureGroup = new three__WEBPACK_IMPORTED_MODULE_1__.Group();
 
         // Barre horizontale pour le pilote
-        var barreGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.BoxGeometry(20, 0.3, 0.3);
-        var barreMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshStandardMaterial({
+        var barreGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(20, 0.3, 0.3);
+        var barreMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
           color: 0x333333,
           flatShading: true,
           metalness: 0.3,
           roughness: 0.7
         });
-        var barre = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(barreGeometry, barreMaterial);
+        var barre = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(barreGeometry, barreMaterial);
         barre.position.y = -3;
         barre.position.z = -2;
         barre.castShadow = true;
         armatureGroup.add(barre);
 
         // Montants verticaux
-        var montantGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.BoxGeometry(0.3, 2.5, 0.3);
+        var montantGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(0.3, 2.5, 0.3);
 
         // Montant gauche
-        var montantGauche = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(montantGeometry, barreMaterial);
+        var montantGauche = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(montantGeometry, barreMaterial);
         montantGauche.position.set(-10, -1.75, -2);
         montantGauche.castShadow = true;
         armatureGroup.add(montantGauche);
 
         // Montant droit
-        var montantDroit = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(montantGeometry, barreMaterial);
+        var montantDroit = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(montantGeometry, barreMaterial);
         montantDroit.position.set(10, -1.75, -2);
         montantDroit.castShadow = true;
         armatureGroup.add(montantDroit);
         this.mesh.add(armatureGroup);
 
         // Création du personnage (pilote)
-        var piloteGroup = new three__WEBPACK_IMPORTED_MODULE_0__.Group();
+        var piloteGroup = new three__WEBPACK_IMPORTED_MODULE_1__.Group();
 
         // Corps du pilote - plus vertical
-        var corpsGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.CylinderGeometry(1.2, 1.2, 6, 4);
-        var corpsMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshStandardMaterial({
+        var corpsGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(1.2, 1.2, 6, 4);
+        var corpsMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
           color: 0x2244aa,
           flatShading: true,
           roughness: 0.8
         });
-        var corps = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(corpsGeometry, corpsMaterial);
+        var corps = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(corpsGeometry, corpsMaterial);
         corps.position.y = -2;
         corps.rotation.x = -Math.PI * 0.1;
         corps.castShadow = true;
         piloteGroup.add(corps);
 
         // Tête du pilote
-        var teteGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.SphereGeometry(1.2, 4, 4);
-        var teteMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshStandardMaterial({
+        var teteGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.SphereGeometry(1.2, 4, 4);
+        var teteMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
           color: 0xffdbac,
           flatShading: true,
           roughness: 0.7
         });
-        var tete = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(teteGeometry, teteMaterial);
+        var tete = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(teteGeometry, teteMaterial);
         tete.position.y = 1.6;
         tete.castShadow = true;
         piloteGroup.add(tete);
 
         // Bras du pilote en U
-        var brasGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.CylinderGeometry(0.45, 0.45, 3.6, 3);
-        var brasMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshStandardMaterial({
+        var brasGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(0.45, 0.45, 3.6, 3);
+        var brasMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
           color: 0x2244aa,
           flatShading: true,
           roughness: 0.8
         });
 
         // Bras gauche - partie horizontale
-        var brasGaucheHorizontal = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(new three__WEBPACK_IMPORTED_MODULE_0__.CylinderGeometry(0.45, 0.45, 2.4, 3), brasMaterial);
+        var brasGaucheHorizontal = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(0.45, 0.45, 2.4, 3), brasMaterial);
         brasGaucheHorizontal.rotation.z = Math.PI / 2;
         brasGaucheHorizontal.position.set(-1.2, 0, 0);
         brasGaucheHorizontal.castShadow = true;
         piloteGroup.add(brasGaucheHorizontal);
 
         // Bras gauche - partie verticale
-        var brasGaucheVertical = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(brasGeometry, brasMaterial);
+        var brasGaucheVertical = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(brasGeometry, brasMaterial);
         brasGaucheVertical.position.set(-2.4, 1.8, 0);
         brasGaucheVertical.castShadow = true;
         piloteGroup.add(brasGaucheVertical);
 
         // Bras droit - partie horizontale
-        var brasDroitHorizontal = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(new three__WEBPACK_IMPORTED_MODULE_0__.CylinderGeometry(0.45, 0.45, 2.4, 3), brasMaterial);
+        var brasDroitHorizontal = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(0.45, 0.45, 2.4, 3), brasMaterial);
         brasDroitHorizontal.rotation.z = -Math.PI / 2;
         brasDroitHorizontal.position.set(1.2, 0, 0);
         brasDroitHorizontal.castShadow = true;
         piloteGroup.add(brasDroitHorizontal);
 
         // Bras droit - partie verticale
-        var brasDroitVertical = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(brasGeometry, brasMaterial);
+        var brasDroitVertical = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(brasGeometry, brasMaterial);
         brasDroitVertical.position.set(2.4, 1.8, 0);
         brasDroitVertical.castShadow = true;
         piloteGroup.add(brasDroitVertical);
 
         // Mains du pilote
-        var mainGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.SphereGeometry(0.6, 4, 4);
-        var mainMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshStandardMaterial({
+        var mainGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.SphereGeometry(0.6, 4, 4);
+        var mainMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
           color: 0xffdbac,
           flatShading: true,
           roughness: 0.7
         });
 
         // Main gauche
-        var mainGauche = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(mainGeometry, mainMaterial);
+        var mainGauche = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(mainGeometry, mainMaterial);
         mainGauche.position.set(-2.4, 3.6, 0);
         mainGauche.castShadow = true;
         piloteGroup.add(mainGauche);
 
         // Main droite
-        var mainDroite = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(mainGeometry, mainMaterial);
+        var mainDroite = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(mainGeometry, mainMaterial);
         mainDroite.position.set(2.4, 3.6, 0);
         mainDroite.castShadow = true;
         piloteGroup.add(mainDroite);
 
         // Jambes du pilote
-        var jambeGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.CylinderGeometry(0.45, 0.45, 3.6, 3);
-        var jambeMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshStandardMaterial({
+        var jambeGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(0.45, 0.45, 3.6, 3);
+        var jambeMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
           color: 0x1a1a1a,
           flatShading: true,
           roughness: 0.8
         });
 
         // Jambe gauche
-        var jambeGauche = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(jambeGeometry, jambeMaterial);
+        var jambeGauche = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(jambeGeometry, jambeMaterial);
         jambeGauche.position.set(-0.8, -6, 0);
         jambeGauche.rotation.z = 0;
         jambeGauche.castShadow = true;
         piloteGroup.add(jambeGauche);
 
         // Jambe droite
-        var jambeDroite = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(jambeGeometry, jambeMaterial);
+        var jambeDroite = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(jambeGeometry, jambeMaterial);
         jambeDroite.position.set(0.8, -6, 0);
         jambeDroite.rotation.z = 0;
         jambeDroite.castShadow = true;
@@ -56705,7 +56710,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
         // S'assurer que le pilote est visible
         piloteGroup.traverse(function (child) {
-          if (child instanceof three__WEBPACK_IMPORTED_MODULE_0__.Mesh) {
+          if (child instanceof three__WEBPACK_IMPORTED_MODULE_1__.Mesh) {
             child.castShadow = true;
             child.receiveShadow = true;
             child.visible = true;
@@ -56717,7 +56722,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
         // Ajout d'une caméra seulement pour le joueur local
         if (!this.isRemotePlayer) {
-          this.camera = new three__WEBPACK_IMPORTED_MODULE_0__.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+          this.camera = new three__WEBPACK_IMPORTED_MODULE_1__.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
           this.mesh.add(this.camera);
           this.camera.position.set(0, 2, 10);
           this.camera.lookAt(0, 0, -10);
@@ -56726,7 +56731,7 @@ var Deltaplane = /*#__PURE__*/function () {
         // Ajout de la méthode pour vérifier la collision avec la voile
         this.checkVoileCollision = function () {
           // Obtenir la position globale de la tête du pilote
-          var worldPos = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+          var worldPos = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3();
           tete.getWorldPosition(worldPos);
 
           // Convertir en coordonnées locales de la voile
@@ -56739,7 +56744,7 @@ var Deltaplane = /*#__PURE__*/function () {
             var newLocalY = -1;
 
             // Convertir en coordonnées globales
-            var newWorldPos = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(worldPos.x, worldPos.y + (newLocalY - localPos.y), worldPos.z);
+            var newWorldPos = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(worldPos.x, worldPos.y + (newLocalY - localPos.y), worldPos.z);
 
             // Mettre à jour la position du groupe du pilote
             _this.piloteGroup.position.y += newLocalY - localPos.y;
@@ -56841,7 +56846,7 @@ var Deltaplane = /*#__PURE__*/function () {
         this.mesh.rotation.z = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.z));
 
         // Additional check to prevent flipping
-        var upVector = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 1, 0);
+        var upVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
         upVector.applyEuler(this.mesh.rotation);
         if (upVector.y < 0) {
           // Correct orientation if hang glider is flipped
@@ -56853,14 +56858,14 @@ var Deltaplane = /*#__PURE__*/function () {
         this.lastYaw = this.mesh.rotation.y;
 
         // Calcul de la direction du deltaplane basée sur son orientation
-        var direction = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, -1);
+        var direction = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
         direction.applyQuaternion(this.mesh.quaternion);
 
         // Calcul de la vitesse relative à l'air (sans tenir compte du vent)
         var airVelocity = this.velocity.clone();
 
         // Vecteur de vent et effet du vent - désactivés
-        var windVector = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, 0);
+        var windVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
         var windAngleEffect = 0;
         var windLiftEffect = 0;
 
@@ -56883,7 +56888,7 @@ var Deltaplane = /*#__PURE__*/function () {
         var liftForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * (effectiveLiftCoef + windLiftEffect * delta);
 
         // Direction de la portance (perpendiculaire à la direction du vol)
-        var liftDirection = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 1, 0);
+        var liftDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
         liftDirection.applyQuaternion(this.mesh.quaternion);
 
         // Application de la portance - RÉACTIVÉE pour permettre de monter/descendre en cabrant/piquant
@@ -56915,9 +56920,9 @@ var Deltaplane = /*#__PURE__*/function () {
         var propulsionForce = 150 * Math.max(0, 1 - speedRatio);
 
         // Create a horizontal direction vector (ignoring Y component)
-        var forwardDirection = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, -1);
-        forwardDirection.applyAxisAngle(new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 1, 0), this.mesh.rotation.y);
-        var horizontalDirection = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
+        var forwardDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
+        forwardDirection.applyAxisAngle(new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0), this.mesh.rotation.y);
+        var horizontalDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
 
         // Apply propulsion only horizontally
         var propulsionVector = horizontalDirection.multiplyScalar(propulsionForce * delta);
@@ -56942,13 +56947,13 @@ var Deltaplane = /*#__PURE__*/function () {
         // Rotate velocity vector to simulate a turn
         // But only if not climbing/pitching
         if (Math.abs(turnFactor) > 0.01) {
-          var turnAxis = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 1, 0);
+          var turnAxis = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
           var turnAngle = turnFactor * delta;
           this.velocity.applyAxisAngle(turnAxis, turnAngle);
 
           // Add a slight yaw (yaw) rotation for a more natural turn
           // Use quaternion for this rotation to avoid gimbal lock issues
-          var yawCorrection = new three__WEBPACK_IMPORTED_MODULE_0__.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
+          var yawCorrection = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
           this.mesh.quaternion.multiply(yawCorrection);
 
           // Update Euler angles after correction
@@ -57029,16 +57034,16 @@ var Deltaplane = /*#__PURE__*/function () {
     key: "updateCamera",
     value: function updateCamera(mainCamera) {
       // Obtenir la direction dans laquelle le deltaplane pointe
-      var direction = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 0, -1);
+      var direction = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
       direction.applyQuaternion(this.mesh.quaternion);
 
       // Position de base derrière le deltaplane - plus éloignée et plus haute
-      var offset = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 8, 35); // Augmenté la distance et la hauteur pour une meilleure vue
+      var offset = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 8, 35); // Augmenté la distance et la hauteur pour une meilleure vue
 
       // Calculer la rotation du deltaplane en excluant le pitch (rotation X)
       // Cela permet de garder une vue stable même lors des montées/descentes
       var smoothedRotationY = this.mesh.rotation.y;
-      var rotatedOffset = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(offset.x * Math.cos(smoothedRotationY) + offset.z * Math.sin(smoothedRotationY), offset.y, -offset.x * Math.sin(smoothedRotationY) + offset.z * Math.cos(smoothedRotationY));
+      var rotatedOffset = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(offset.x * Math.cos(smoothedRotationY) + offset.z * Math.sin(smoothedRotationY), offset.y, -offset.x * Math.sin(smoothedRotationY) + offset.z * Math.cos(smoothedRotationY));
 
       // Position cible de la caméra
       var targetPosition = this.mesh.position.clone().add(rotatedOffset);
@@ -57185,7 +57190,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
           // Calculer la normale à la surface au point de collision
           // Simplification: on considère que la normale est verticale
-          this.collisionNormal = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(0, 1, 0);
+          this.collisionNormal = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
 
           // Réaction à la collision
           if (this.collisionDamage >= this.maxCollisionDamage) {
@@ -57253,7 +57258,7 @@ var Deltaplane = /*#__PURE__*/function () {
     value: function createThermals() {
       // Création de quelques thermiques aléatoires
       for (var i = 0; i < 5; i++) {
-        this.thermalPositions.push(new three__WEBPACK_IMPORTED_MODULE_0__.Vector3((Math.random() - 0.5) * 2000, 0, (Math.random() - 0.5) * 2000));
+        this.thermalPositions.push(new three__WEBPACK_IMPORTED_MODULE_1__.Vector3((Math.random() - 0.5) * 2000, 0, (Math.random() - 0.5) * 2000));
       }
     }
 
@@ -57294,6 +57299,159 @@ var Deltaplane = /*#__PURE__*/function () {
       // Clean up other resources
       this.voile = null;
       this.scene = null;
+    }
+  }]);
+}();
+
+/***/ }),
+
+/***/ "./src/minimap.js":
+/*!************************!*\
+  !*** ./src/minimap.js ***!
+  \************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Minimap: () => (/* binding */ Minimap)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
+function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
+function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+
+var Minimap = /*#__PURE__*/function () {
+  function Minimap(scene, camera, config) {
+    _classCallCheck(this, Minimap);
+    this.container = document.getElementById('minimap-container');
+    if (!this.container) {
+      console.error('Minimap container not found!');
+      return;
+    }
+
+    // Taille de la minimap
+    this.size = 200;
+    this.scale = 0.02; // 1 unité = 50 unités monde
+
+    // Création de la caméra orthographique
+    var aspect = 1; // La minimap est carrée
+    var viewSize = 1000; // Taille de la vue en unités monde
+    this.camera = new three__WEBPACK_IMPORTED_MODULE_0__.OrthographicCamera(-viewSize * aspect / 2, viewSize * aspect / 2, viewSize / 2, -viewSize / 2, 1, 1000);
+    this.camera.position.set(0, 500, 0);
+    this.camera.lookAt(0, 0, 0);
+    this.camera.up.set(0, 0, -1); // Orienter la caméra pour que le nord soit en haut
+
+    // Création du renderer
+    this.renderer = new three__WEBPACK_IMPORTED_MODULE_0__.WebGLRenderer({
+      antialias: true,
+      alpha: true
+    });
+    this.renderer.setSize(this.size, this.size);
+    this.renderer.setClearColor(0x000000, 0.0);
+    this.container.appendChild(this.renderer.domElement);
+
+    // Création de la scène
+    this.scene = new three__WEBPACK_IMPORTED_MODULE_0__.Scene();
+
+    // Création du marqueur du joueur (point blanc)
+    var playerGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.CircleGeometry(5, 32);
+    var playerMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshBasicMaterial({
+      color: 0xFFFFFF,
+      side: three__WEBPACK_IMPORTED_MODULE_0__.DoubleSide
+    });
+    this.playerMarker = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(playerGeometry, playerMaterial);
+    this.playerMarker.rotation.x = -Math.PI / 2; // Orienter le cercle horizontalement
+    this.scene.add(this.playerMarker);
+
+    // Map pour stocker les marqueurs d'îles
+    this.islandMarkers = new Map();
+
+    // Ajouter une grille de référence
+    var gridHelper = new three__WEBPACK_IMPORTED_MODULE_0__.GridHelper(1000, 10, 0x444444, 0x222222);
+    gridHelper.rotation.x = Math.PI / 2;
+    this.scene.add(gridHelper);
+  }
+  return _createClass(Minimap, [{
+    key: "addIsland",
+    value: function addIsland(island) {
+      var color = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0x00FF00;
+      // Création du marqueur d'île (petit triangle)
+      var geometry = new three__WEBPACK_IMPORTED_MODULE_0__.BufferGeometry();
+      var vertices = new Float32Array([0, 0, 8,
+      // pointe du triangle
+      -4, 0, -4,
+      // coin gauche
+      4, 0, -4 // coin droit
+      ]);
+      geometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_0__.BufferAttribute(vertices, 3));
+      var material = new three__WEBPACK_IMPORTED_MODULE_0__.MeshBasicMaterial({
+        color: color,
+        side: three__WEBPACK_IMPORTED_MODULE_0__.DoubleSide
+      });
+      var marker = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(geometry, material);
+
+      // Positionner le marqueur
+      marker.position.set(island.x * this.scale, 0, island.z * this.scale);
+      this.scene.add(marker);
+
+      // Stocker le marqueur
+      this.islandMarkers.set(island, marker);
+    }
+  }, {
+    key: "removeIsland",
+    value: function removeIsland(island) {
+      var marker = this.islandMarkers.get(island);
+      if (marker) {
+        this.scene.remove(marker);
+        marker.geometry.dispose();
+        marker.material.dispose();
+        this.islandMarkers["delete"](island);
+      }
+    }
+  }, {
+    key: "updatePlayerPosition",
+    value: function updatePlayerPosition(position, rotation) {
+      // Mettre à l'échelle la position du joueur
+      var scaledX = position.x * this.scale;
+      var scaledZ = position.z * this.scale;
+      this.playerMarker.position.set(scaledX, 0, scaledZ);
+      this.playerMarker.rotation.y = rotation.y;
+
+      // Mettre à jour la position de la caméra pour suivre le joueur
+      this.camera.position.set(scaledX, 500, scaledZ);
+      this.camera.lookAt(scaledX, 0, scaledZ);
+    }
+  }, {
+    key: "update",
+    value: function update() {
+      if (this.renderer && this.scene && this.camera) {
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
+  }, {
+    key: "dispose",
+    value: function dispose() {
+      var _this = this;
+      // Nettoyer les ressources
+      this.islandMarkers.forEach(function (marker) {
+        _this.scene.remove(marker);
+        marker.geometry.dispose();
+        marker.material.dispose();
+      });
+      this.islandMarkers.clear();
+      if (this.playerMarker) {
+        this.scene.remove(this.playerMarker);
+        this.playerMarker.geometry.dispose();
+        this.playerMarker.material.dispose();
+      }
+      if (this.renderer) {
+        this.renderer.dispose();
+        this.container.removeChild(this.renderer.domElement);
+      }
     }
   }]);
 }();
