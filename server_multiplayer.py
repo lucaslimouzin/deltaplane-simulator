@@ -3,7 +3,7 @@ import json
 from aiohttp import web
 
 # Configuration
-PORT = int(os.environ.get('PORT', 10000))
+PORT = int(os.environ.get('PORT', 8000))  # Default to 8000 for local development
 IS_PRODUCTION = os.environ.get('NODE_ENV') == 'production'
 
 # Player storage
