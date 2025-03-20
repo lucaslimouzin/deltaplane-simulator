@@ -45,7 +45,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 // Export the appropriate configuration based on the environment
-var config = IS_PRODUCTION ? _config_prod_js__WEBPACK_IMPORTED_MODULE_1__.config : _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
+var config = window.IS_PRODUCTION ? _config_prod_js__WEBPACK_IMPORTED_MODULE_1__.config : _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
 
 // For debugging
 //console.log('Active configuration:', config);
@@ -67,9 +67,9 @@ var _window;
 // Configuration for production environment (Render.com)
 var config = {
   server: {
-    port: DEFAULT_PORT,
-    websocketPort: DEFAULT_PORT,
-    host: IS_PRODUCTION ? DEFAULT_HOST : 'localhost'
+    port: window.DEFAULT_PORT || '8000',
+    websocketPort: window.DEFAULT_PORT || '8000',
+    host: window.IS_PRODUCTION ? window.DEFAULT_HOST || '0.0.0.0' : 'localhost'
   },
   websocket: {
     protocol: ((_window = window) === null || _window === void 0 || (_window = _window.location) === null || _window === void 0 ? void 0 : _window.protocol) === 'https:' ? 'wss:' : 'ws:',

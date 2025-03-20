@@ -30,9 +30,9 @@ module.exports = {
   },
   plugins: [
     new webpack.DefinePlugin({
-      'IS_PRODUCTION': JSON.stringify(isProduction),
-      'DEFAULT_PORT': JSON.stringify('8000'),
-      'DEFAULT_HOST': JSON.stringify('0.0.0.0')
+      'window.IS_PRODUCTION': JSON.stringify(isProduction),
+      'window.DEFAULT_PORT': JSON.stringify('8000'),
+      'window.DEFAULT_HOST': JSON.stringify('0.0.0.0')
     })
   ]
 }; 
