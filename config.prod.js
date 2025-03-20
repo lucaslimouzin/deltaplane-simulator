@@ -1,12 +1,14 @@
-// Configuration for production environment (Render.com)
+// config.prod.js
+const DEFAULT_PORT = process.env.PORT || 8000;
+
 export const config = {
     server: {
-        port: window.DEFAULT_PORT || '8000',
-        websocketPort: window.DEFAULT_PORT || '8000',
-        host: window.IS_PRODUCTION ? (window.DEFAULT_HOST || '0.0.0.0') : 'localhost'
+        port: DEFAULT_PORT,
+        websocketPort: DEFAULT_PORT,
+        host: process.env.HOST || '0.0.0.0'
     },
     websocket: {
         protocol: window?.location?.protocol === 'https:' ? 'wss:' : 'ws:',
-        path: ''
+        path: '/ws'
     }
-}; 
+};

@@ -64,16 +64,17 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   config: () => (/* binding */ config)
 /* harmony export */ });
 var _window;
-// Configuration for production environment (Render.com)
+// config.prod.js
+var DEFAULT_PORT = process.env.PORT || 8000;
 var config = {
   server: {
-    port: window.DEFAULT_PORT || '8000',
-    websocketPort: window.DEFAULT_PORT || '8000',
-    host: window.IS_PRODUCTION ? window.DEFAULT_HOST || '0.0.0.0' : 'localhost'
+    port: DEFAULT_PORT,
+    websocketPort: DEFAULT_PORT,
+    host: process.env.HOST || '0.0.0.0'
   },
   websocket: {
     protocol: ((_window = window) === null || _window === void 0 || (_window = _window.location) === null || _window === void 0 ? void 0 : _window.protocol) === 'https:' ? 'wss:' : 'ws:',
-    path: ''
+    path: '/ws'
   }
 };
 
