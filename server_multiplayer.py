@@ -153,27 +153,29 @@ class StaticHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory="public", **kwargs)
 
 def run_http_server():
-    server = HTTPServer(('', PORT), StaticHandler)
-    print(f"=== Serveur HTTP ===")
+    server = HTTPServer(('0.0.0.0', PORT), StaticHandler)
+    print(f"=== HTTP Server ===")
+    print(f"Host: 0.0.0.0")
     print(f"Port: {PORT}")
-    print(f"Statut: En ligne")
+    print(f"Status: Online")
     server.serve_forever()
 
 async def main():
-    # Démarrer le serveur WebSocket
-    async with websockets.serve(handle_websocket, "localhost", WEBSOCKET_PORT):
-        print(f"=== Serveur WebSocket ===")
+    # Start WebSocket server
+    async with websockets.serve(handle_websocket, "0.0.0.0", WEBSOCKET_PORT):
+        print(f"=== WebSocket Server ===")
+        print(f"Host: 0.0.0.0")
         print(f"Port: {WEBSOCKET_PORT}")
-        print(f"Statut: En ligne")
+        print(f"Status: Online")
         await asyncio.Future()  # run forever
 
 if __name__ == '__main__':
-    # Démarrer le serveur HTTP dans un thread séparé si en développement
+    # Start HTTP server in a separate thread if in development
     if IS_DEVELOPMENT:
         import threading
         http_thread = threading.Thread(target=run_http_server)
         http_thread.daemon = True
         http_thread.start()
-    
-    # Démarrer le serveur WebSocket
-    asyncio.run(main())
+    else:
+        # In production, start HTTP server in the main thread
+        run_http_server()
