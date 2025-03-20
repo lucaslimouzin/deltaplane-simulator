@@ -172,10 +172,11 @@ export class MultiplayerManager {
             
             // Connect to WebSocket server using configuration
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsHost = window.location.host; // inclut le domaine sans numéro de port explicite en production
+            const wsHost = window.location.host;
             const wsPath = '/ws';
             
             const wsUrl = `${wsProtocol}//${wsHost}${wsPath}`;
+            console.log('Connecting to WebSocket server at:', wsUrl);
             
             return new Promise((resolve, reject) => {
                 try {
@@ -183,7 +184,10 @@ export class MultiplayerManager {
                     
                     // Set timeout for connection
                     const connectionTimeout = setTimeout(() => {
-                        reject(new Error('Connection timeout'));
+                        if (this.socket && this.socket.readyState !== WebSocket.OPEN) {
+                            this.socket.close();
+                            reject(new Error('Connection timeout'));
+                        }
                     }, 5000);
                     
                     // Handle connection opening
@@ -206,71 +210,16 @@ export class MultiplayerManager {
                                 z: this.localPlayer.mesh.rotation.z
                             }
                         };
-                        this.socket.send(JSON.stringify(authMessage));
-                    };
-                    
-                    // Gérer les messages reçus
-                    this.socket.onmessage = (event) => {
-                        const data = JSON.parse(event.data);
                         
-                        // Special handling for the first 'connected' message to resolve the promise
-                        if (data.type === 'connected' && !this.connected) {
-                            this.playerId = data.id;
-                            this.playerCount = data.playerCount;
-                            this.connected = true;
-                            this.updatePlayerCount();
-                            console.log('Successfully connected to server');
-                            resolve();
-                        }
-                        
-                        switch (data.type) {
-                            case 'connected':
-                                // Already handled above for first connection
-                                if (this.connected) {
-                                    // Updates for reconnection scenarios
-                                    this.playerCount = data.playerCount;
-                                    this.updatePlayerCount();
-                                }
-                                break;
-                            
-                            case 'playerList':
-                                this.playerCount = data.playerCount;
-                                this.updatePlayerCount();
-                                
-                                // Create hang gliders for other players
-                                for (const player of data.players) {
-                                    this.addRemotePlayer(player);
-                                }
-                                break;
-                            
-                            case 'playerJoined':
-                                this.playerCount = data.playerCount;
-                                this.updatePlayerCount();
-                                this.addRemotePlayer(data);
-                                console.log('A new player has joined');
-                                break;
-                            
-                            case 'playerLeft':
-                                this.playerCount = data.playerCount;
-                                this.updatePlayerCount();
-                                this.removeRemotePlayer(data.id);
-                                console.log('A player has left');
-                                break;
-                            
-                            case 'playerMove':
-                                this.updateRemotePlayerPosition(data.id, data.position, data.rotation);
-                                this.playerCount = data.playerCount;
-                                this.updatePlayerCount();
-                                break;
-                            
-                            case 'error':
-                                console.error(`Server error: ${data.message}`);
-                                alert(`Error: ${data.message}`);
-                                break;
+                        try {
+                            this.socket.send(JSON.stringify(authMessage));
+                        } catch (error) {
+                            console.error('Error sending auth message:', error);
+                            reject(error);
                         }
                     };
                     
-                    // Handle errors
+                    // Handle connection errors
                     this.socket.onerror = (error) => {
                         console.error('WebSocket error:', error);
                         this.connected = false;
@@ -282,18 +231,40 @@ export class MultiplayerManager {
                     this.socket.onclose = (event) => {
                         console.log(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
                         this.connected = false;
+                        clearTimeout(connectionTimeout);
                         
                         // If we're still waiting for connection, reject the promise
                         if (!this.connected) {
-                            clearTimeout(connectionTimeout);
-                            reject(new Error(`Connection closed: ${event.reason || 'Unknown reason'}`));
+                            reject(new Error(`Connection closed: ${event.reason || 'Connection refused'}`));
                         }
                         
                         // Remove all remote players
                         for (const id in this.remotePlayers) {
                             this.removeRemotePlayer(id);
                         }
-                        
+                    };
+                    
+                    // Handle incoming messages
+                    this.socket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            
+                            // Special handling for the first 'connected' message
+                            if (data.type === 'connected' && !this.connected) {
+                                this.playerId = data.id;
+                                this.playerCount = data.playerCount;
+                                this.connected = true;
+                                this.updatePlayerCount();
+                                console.log('Successfully connected to server');
+                                resolve();
+                                return;
+                            }
+                            
+                            // Handle other message types
+                            this.handleMessage(data);
+                        } catch (error) {
+                            console.error('Error handling message:', error);
+                        }
                     };
                 } catch (err) {
                     console.error('Error creating WebSocket connection:', err);
@@ -301,8 +272,59 @@ export class MultiplayerManager {
                 }
             });
         } catch (err) {
-            console.error('Erreur de connexion:', err);
+            console.error('Connection error:', err);
             throw err;
+        }
+    }
+    
+    // Separate method to handle different message types
+    handleMessage(data) {
+        switch (data.type) {
+            case 'connected':
+                // Updates for reconnection scenarios
+                if (this.connected) {
+                    this.playerCount = data.playerCount;
+                    this.updatePlayerCount();
+                }
+                break;
+            
+            case 'playerList':
+                this.playerCount = data.playerCount;
+                this.updatePlayerCount();
+                
+                // Create hang gliders for other players
+                for (const player of data.players) {
+                    this.addRemotePlayer(player);
+                }
+                break;
+            
+            case 'playerJoined':
+                this.playerCount = data.playerCount;
+                this.updatePlayerCount();
+                this.addRemotePlayer(data);
+                console.log('A new player has joined');
+                break;
+            
+            case 'playerLeft':
+                this.playerCount = data.playerCount;
+                this.updatePlayerCount();
+                this.removeRemotePlayer(data.id);
+                console.log('A player has left');
+                break;
+            
+            case 'playerMove':
+                this.updateRemotePlayerPosition(data.id, data.position, data.rotation);
+                this.playerCount = data.playerCount;
+                this.updatePlayerCount();
+                break;
+            
+            case 'error':
+                console.error(`Server error: ${data.message}`);
+                alert(`Error: ${data.message}`);
+                break;
+            
+            default:
+                console.warn('Unknown message type:', data.type);
         }
     }
     

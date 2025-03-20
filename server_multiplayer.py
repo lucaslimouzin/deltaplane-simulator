@@ -147,7 +147,66 @@ async def websocket_handler(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     
-    await handle_websocket(ws, None)
+    if not ws.closed:
+        global player_count
+        player_id = None
+        player_name = None
+        
+        try:
+            # Wait for authentication message
+            auth_message = await ws.receive_json()
+            
+            if player_count >= MAX_PLAYERS:
+                await ws.send_json({"error": "Maximum number of players reached"})
+                return ws
+            
+            # Register new player
+            player_id = auth_message.get("id", str(id(ws)))
+            player_name = auth_message.get("name", f"Player_{player_id}")
+            
+            # Store player connection
+            connected_players[player_id] = {
+                "websocket": ws,
+                "name": player_name,
+                "position": auth_message.get("position", {"x": 0, "y": 100, "z": 0}),
+                "rotation": auth_message.get("rotation", {"x": 0, "y": 0, "z": 0})
+            }
+            
+            player_count += 1
+            
+            # Inform player they are connected
+            await ws.send_json({
+                "type": "connected",
+                "id": player_id,
+                "name": player_name,
+                "playerCount": player_count
+            })
+            
+            # Broadcast new player joined
+            await broadcast_player_joined(player_id)
+            
+            # Send existing players list
+            await send_player_list(ws)
+            
+            # Main loop for position updates
+            async for msg in ws:
+                if msg.type == web.WSMsgType.TEXT:
+                    data = json.loads(msg.data)
+                    if data.get("type") == "position":
+                        connected_players[player_id]["position"] = data["position"]
+                        connected_players[player_id]["rotation"] = data["rotation"]
+                        await broadcast_position_update(player_id, data["position"], data["rotation"])
+                elif msg.type == web.WSMsgType.ERROR:
+                    print(f'WebSocket connection closed with exception {ws.exception()}')
+        
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            if player_id and player_id in connected_players:
+                del connected_players[player_id]
+                player_count -= 1
+                await broadcast_player_left(player_id, player_name)
+    
     return ws
 
 # Create and configure the application
