@@ -878,4 +878,31 @@ export class Deltaplane {
     updatePlayerCount(count) {
         this.playerCount = count;
     }
+
+    /**
+     * Removes the deltaplane from the scene and cleans up resources
+     */
+    dispose() {
+        if (this.mesh) {
+            // Remove all children (including nameTag)
+            while (this.mesh.children.length > 0) {
+                const child = this.mesh.children[0];
+                this.mesh.remove(child);
+                if (child.material) {
+                    child.material.dispose();
+                }
+                if (child.geometry) {
+                    child.geometry.dispose();
+                }
+            }
+            
+            // Remove from scene
+            this.scene.remove(this.mesh);
+            this.mesh = null;
+        }
+        
+        // Clean up other resources
+        this.voile = null;
+        this.scene = null;
+    }
 } 

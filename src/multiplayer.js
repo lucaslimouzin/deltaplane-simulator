@@ -354,13 +354,10 @@ export class MultiplayerManager {
             return;
         }
         
-        console.log('New player joined the game');
+        console.log('New player joined the game:', playerData.name);
         
         // Create a new Deltaplane instance for the remote player
         const remoteDeltaplane = new Deltaplane(this.scene, true);
-        
-        // Create the 3D model
-        remoteDeltaplane.createModel();
         
         // Position the hang glider
         remoteDeltaplane.mesh.position.set(
@@ -460,12 +457,12 @@ export class MultiplayerManager {
      * @param {string} playerId - ID of the player to remove
      */
     removeRemotePlayer(playerId) {
-        if (this.remotePlayers[playerId]) {
-            console.log('Player left the game');
+        const remotePlayer = this.remotePlayers[playerId];
+        if (remotePlayer) {
+            console.log('Player left the game:', remotePlayer.name);
             
             // Remove hang glider from scene
-            const deltaplane = this.remotePlayers[playerId].deltaplane;
-            deltaplane.dispose();
+            remotePlayer.deltaplane.dispose();
             
             // Remove player from list
             delete this.remotePlayers[playerId];
@@ -481,7 +478,7 @@ export class MultiplayerManager {
     updateRemotePlayerPosition(playerId, position, rotation) {
         const remotePlayer = this.remotePlayers[playerId];
         
-        if (remotePlayer) {
+        if (remotePlayer && remotePlayer.deltaplane && remotePlayer.deltaplane.mesh) {
             // Store last known position and rotation
             remotePlayer.lastPosition.copy(remotePlayer.deltaplane.mesh.position);
             remotePlayer.lastRotation.copy(remotePlayer.deltaplane.mesh.rotation);
@@ -490,8 +487,9 @@ export class MultiplayerManager {
             remotePlayer.targetPosition.set(position.x, position.y, position.z);
             remotePlayer.targetRotation.set(rotation.x, rotation.y, rotation.z);
             
-            // Reset interpolation factor
-            remotePlayer.interpolationFactor = 0;
+            // Update position and rotation immediately for now
+            remotePlayer.deltaplane.mesh.position.copy(remotePlayer.targetPosition);
+            remotePlayer.deltaplane.mesh.rotation.copy(remotePlayer.targetRotation);
         }
     }
     

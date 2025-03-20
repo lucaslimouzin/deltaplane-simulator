@@ -57292,6 +57292,35 @@ var Deltaplane = /*#__PURE__*/function () {
     value: function updatePlayerCount(count) {
       this.playerCount = count;
     }
+
+    /**
+     * Removes the deltaplane from the scene and cleans up resources
+     */
+  }, {
+    key: "dispose",
+    value: function dispose() {
+      if (this.mesh) {
+        // Remove all children (including nameTag)
+        while (this.mesh.children.length > 0) {
+          var child = this.mesh.children[0];
+          this.mesh.remove(child);
+          if (child.material) {
+            child.material.dispose();
+          }
+          if (child.geometry) {
+            child.geometry.dispose();
+          }
+        }
+
+        // Remove from scene
+        this.scene.remove(this.mesh);
+        this.mesh = null;
+      }
+
+      // Clean up other resources
+      this.voile = null;
+      this.scene = null;
+    }
   }]);
 }();
 
@@ -57707,13 +57736,10 @@ var MultiplayerManager = /*#__PURE__*/function () {
       if (this.remotePlayers[playerData.id]) {
         return;
       }
-      console.log('New player joined the game');
+      console.log('New player joined the game:', playerData.name);
 
       // Create a new Deltaplane instance for the remote player
       var remoteDeltaplane = new _deltaplane_js__WEBPACK_IMPORTED_MODULE_0__.Deltaplane(this.scene, true);
-
-      // Create the 3D model
-      remoteDeltaplane.createModel();
 
       // Position the hang glider
       remoteDeltaplane.mesh.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
@@ -57792,12 +57818,12 @@ var MultiplayerManager = /*#__PURE__*/function () {
   }, {
     key: "removeRemotePlayer",
     value: function removeRemotePlayer(playerId) {
-      if (this.remotePlayers[playerId]) {
-        console.log('Player left the game');
+      var remotePlayer = this.remotePlayers[playerId];
+      if (remotePlayer) {
+        console.log('Player left the game:', remotePlayer.name);
 
         // Remove hang glider from scene
-        var deltaplane = this.remotePlayers[playerId].deltaplane;
-        deltaplane.dispose();
+        remotePlayer.deltaplane.dispose();
 
         // Remove player from list
         delete this.remotePlayers[playerId];
@@ -57814,7 +57840,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
     key: "updateRemotePlayerPosition",
     value: function updateRemotePlayerPosition(playerId, position, rotation) {
       var remotePlayer = this.remotePlayers[playerId];
-      if (remotePlayer) {
+      if (remotePlayer && remotePlayer.deltaplane && remotePlayer.deltaplane.mesh) {
         // Store last known position and rotation
         remotePlayer.lastPosition.copy(remotePlayer.deltaplane.mesh.position);
         remotePlayer.lastRotation.copy(remotePlayer.deltaplane.mesh.rotation);
@@ -57823,8 +57849,9 @@ var MultiplayerManager = /*#__PURE__*/function () {
         remotePlayer.targetPosition.set(position.x, position.y, position.z);
         remotePlayer.targetRotation.set(rotation.x, rotation.y, rotation.z);
 
-        // Reset interpolation factor
-        remotePlayer.interpolationFactor = 0;
+        // Update position and rotation immediately for now
+        remotePlayer.deltaplane.mesh.position.copy(remotePlayer.targetPosition);
+        remotePlayer.deltaplane.mesh.rotation.copy(remotePlayer.targetRotation);
       }
     }
 
