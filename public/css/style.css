@@ -77,10 +77,8 @@ input[type="password"] {
 
 /* Styles spécifiques pour le mode portrait */
 @media (orientation: portrait) {
-    #info-panel {
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
+    #debug {
+        top: 20% !important;
     }
 }
 
