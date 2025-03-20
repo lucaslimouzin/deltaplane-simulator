@@ -171,12 +171,11 @@ export class MultiplayerManager {
             await this.createLoginUI();
             
             // Connect to WebSocket server using configuration
-            const wsProtocol = config.websocket.protocol;
-            const wsHost = config.server.host;
-            const wsPort = config.server.websocketPort;
-            const wsPath = config.websocket.path;
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsHost = window.location.host; // inclut le domaine sans numéro de port explicite en production
+            const wsPath = '/ws';
             
-            const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}${wsPath}`;
+            const wsUrl = `${wsProtocol}//${wsHost}${wsPath}`;
             
             return new Promise((resolve, reject) => {
                 try {

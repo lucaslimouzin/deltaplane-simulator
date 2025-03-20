@@ -57500,7 +57500,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
     value: (function () {
       var _connect = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
         var _this2 = this;
-        var wsProtocol, wsHost, wsPort, wsPath, wsUrl;
+        var wsProtocol, wsHost, wsPath, wsUrl;
         return _regeneratorRuntime().wrap(function _callee$(_context) {
           while (1) switch (_context.prev = _context.next) {
             case 0:
@@ -57509,11 +57509,10 @@ var MultiplayerManager = /*#__PURE__*/function () {
               return this.createLoginUI();
             case 3:
               // Connect to WebSocket server using configuration
-              wsProtocol = _config_js__WEBPACK_IMPORTED_MODULE_1__.config.websocket.protocol;
-              wsHost = _config_js__WEBPACK_IMPORTED_MODULE_1__.config.server.host;
-              wsPort = _config_js__WEBPACK_IMPORTED_MODULE_1__.config.server.websocketPort;
-              wsPath = _config_js__WEBPACK_IMPORTED_MODULE_1__.config.websocket.path;
-              wsUrl = "".concat(wsProtocol, "//").concat(wsHost, ":").concat(wsPort).concat(wsPath);
+              wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+              wsHost = window.location.host; // inclut le domaine sans numéro de port explicite en production
+              wsPath = '/ws';
+              wsUrl = "".concat(wsProtocol, "//").concat(wsHost).concat(wsPath);
               return _context.abrupt("return", new Promise(function (resolve, reject) {
                 try {
                   _this2.socket = new WebSocket(wsUrl);
@@ -57639,16 +57638,16 @@ var MultiplayerManager = /*#__PURE__*/function () {
                   reject(err);
                 }
               }));
-            case 11:
-              _context.prev = 11;
+            case 10:
+              _context.prev = 10;
               _context.t0 = _context["catch"](0);
               console.error('Erreur de connexion:', _context.t0);
               throw _context.t0;
-            case 15:
+            case 14:
             case "end":
               return _context.stop();
           }
-        }, _callee, this, [[0, 11]]);
+        }, _callee, this, [[0, 10]]);
       }));
       function connect() {
         return _connect.apply(this, arguments);
