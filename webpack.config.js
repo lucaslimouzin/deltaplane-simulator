@@ -30,7 +30,10 @@ module.exports = {
   },
   plugins: [
     new webpack.DefinePlugin({
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+      'process.env.PORT': JSON.stringify(process.env.PORT || '8000'),
+      'process.env.HOST': JSON.stringify(process.env.HOST || '0.0.0.0'),
+      'process.env.IS_PRODUCTION': JSON.stringify(isProduction)
     })
   ]
 }; 

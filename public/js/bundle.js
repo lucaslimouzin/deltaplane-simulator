@@ -44,11 +44,11 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-// Determine if we're running on Render.com
-var isRender = process.env.RENDER === 'true';
+// Determine if we're in production based on webpack-injected variable
+var isProduction = process.env.IS_PRODUCTION || false;
 
 // Export the appropriate configuration
-var config = isRender ? _config_prod_js__WEBPACK_IMPORTED_MODULE_1__.config : _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
+var config = isProduction ? _config_prod_js__WEBPACK_IMPORTED_MODULE_1__.config : _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
 
 // For debugging
 //console.log('Active configuration:', config);
@@ -67,16 +67,18 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   config: () => (/* binding */ config)
 /* harmony export */ });
 var _window;
-// Configuration pour l'environnement de production (Render.com)
+// Configuration for production environment (Render.com)
+var isProduction = process.env.IS_PRODUCTION || false;
+var defaultPort = '8000';
 var config = {
   server: {
-    port: process.env.PORT || 8000,
-    websocketPort: process.env.PORT || 8000,
-    host: process.env.HOST || '0.0.0.0'
+    port: defaultPort,
+    websocketPort: defaultPort,
+    host: isProduction ? '0.0.0.0' : 'localhost'
   },
   websocket: {
     protocol: ((_window = window) === null || _window === void 0 || (_window = _window.location) === null || _window === void 0 ? void 0 : _window.protocol) === 'https:' ? 'wss:' : 'ws:',
-    path: '/ws'
+    path: ''
   }
 };
 
