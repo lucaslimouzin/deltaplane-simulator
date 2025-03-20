@@ -170,8 +170,12 @@ export class MultiplayerManager {
             // Display connection interface and wait for player to enter username
             await this.createLoginUI();
             
-            // Get WebSocket URL from configuration or build it
-            const wsUrl = config.wsUrl || `${config.protocol}//${config.host}:${config.websocketPort}/ws`;
+            // Connect to WebSocket server using configuration
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsHost = window.location.host;
+            const wsPath = '/ws';
+            
+            const wsUrl = `${wsProtocol}//${wsHost}${wsPath}`;
             console.log('Connecting to WebSocket server at:', wsUrl);
             
             return new Promise((resolve, reject) => {
