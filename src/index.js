@@ -3,13 +3,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { initScene, getTerrainHeightAtPosition } from './terrain.js';
 import { Deltaplane } from './deltaplane.js';
 import { MultiplayerManager } from './multiplayer.js';
-
-
+import { TouchControls } from './touchControls.js';
 
 // Global variables
 let camera, scene, renderer;
 let controls;
 let deltaplane;
+let touchControls;
 let clock = new THREE.Clock();
 let devMode = false; // Development mode disabled
 let multiplayerManager; // Multiplayer manager
@@ -58,9 +58,14 @@ function init() {
         // Configure hang glider to use getTerrainHeightAtPosition
         deltaplane.getTerrainHeightAtPosition = getTerrainHeightAtPosition;
 
-        // Keyboard input handling
-        window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('keyup', onKeyUp);
+        // Initialize touch controls if on mobile device
+        if (TouchControls.isMobileDevice()) {
+            touchControls = new TouchControls(deltaplane);
+        } else {
+            // Keyboard input handling for desktop
+            window.addEventListener('keydown', onKeyDown);
+            window.addEventListener('keyup', onKeyUp);
+        }
         
         // Initial hang glider position
         deltaplane.mesh.position.set(0, 100, 0);
@@ -70,9 +75,18 @@ function init() {
         
         // Start game with multiplayer login
         startGame();
+
+        // Add resize handler
+        window.addEventListener('resize', onWindowResize, false);
     } catch (error) {
         console.error('Error during initialization:', error);
     }
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function resetPosition() {
