@@ -30,9 +30,7 @@ module.exports = {
   },
   plugins: [
     new webpack.DefinePlugin({
-      'window.IS_PRODUCTION': JSON.stringify(isProduction),
-      'window.DEFAULT_PORT': JSON.stringify('10000'),
-      'window.DEFAULT_HOST': JSON.stringify('deltaplane-simulator.onrender.com')
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
     })
   ]
 }; 

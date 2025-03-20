@@ -2,8 +2,12 @@
 import { config as devConfig } from './config.dev.js';
 import { config as prodConfig } from './config.prod.js';
 
+// Check if we're on Render.com by looking at the hostname
+const isProduction = window.location.hostname.includes('onrender.com');
+
 // Export the appropriate configuration based on the environment
-export const config = window.IS_PRODUCTION ? prodConfig : devConfig;
+export const config = isProduction ? prodConfig : devConfig;
 
 // For debugging
-//console.log('Active configuration:', config); 
+console.log('Environment:', isProduction ? 'production' : 'development');
+console.log('Active configuration:', config); 

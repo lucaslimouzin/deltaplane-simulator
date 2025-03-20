@@ -44,11 +44,15 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+// Check if we're on Render.com by looking at the hostname
+var isProduction = window.location.hostname.includes('onrender.com');
+
 // Export the appropriate configuration based on the environment
-var config = window.IS_PRODUCTION ? _config_prod_js__WEBPACK_IMPORTED_MODULE_1__.config : _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
+var config = isProduction ? _config_prod_js__WEBPACK_IMPORTED_MODULE_1__.config : _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
 
 // For debugging
-//console.log('Active configuration:', config);
+console.log('Environment:', isProduction ? 'production' : 'development');
+console.log('Active configuration:', config);
 
 /***/ }),
 
@@ -68,9 +72,9 @@ __webpack_require__.r(__webpack_exports__);
 // Configuration for production environment (Render.com)
 var config = {
   server: {
-    port: window.location.port || '10000',
-    websocketPort: window.location.port || '10000',
-    host: window.location.hostname || 'deltaplane-simulator.onrender.com'
+    port: '10000',
+    websocketPort: '10000',
+    host: 'deltaplane-simulator.onrender.com'
   },
   websocket: {
     protocol: window.location.protocol === 'https:' ? 'wss:' : 'ws:',
@@ -59734,13 +59738,7 @@ function init() {
 
     // Add controls for development
     controls = new three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_4__.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 10;
-    controls.maxDistance = 500;
-    controls.maxPolarAngle = Math.PI / 2;
-    controls.enabled = devMode; // Disabled by default
+    controls.enabled = false; // Disable orbit controls
 
     // Create hang glider
     deltaplane = new _deltaplane_js__WEBPACK_IMPORTED_MODULE_1__.Deltaplane(scene);
@@ -59781,29 +59779,13 @@ function onKeyDown(event) {
     return;
   }
 
-  // Don't process other keys in development mode
-  if (devMode) return;
-
-  // Update hang glider controls (only sail orientation)
-  // Use arrows for all controls
+  // Update hang glider controls
   switch (event.code) {
-    case 'ArrowUp':
-      // Temporarily disabled
-      //deltaplane.setControl('pitchUp', true);
-
-      break;
-    case 'ArrowDown':
-      // Temporarily disabled
-      //deltaplane.setControl('pitchDown', true);
-
-      break;
     case 'ArrowLeft':
-      deltaplane.setControl('rollLeft', true); // Roll left
-
+      deltaplane.setControl('rollLeft', true);
       break;
     case 'ArrowRight':
-      deltaplane.setControl('rollRight', true); // Roll right
-
+      deltaplane.setControl('rollRight', true);
       break;
   }
 }
@@ -59811,22 +59793,8 @@ function onKeyUp(event) {
   // If game hasn't started, ignore keys
   if (!gameStarted) return;
 
-  // Don't process keys in development mode
-  if (devMode) return;
-
   // Update hang glider controls
-  // Use arrows for all controls
   switch (event.code) {
-    case 'ArrowUp':
-      // Temporarily disabled
-      //deltaplane.setControl('pitchUp', false);
-
-      break;
-    case 'ArrowDown':
-      // Temporarily disabled
-      //deltaplane.setControl('pitchDown', false);
-
-      break;
     case 'ArrowLeft':
       deltaplane.setControl('rollLeft', false);
       break;
@@ -59844,20 +59812,15 @@ function animate() {
     // Get elapsed time
     var delta = clock.getDelta();
 
-    // Update development controls
-    if (controls.enabled) {
-      controls.update();
-    } else {
-      // Update hang glider without debug element
-      deltaplane.update(delta, null);
+    // Update hang glider
+    deltaplane.update(delta, null);
 
-      // Update camera to follow hang glider
-      deltaplane.updateCamera(camera);
+    // Update camera to follow hang glider
+    deltaplane.updateCamera(camera);
 
-      // Update multiplayer manager if enabled
-      if (isMultiplayerMode) {
-        multiplayerManager.update(delta);
-      }
+    // Update multiplayer manager if enabled
+    if (isMultiplayerMode) {
+      multiplayerManager.update(delta);
     }
 
     // Render scene

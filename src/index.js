@@ -50,14 +50,8 @@ function init() {
 
         // Add controls for development
         controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.screenSpacePanning = false;
-        controls.minDistance = 10;
-        controls.maxDistance = 500;
-        controls.maxPolarAngle = Math.PI / 2;
-        controls.enabled = devMode; // Disabled by default
-
+        controls.enabled = false; // Disable orbit controls
+        
         // Create hang glider
         deltaplane = new Deltaplane(scene);
         
@@ -93,37 +87,19 @@ function onKeyDown(event) {
     // If game hasn't started, ignore keys
     if (!gameStarted) return;
     
-    
-    
     // Reset position with R key
     if (event.code === 'KeyR') {
         resetPosition();
         return;
     }
     
-    // Don't process other keys in development mode
-    if (devMode) return;
-    
-    // Update hang glider controls (only sail orientation)
-    // Use arrows for all controls
+    // Update hang glider controls
     switch (event.code) {
-        case 'ArrowUp':
-            // Temporarily disabled
-            //deltaplane.setControl('pitchUp', true);
-            
-            break;
-        case 'ArrowDown':
-            // Temporarily disabled
-            //deltaplane.setControl('pitchDown', true);
-            
-            break;
         case 'ArrowLeft':
-            deltaplane.setControl('rollLeft', true); // Roll left
-            
+            deltaplane.setControl('rollLeft', true);
             break;
         case 'ArrowRight':
-            deltaplane.setControl('rollRight', true); // Roll right
-            
+            deltaplane.setControl('rollRight', true);
             break;
     }
 }
@@ -132,29 +108,13 @@ function onKeyUp(event) {
     // If game hasn't started, ignore keys
     if (!gameStarted) return;
     
-    // Don't process keys in development mode
-    if (devMode) return;
-    
     // Update hang glider controls
-    // Use arrows for all controls
     switch (event.code) {
-        case 'ArrowUp':
-            // Temporarily disabled
-            //deltaplane.setControl('pitchUp', false);
-           
-            break;
-        case 'ArrowDown':
-            // Temporarily disabled
-            //deltaplane.setControl('pitchDown', false);
-            
-            break;
         case 'ArrowLeft':
             deltaplane.setControl('rollLeft', false);
-            
             break;
         case 'ArrowRight':
             deltaplane.setControl('rollRight', false);
-            
             break;
     }
 }
@@ -169,20 +129,15 @@ function animate() {
         // Get elapsed time
         const delta = clock.getDelta();
         
-        // Update development controls
-        if (controls.enabled) {
-            controls.update();
-        } else {
-            // Update hang glider without debug element
-            deltaplane.update(delta, null);
-            
-            // Update camera to follow hang glider
-            deltaplane.updateCamera(camera);
-            
-            // Update multiplayer manager if enabled
-            if (isMultiplayerMode) {
-                multiplayerManager.update(delta);
-            }
+        // Update hang glider
+        deltaplane.update(delta, null);
+        
+        // Update camera to follow hang glider
+        deltaplane.updateCamera(camera);
+        
+        // Update multiplayer manager if enabled
+        if (isMultiplayerMode) {
+            multiplayerManager.update(delta);
         }
         
         // Render scene
