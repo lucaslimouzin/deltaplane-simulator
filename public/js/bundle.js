@@ -68,9 +68,9 @@ __webpack_require__.r(__webpack_exports__);
 // Configuration for production environment (Render.com)
 var config = {
   server: {
-    port: window.location.port || '8000',
-    websocketPort: window.location.port || '8000',
-    host: window.location.hostname
+    port: window.location.port || '10000',
+    websocketPort: window.location.port || '10000',
+    host: window.location.hostname || 'deltaplane-simulator.onrender.com'
   },
   websocket: {
     protocol: window.location.protocol === 'https:' ? 'wss:' : 'ws:',
