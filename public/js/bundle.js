@@ -39,12 +39,45 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   config: () => (/* binding */ config)
 /* harmony export */ });
 /* harmony import */ var _config_dev_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./config.dev.js */ "./config.dev.js");
-// En local, on utilise toujours la configuration de développement
+/* harmony import */ var _config_prod_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./config.prod.js */ "./config.prod.js");
+// Import configurations
 
-var config = _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
 
-// Pour le débogage
+
+// Determine if we're running on Render.com
+var isRender = process.env.RENDER === 'true';
+
+// Export the appropriate configuration
+var config = isRender ? _config_prod_js__WEBPACK_IMPORTED_MODULE_1__.config : _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
+
+// For debugging
 //console.log('Active configuration:', config);
+
+/***/ }),
+
+/***/ "./config.prod.js":
+/*!************************!*\
+  !*** ./config.prod.js ***!
+  \************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   config: () => (/* binding */ config)
+/* harmony export */ });
+// Configuration for production environment (Render.com)
+var config = {
+  server: {
+    port: process.env.PORT || 8000,
+    websocketPort: process.env.PORT || 8001,
+    host: 'deltaplane-simulator.onrender.com'
+  },
+  websocket: {
+    protocol: 'wss:',
+    path: ''
+  }
+};
 
 /***/ }),
 
