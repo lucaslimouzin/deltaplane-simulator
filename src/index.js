@@ -4,8 +4,7 @@ import { initScene, getTerrainHeightAtPosition } from './terrain.js';
 import { Deltaplane } from './deltaplane.js';
 import { MultiplayerManager } from './multiplayer.js';
 
-// Debug message to verify if this version is loaded
-console.log("NEW VERSION OF INDEX.JS: Version with low poly terrain");
+
 
 // Global variables
 let camera, scene, renderer;
@@ -94,8 +93,7 @@ function onKeyDown(event) {
     // If game hasn't started, ignore keys
     if (!gameStarted) return;
     
-    // Display key code for debugging
-    console.log('Key pressed:', event.code);
+    
     
     // Reset position with R key
     if (event.code === 'KeyR') {
@@ -112,20 +110,20 @@ function onKeyDown(event) {
         case 'ArrowUp':
             // Temporarily disabled
             //deltaplane.setControl('pitchUp', true);
-            console.log('Climb disabled');
+            
             break;
         case 'ArrowDown':
             // Temporarily disabled
             //deltaplane.setControl('pitchDown', true);
-            console.log('Descend disabled');
+            
             break;
         case 'ArrowLeft':
             deltaplane.setControl('rollLeft', true); // Roll left
-            console.log('Roll left enabled');
+            
             break;
         case 'ArrowRight':
             deltaplane.setControl('rollRight', true); // Roll right
-            console.log('Roll right enabled');
+            
             break;
     }
 }
@@ -143,20 +141,20 @@ function onKeyUp(event) {
         case 'ArrowUp':
             // Temporarily disabled
             //deltaplane.setControl('pitchUp', false);
-            console.log('Climb disabled');
+           
             break;
         case 'ArrowDown':
             // Temporarily disabled
             //deltaplane.setControl('pitchDown', false);
-            console.log('Descend disabled');
+            
             break;
         case 'ArrowLeft':
             deltaplane.setControl('rollLeft', false);
-            console.log('Roll left disabled');
+            
             break;
         case 'ArrowRight':
             deltaplane.setControl('rollRight', false);
-            console.log('Roll right disabled');
+            
             break;
     }
 }
