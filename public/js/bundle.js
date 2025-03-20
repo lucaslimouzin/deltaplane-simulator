@@ -63,17 +63,18 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   config: () => (/* binding */ config)
 /* harmony export */ });
-var _window;
 // config.prod.js
-var DEFAULT_PORT = process.env.PORT || 8000;
+
+var DEFAULT_PORT = typeof process !== 'undefined' && process.env && process.env.PORT ? process.env.PORT : 8000;
+var HOST = typeof process !== 'undefined' && process.env && process.env.HOST ? process.env.HOST : window.location.hostname;
 var config = {
   server: {
     port: DEFAULT_PORT,
     websocketPort: DEFAULT_PORT,
-    host: process.env.HOST || '0.0.0.0'
+    host: HOST
   },
   websocket: {
-    protocol: ((_window = window) === null || _window === void 0 || (_window = _window.location) === null || _window === void 0 ? void 0 : _window.protocol) === 'https:' ? 'wss:' : 'ws:',
+    protocol: window.location.protocol === 'https:' ? 'wss:' : 'ws:',
     path: '/ws'
   }
 };
