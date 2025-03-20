@@ -56443,7 +56443,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
 
 
 
-// Déclarer la variable minimap au niveau global
+// Variables globales
 var minimap;
 
 /**
@@ -56468,6 +56468,11 @@ var Deltaplane = /*#__PURE__*/function () {
       this.velocity = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
       this.camera = null;
       this.currentLookAt = null;
+
+      // Créer la minimap seulement pour le joueur local
+      if (!minimap) {
+        minimap = new _minimap_js__WEBPACK_IMPORTED_MODULE_0__.Minimap(scene, null, null);
+      }
 
       // Controls (only for sail orientation)
       this.pitchUp = false; // Pitch up (raise nose)
@@ -56777,252 +56782,262 @@ var Deltaplane = /*#__PURE__*/function () {
   }, {
     key: "update",
     value: function update(delta) {
-      try {
-        // Calcul des FPS
-        var currentTime = performance.now();
-        var timeDiff = currentTime - this.lastTime;
-        this.currentFPS = Math.round(1000 / timeDiff);
-        this.lastTime = currentTime;
+      if (!this.isRemotePlayer) {
+        try {
+          // Calcul des FPS
+          var currentTime = performance.now();
+          var timeDiff = currentTime - this.lastTime;
+          this.currentFPS = Math.round(1000 / timeDiff);
+          this.lastTime = currentTime;
 
-        // Vitesse de rotation pour les contrôles
-        var rotationSpeed = 0.8;
+          // Vitesse de rotation pour les contrôles
+          var rotationSpeed = 0.8;
 
-        // Sauvegarder la rotation en lacet actuelle
-        var currentYaw = this.mesh.rotation.y;
+          // Sauvegarder la rotation en lacet actuelle
+          var currentYaw = this.mesh.rotation.y;
 
-        // Application des contrôles d'orientation de la voile
-        if (this.pitchUp) {
-          // Pitch up (raise nose) for climb
-          this.mesh.rotation.x += 1.0 * delta;
-        } else if (this.pitchDown) {
-          // Pitch down (lower nose) for descend
-          this.mesh.rotation.x -= 1.0 * delta;
-        } else {
-          // If no key is pressed, gradually return to horizontal
-          var returnSpeed = 0.5 * delta; // Reduced from 1.0 to 0.5 for a smoother return
-          var smoothFactor = 0.1; // Smoothing factor for interpolation
+          // Application des contrôles d'orientation de la voile
+          if (this.pitchUp) {
+            // Pitch up (raise nose) for climb
+            this.mesh.rotation.x += 1.0 * delta;
+          } else if (this.pitchDown) {
+            // Pitch down (lower nose) for descend
+            this.mesh.rotation.x -= 1.0 * delta;
+          } else {
+            // If no key is pressed, gradually return to horizontal
+            var returnSpeed = 0.5 * delta; // Reduced from 1.0 to 0.5 for a smoother return
+            var smoothFactor = 0.1; // Smoothing factor for interpolation
 
-          // Smooth interpolation towards 0
-          this.mesh.rotation.x += (0 - this.mesh.rotation.x) * smoothFactor;
+            // Smooth interpolation towards 0
+            this.mesh.rotation.x += (0 - this.mesh.rotation.x) * smoothFactor;
 
-          // Prevent micro-oscillations near 0
-          if (Math.abs(this.mesh.rotation.x) < 0.01) {
-            this.mesh.rotation.x = 0;
+            // Prevent micro-oscillations near 0
+            if (Math.abs(this.mesh.rotation.x) < 0.01) {
+              this.mesh.rotation.x = 0;
+            }
           }
-        }
-        if (this.rollLeft) {
-          // Roll left
-          this.mesh.rotation.z += 0.5 * delta;
-        } else if (this.rollRight) {
-          // Roll right
-          this.mesh.rotation.z -= 0.5 * delta;
-        } else {
-          // If no key is pressed, gradually return to horizontal
-          var _smoothFactor = 0.1; // Same smoothing factor as for pitch
+          if (this.rollLeft) {
+            // Roll left
+            this.mesh.rotation.z += 0.5 * delta;
+          } else if (this.rollRight) {
+            // Roll right
+            this.mesh.rotation.z -= 0.5 * delta;
+          } else {
+            // If no key is pressed, gradually return to horizontal
+            var _smoothFactor = 0.1; // Same smoothing factor as for pitch
 
-          // Smooth interpolation towards 0
-          this.mesh.rotation.z += (0 - this.mesh.rotation.z) * _smoothFactor;
+            // Smooth interpolation towards 0
+            this.mesh.rotation.z += (0 - this.mesh.rotation.z) * _smoothFactor;
 
-          // Prevent micro-oscillations near 0
-          if (Math.abs(this.mesh.rotation.z) < 0.01) {
-            this.mesh.rotation.z = 0;
+            // Prevent micro-oscillations near 0
+            if (Math.abs(this.mesh.rotation.z) < 0.01) {
+              this.mesh.rotation.z = 0;
+            }
           }
-        }
 
-        // Gestion du lacet avec protection contre les rotations extrêmes
-        if (this.yawLeft) {
-          var newYaw = this.mesh.rotation.y + rotationSpeed * delta;
-          // Normalize angle between -PI and PI
-          this.mesh.rotation.y = Math.atan2(Math.sin(newYaw), Math.cos(newYaw));
-        }
-        if (this.yawRight) {
-          var _newYaw = this.mesh.rotation.y - rotationSpeed * delta;
-          // Normalize angle between -PI and PI
-          this.mesh.rotation.y = Math.atan2(Math.sin(_newYaw), Math.cos(_newYaw));
-        }
+          // Gestion du lacet avec protection contre les rotations extrêmes
+          if (this.yawLeft) {
+            var newYaw = this.mesh.rotation.y + rotationSpeed * delta;
+            // Normalize angle between -PI and PI
+            this.mesh.rotation.y = Math.atan2(Math.sin(newYaw), Math.cos(newYaw));
+          }
+          if (this.yawRight) {
+            var _newYaw = this.mesh.rotation.y - rotationSpeed * delta;
+            // Normalize angle between -PI and PI
+            this.mesh.rotation.y = Math.atan2(Math.sin(_newYaw), Math.cos(_newYaw));
+          }
 
-        // Strict rotation limits to prevent impossible positions
-        this.mesh.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.x));
-        this.mesh.rotation.z = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.z));
-
-        // Additional check to prevent flipping
-        var upVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
-        upVector.applyEuler(this.mesh.rotation);
-        if (upVector.y < 0) {
-          // Correct orientation if hang glider is flipped
+          // Strict rotation limits to prevent impossible positions
           this.mesh.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.x));
           this.mesh.rotation.z = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.z));
-        }
 
-        // Sauvegarder la rotation en lacet pour le prochain frame
-        this.lastYaw = this.mesh.rotation.y;
-
-        // Calcul de la direction du deltaplane basée sur son orientation
-        var direction = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
-        direction.applyQuaternion(this.mesh.quaternion);
-
-        // Calcul de la vitesse relative à l'air (sans tenir compte du vent)
-        var airVelocity = this.velocity.clone();
-
-        // Vecteur de vent et effet du vent - désactivés
-        var windVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
-        var windAngleEffect = 0;
-        var windLiftEffect = 0;
-
-        // Le vent est désactivé, donc pas d'effet du vent
-        // if (this.windEnabled) { ... } - Code supprimé
-
-        // Calcul de la vitesse relative à l'air
-        var airSpeed = airVelocity.length();
-
-        // Calcul de la portance (dépend de l'angle d'attaque et de la vitesse)
-        // Angle d'attaque simplifié (basé sur la rotation en x du deltaplane)
-        var angleOfAttack = Math.PI / 2 - this.mesh.rotation.x;
-
-        // Coefficient de portance qui dépend de l'angle d'attaque
-        // Simplifié: maximum à 15 degrés, diminue après
-        var effectiveLiftCoef = this.liftCoefficient * Math.sin(2 * angleOfAttack) * Math.min(1, Math.max(0, (Math.PI / 6 - Math.abs(angleOfAttack - Math.PI / 12)) / (Math.PI / 6)));
-
-        // Force de portance (L = 0.5 * rho * v² * S * CL)
-        // Ajout de l'effet du vent sur la portance
-        var liftForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * (effectiveLiftCoef + windLiftEffect * delta);
-
-        // Direction de la portance (perpendiculaire à la direction du vol)
-        var liftDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
-        liftDirection.applyQuaternion(this.mesh.quaternion);
-
-        // Application de la portance - RÉACTIVÉE pour permettre de monter/descendre en cabrant/piquant
-        // Amplification de l'effet vertical pour un impact plus prononcé sur l'altitude
-        var liftVector = liftDirection.multiplyScalar(liftForce * delta * 3.0); // Multiplied by 3 for a stronger effect
-        this.velocity.add(liftVector);
-
-        // Ajout d'une force verticale directe basée sur l'angle de tangage
-        // Cela garantit un effet immédiat sur l'altitude
-        var pitchEffect = 200 * Math.sin(this.mesh.rotation.x); // Direct vertical force
-        this.velocity.y += pitchEffect * delta;
-
-        // Calcul de la traînée (D = 0.5 * rho * v² * S * CD)
-        var dragForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * this.dragCoefficient;
-
-        // Direction de la traînée (opposée à la direction du vol)
-        if (airSpeed > 0) {
-          var dragDirection = airVelocity.clone().normalize().negate();
-          var dragVector = dragDirection.multiplyScalar(dragForce * delta);
-          this.velocity.add(dragVector);
-        }
-
-        // Propulsion constante dans la direction du deltaplane
-        var maxSpeed = 200; // Vitesse maximum in km/h
-        var currentSpeed = this.velocity.length() * 3.6; // Convert to km/h
-
-        // Reduce propulsion if approaching maximum speed
-        var speedRatio = currentSpeed / maxSpeed;
-        var propulsionForce = 150 * Math.max(0, 1 - speedRatio);
-
-        // Create a horizontal direction vector (ignoring Y component)
-        var forwardDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
-        forwardDirection.applyAxisAngle(new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0), this.mesh.rotation.y);
-        var horizontalDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
-
-        // Apply propulsion only horizontally
-        var propulsionVector = horizontalDirection.multiplyScalar(propulsionForce * delta);
-        this.velocity.add(propulsionVector);
-
-        // Limit maximum speed
-        if (currentSpeed > maxSpeed) {
-          var reduction = maxSpeed / currentSpeed;
-          this.velocity.multiplyScalar(reduction);
-        }
-
-        // Add progressive air resistance
-        var airResistance = Math.pow(speedRatio, 2) * 0.02;
-        this.velocity.multiplyScalar(1 - airResistance);
-
-        // Don't stabilize altitude to allow natural climb/descend
-
-        // Lateral inclination effect (turn)
-        // The more inclined, the more turning
-        var turnFactor = Math.sin(this.mesh.rotation.z) * 2.0;
-
-        // Rotate velocity vector to simulate a turn
-        // But only if not climbing/pitching
-        if (Math.abs(turnFactor) > 0.01) {
-          var turnAxis = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
-          var turnAngle = turnFactor * delta;
-          this.velocity.applyAxisAngle(turnAxis, turnAngle);
-
-          // Add a slight yaw (yaw) rotation for a more natural turn
-          // Use quaternion for this rotation to avoid gimbal lock issues
-          var yawCorrection = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
-          this.mesh.quaternion.multiply(yawCorrection);
-
-          // Update Euler angles after correction
-          this.mesh.rotation.setFromQuaternion(this.mesh.quaternion, 'YXZ');
-        }
-
-        // Position before update for collision detection
-        var previousPosition = this.mesh.position.clone();
-
-        // Apply velocity to position
-        this.mesh.position.x += this.velocity.x * delta;
-        this.mesh.position.y += this.velocity.y * delta;
-        this.mesh.position.z += this.velocity.z * delta;
-
-        // Check minimum altitude
-        if (this.mesh.position.y < this.minAltitude) {
-          this.mesh.position.y = this.minAltitude;
-
-          // If descending too low, cancel negative vertical velocity
-          if (this.velocity.y < 0) {
-            this.velocity.y = 0;
-
-            // Add a slight upward push to prevent sticking to the ground
-            this.velocity.y += 5;
+          // Additional check to prevent flipping
+          var upVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+          upVector.applyEuler(this.mesh.rotation);
+          if (upVector.y < 0) {
+            // Correct orientation if hang glider is flipped
+            this.mesh.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.x));
+            this.mesh.rotation.z = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.z));
           }
-        }
 
-        // Check maximum altitude
-        if (this.mesh.position.y > this.maxAltitude) {
-          this.mesh.position.y = this.maxAltitude;
+          // Sauvegarder la rotation en lacet pour le prochain frame
+          this.lastYaw = this.mesh.rotation.y;
 
-          // If climbing too high, cancel positive vertical velocity
-          if (this.velocity.y > 0) {
-            this.velocity.y = 0;
+          // Calcul de la direction du deltaplane basée sur son orientation
+          var direction = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
+          direction.applyQuaternion(this.mesh.quaternion);
 
-            // Add a slight downward push to prevent sticking to the ceiling
-            this.velocity.y -= 5;
+          // Calcul de la vitesse relative à l'air (sans tenir compte du vent)
+          var airVelocity = this.velocity.clone();
+
+          // Vecteur de vent et effet du vent - désactivés
+          var windVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
+          var windAngleEffect = 0;
+          var windLiftEffect = 0;
+
+          // Le vent est désactivé, donc pas d'effet du vent
+          // if (this.windEnabled) { ... } - Code supprimé
+
+          // Calcul de la vitesse relative à l'air
+          var airSpeed = airVelocity.length();
+
+          // Calcul de la portance (dépend de l'angle d'attaque et de la vitesse)
+          // Angle d'attaque simplifié (basé sur la rotation en x du deltaplane)
+          var angleOfAttack = Math.PI / 2 - this.mesh.rotation.x;
+
+          // Coefficient de portance qui dépend de l'angle d'attaque
+          // Simplifié: maximum à 15 degrés, diminue après
+          var effectiveLiftCoef = this.liftCoefficient * Math.sin(2 * angleOfAttack) * Math.min(1, Math.max(0, (Math.PI / 6 - Math.abs(angleOfAttack - Math.PI / 12)) / (Math.PI / 6)));
+
+          // Force de portance (L = 0.5 * rho * v² * S * CL)
+          // Ajout de l'effet du vent sur la portance
+          var liftForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * (effectiveLiftCoef + windLiftEffect * delta);
+
+          // Direction de la portance (perpendiculaire à la direction du vol)
+          var liftDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+          liftDirection.applyQuaternion(this.mesh.quaternion);
+
+          // Application de la portance - RÉACTIVÉE pour permettre de monter/descendre en cabrant/piquant
+          // Amplification de l'effet vertical pour un impact plus prononcé sur l'altitude
+          var liftVector = liftDirection.multiplyScalar(liftForce * delta * 3.0); // Multiplied by 3 for a stronger effect
+          this.velocity.add(liftVector);
+
+          // Ajout d'une force verticale directe basée sur l'angle de tangage
+          // Cela garantit un effet immédiat sur l'altitude
+          var pitchEffect = 200 * Math.sin(this.mesh.rotation.x); // Direct vertical force
+          this.velocity.y += pitchEffect * delta;
+
+          // Calcul de la traînée (D = 0.5 * rho * v² * S * CD)
+          var dragForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * this.dragCoefficient;
+
+          // Direction de la traînée (opposée à la direction du vol)
+          if (airSpeed > 0) {
+            var dragDirection = airVelocity.clone().normalize().negate();
+            var dragVector = dragDirection.multiplyScalar(dragForce * delta);
+            this.velocity.add(dragVector);
           }
+
+          // Propulsion constante dans la direction du deltaplane
+          var maxSpeed = 200; // Vitesse maximum in km/h
+          var currentSpeed = this.velocity.length() * 3.6; // Convert to km/h
+
+          // Reduce propulsion if approaching maximum speed
+          var speedRatio = currentSpeed / maxSpeed;
+          var propulsionForce = 150 * Math.max(0, 1 - speedRatio);
+
+          // Create a horizontal direction vector (ignoring Y component)
+          var forwardDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
+          forwardDirection.applyAxisAngle(new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0), this.mesh.rotation.y);
+          var horizontalDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
+
+          // Apply propulsion only horizontally
+          var propulsionVector = horizontalDirection.multiplyScalar(propulsionForce * delta);
+          this.velocity.add(propulsionVector);
+
+          // Limit maximum speed
+          if (currentSpeed > maxSpeed) {
+            var reduction = maxSpeed / currentSpeed;
+            this.velocity.multiplyScalar(reduction);
+          }
+
+          // Add progressive air resistance
+          var airResistance = Math.pow(speedRatio, 2) * 0.02;
+          this.velocity.multiplyScalar(1 - airResistance);
+
+          // Don't stabilize altitude to allow natural climb/descend
+
+          // Lateral inclination effect (turn)
+          // The more inclined, the more turning
+          var turnFactor = Math.sin(this.mesh.rotation.z) * 2.0;
+
+          // Rotate velocity vector to simulate a turn
+          // But only if not climbing/pitching
+          if (Math.abs(turnFactor) > 0.01) {
+            var turnAxis = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+            var turnAngle = turnFactor * delta;
+            this.velocity.applyAxisAngle(turnAxis, turnAngle);
+
+            // Add a slight yaw (yaw) rotation for a more natural turn
+            // Use quaternion for this rotation to avoid gimbal lock issues
+            var yawCorrection = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
+            this.mesh.quaternion.multiply(yawCorrection);
+
+            // Update Euler angles after correction
+            this.mesh.rotation.setFromQuaternion(this.mesh.quaternion, 'YXZ');
+          }
+
+          // Position before update for collision detection
+          var previousPosition = this.mesh.position.clone();
+
+          // Apply velocity to position
+          this.mesh.position.x += this.velocity.x * delta;
+          this.mesh.position.y += this.velocity.y * delta;
+          this.mesh.position.z += this.velocity.z * delta;
+
+          // Check minimum altitude
+          if (this.mesh.position.y < this.minAltitude) {
+            this.mesh.position.y = this.minAltitude;
+
+            // If descending too low, cancel negative vertical velocity
+            if (this.velocity.y < 0) {
+              this.velocity.y = 0;
+
+              // Add a slight upward push to prevent sticking to the ground
+              this.velocity.y += 5;
+            }
+          }
+
+          // Check maximum altitude
+          if (this.mesh.position.y > this.maxAltitude) {
+            this.mesh.position.y = this.maxAltitude;
+
+            // If climbing too high, cancel positive vertical velocity
+            if (this.velocity.y > 0) {
+              this.velocity.y = 0;
+
+              // Add a slight downward push to prevent sticking to the ceiling
+              this.velocity.y -= 5;
+            }
+          }
+
+          // Collision detection with terrain
+          this.checkTerrainCollision(previousPosition, delta);
+
+          // Suppression de la friction pour maintenir une vitesse constante
+          // this.velocity.x *= 0.999;
+          // this.velocity.z *= 0.999;
+
+          // Styles for the info panel
+          var panelStyle = "\n                    position: fixed;\n                    bottom: 20px;\n                    left: 50%;\n                    transform: translateX(-50%);\n                    background: rgba(0, 0, 0, 0.4);\n                    padding: 4px 6px;\n                    border-radius: 3px;\n                    color: white;\n                    z-index: 1000;\n                    font-size: 10px;\n                    min-width: 100px;\n                ";
+          var sectionStyle = "line-height: 1.1;";
+          var labelStyle = "color: #87CEEB; display: inline-block; width: 45px;";
+          var valueStyle = "color: white;";
+
+          // Create or update info div
+          var infoDiv = document.getElementById('info-panel');
+          if (!infoDiv) {
+            infoDiv = document.createElement('div');
+            infoDiv.id = 'info-panel';
+            document.body.appendChild(infoDiv);
+          }
+          infoDiv.style.cssText = panelStyle;
+
+          // Compact HTML content with styling
+          infoDiv.innerHTML = "\n                    <div style=\"text-align: center; font-size: 10px; margin-bottom: 2px; color: #ffcc00;\">INFORMATION</div>\n                    <div style=\"".concat(sectionStyle, "\">\n                        <div><span style=\"").concat(labelStyle, "\">FPS:</span> <span style=\"").concat(valueStyle, "\">").concat(this.currentFPS, "</span></div>\n                        <div><span style=\"").concat(labelStyle, "\">Online:</span> <span style=\"").concat(valueStyle, "\">").concat(this.playerCount, "</span></div>\n                        <div><span style=\"").concat(labelStyle, "\">Controls:</span> <span style=\"").concat(valueStyle, "\">\u2190 \u2192</span></div>\n                    </div>\n                ");
+
+          // Add sail collision check
+          this.checkVoileCollision();
+
+          // Mettre à jour la minimap
+          if (minimap && this.mesh) {
+            minimap.updatePlayerPosition(this.mesh.position, {
+              y: this.mesh.rotation.y
+            });
+            minimap.update();
+          }
+        } catch (error) {
+          console.error('Error in deltaplane update:', error);
         }
-
-        // Collision detection with terrain
-        this.checkTerrainCollision(previousPosition, delta);
-
-        // Suppression de la friction pour maintenir une vitesse constante
-        // this.velocity.x *= 0.999;
-        // this.velocity.z *= 0.999;
-
-        // Styles for the info panel
-        var panelStyle = "\n                position: fixed;\n                bottom: 20px;\n                left: 50%;\n                transform: translateX(-50%);\n                background: rgba(0, 0, 0, 0.4);\n                padding: 4px 6px;\n                border-radius: 3px;\n                color: white;\n                z-index: 1000;\n                font-size: 10px;\n                min-width: 100px;\n            ";
-        var sectionStyle = "line-height: 1.1;";
-        var labelStyle = "color: #87CEEB; display: inline-block; width: 45px;";
-        var valueStyle = "color: white;";
-
-        // Create or update info div
-        var infoDiv = document.getElementById('info-panel');
-        if (!infoDiv) {
-          infoDiv = document.createElement('div');
-          infoDiv.id = 'info-panel';
-          document.body.appendChild(infoDiv);
-        }
-        infoDiv.style.cssText = panelStyle;
-
-        // Compact HTML content with styling
-        infoDiv.innerHTML = "\n                <div style=\"text-align: center; font-size: 10px; margin-bottom: 2px; color: #ffcc00;\">INFORMATION</div>\n                <div style=\"".concat(sectionStyle, "\">\n                    <div><span style=\"").concat(labelStyle, "\">FPS:</span> <span style=\"").concat(valueStyle, "\">").concat(this.currentFPS, "</span></div>\n                    <div><span style=\"").concat(labelStyle, "\">Online:</span> <span style=\"").concat(valueStyle, "\">").concat(this.playerCount, "</span></div>\n                    <div><span style=\"").concat(labelStyle, "\">Controls:</span> <span style=\"").concat(valueStyle, "\">\u2190 \u2192</span></div>\n                </div>\n            ");
-
-        // Add sail collision check
-        this.checkVoileCollision();
-      } catch (error) {
-        console.error('Error updating hang glider:', error);
       }
     }
 
@@ -57316,141 +57331,124 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Minimap: () => (/* binding */ Minimap)
 /* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
-
 var Minimap = /*#__PURE__*/function () {
-  function Minimap(scene, camera, config) {
+  function Minimap() {
     _classCallCheck(this, Minimap);
+    // Créer le canvas pour la minimap
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = 200;
+    this.canvas.height = 200;
+
+    // Récupérer le conteneur
     this.container = document.getElementById('minimap-container');
     if (!this.container) {
       console.error('Minimap container not found!');
       return;
     }
 
-    // Taille de la minimap
-    this.size = 200;
-    this.scale = 0.02; // 1 unité = 50 unités monde
+    // Ajouter le canvas au conteneur
+    this.container.appendChild(this.canvas);
 
-    // Création de la caméra orthographique
-    var aspect = 1; // La minimap est carrée
-    var viewSize = 1000; // Taille de la vue en unités monde
-    this.camera = new three__WEBPACK_IMPORTED_MODULE_0__.OrthographicCamera(-viewSize * aspect / 2, viewSize * aspect / 2, viewSize / 2, -viewSize / 2, 1, 1000);
-    this.camera.position.set(0, 500, 0);
-    this.camera.lookAt(0, 0, 0);
-    this.camera.up.set(0, 0, -1); // Orienter la caméra pour que le nord soit en haut
+    // Contexte 2D pour le dessin
+    this.ctx = this.canvas.getContext('2d');
 
-    // Création du renderer
-    this.renderer = new three__WEBPACK_IMPORTED_MODULE_0__.WebGLRenderer({
-      antialias: true,
-      alpha: true
-    });
-    this.renderer.setSize(this.size, this.size);
-    this.renderer.setClearColor(0x000000, 0.0);
-    this.container.appendChild(this.renderer.domElement);
-
-    // Création de la scène
-    this.scene = new three__WEBPACK_IMPORTED_MODULE_0__.Scene();
-
-    // Création du marqueur du joueur (point blanc)
-    var playerGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.CircleGeometry(5, 32);
-    var playerMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.MeshBasicMaterial({
-      color: 0xFFFFFF,
-      side: three__WEBPACK_IMPORTED_MODULE_0__.DoubleSide
-    });
-    this.playerMarker = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(playerGeometry, playerMaterial);
-    this.playerMarker.rotation.x = -Math.PI / 2; // Orienter le cercle horizontalement
-    this.scene.add(this.playerMarker);
-
-    // Map pour stocker les marqueurs d'îles
-    this.islandMarkers = new Map();
-
-    // Ajouter une grille de référence
-    var gridHelper = new three__WEBPACK_IMPORTED_MODULE_0__.GridHelper(1000, 10, 0x444444, 0x222222);
-    gridHelper.rotation.x = Math.PI / 2;
-    this.scene.add(gridHelper);
+    // Configuration
+    this.scale = 0.02; // Échelle de la carte (1 unité = 50 unités monde)
+    this.centerX = this.canvas.width / 2;
+    this.centerY = this.canvas.height / 2;
+    this.radius = Math.min(this.canvas.width, this.canvas.height) / 2 - 2; // Rayon du cercle
   }
   return _createClass(Minimap, [{
-    key: "addIsland",
-    value: function addIsland(island) {
-      var color = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0x00FF00;
-      // Création du marqueur d'île (petit triangle)
-      var geometry = new three__WEBPACK_IMPORTED_MODULE_0__.BufferGeometry();
-      var vertices = new Float32Array([0, 0, 8,
-      // pointe du triangle
-      -4, 0, -4,
-      // coin gauche
-      4, 0, -4 // coin droit
-      ]);
-      geometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_0__.BufferAttribute(vertices, 3));
-      var material = new three__WEBPACK_IMPORTED_MODULE_0__.MeshBasicMaterial({
-        color: color,
-        side: three__WEBPACK_IMPORTED_MODULE_0__.DoubleSide
-      });
-      var marker = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(geometry, material);
-
-      // Positionner le marqueur
-      marker.position.set(island.x * this.scale, 0, island.z * this.scale);
-      this.scene.add(marker);
-
-      // Stocker le marqueur
-      this.islandMarkers.set(island, marker);
-    }
-  }, {
-    key: "removeIsland",
-    value: function removeIsland(island) {
-      var marker = this.islandMarkers.get(island);
-      if (marker) {
-        this.scene.remove(marker);
-        marker.geometry.dispose();
-        marker.material.dispose();
-        this.islandMarkers["delete"](island);
-      }
-    }
-  }, {
     key: "updatePlayerPosition",
     value: function updatePlayerPosition(position, rotation) {
-      // Mettre à l'échelle la position du joueur
-      var scaledX = position.x * this.scale;
-      var scaledZ = position.z * this.scale;
-      this.playerMarker.position.set(scaledX, 0, scaledZ);
-      this.playerMarker.rotation.y = rotation.y;
+      var _this = this;
+      // Effacer le canvas
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-      // Mettre à jour la position de la caméra pour suivre le joueur
-      this.camera.position.set(scaledX, 500, scaledZ);
-      this.camera.lookAt(scaledX, 0, scaledZ);
+      // Dessiner le fond circulaire
+      this.ctx.beginPath();
+      this.ctx.arc(this.centerX, this.centerY, this.radius, 0, Math.PI * 2);
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      this.ctx.fill();
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+
+      // Ajouter les points cardinaux
+      this.ctx.font = '12px Arial';
+      this.ctx.fillStyle = 'white';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+
+      // Nord (en haut)
+      this.ctx.fillText('N', this.centerX, this.centerY - this.radius + 15);
+      // Sud (en bas)
+      this.ctx.fillText('S', this.centerX, this.centerY + this.radius - 15);
+      // Est (à droite)
+      this.ctx.fillText('E', this.centerX + this.radius - 15, this.centerY);
+      // Ouest (à gauche)
+      this.ctx.fillText('W', this.centerX - this.radius + 15, this.centerY);
+
+      // Créer un masque circulaire
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.arc(this.centerX, this.centerY, this.radius, 0, Math.PI * 2);
+      this.ctx.clip();
+
+      // Dessiner les ballons (représentant les îles)
+      if (window.balloons) {
+        window.balloons.forEach(function (balloon) {
+          // Calculer la position relative par rapport au joueur
+          var worldX = balloon.userData.initialX;
+          var worldZ = balloon.userData.initialZ;
+          var relativeX = (worldX - position.x) * _this.scale;
+          var relativeZ = (worldZ - position.z) * _this.scale;
+
+          // Position sur la minimap
+          var x = _this.centerX + relativeX;
+          var y = _this.centerY + relativeZ;
+
+          // Dessiner un petit cercle rouge pour représenter le ballon
+          _this.ctx.beginPath();
+          _this.ctx.arc(x, y, 4, 0, Math.PI * 2);
+          _this.ctx.fillStyle = '#FF4444';
+          _this.ctx.fill();
+          _this.ctx.strokeStyle = 'white';
+          _this.ctx.lineWidth = 1;
+          _this.ctx.stroke();
+        });
+      }
+
+      // Dessiner le joueur (triangle)
+      this.ctx.translate(this.centerX, this.centerY);
+      this.ctx.rotate(-rotation.y);
+
+      // Triangle vert pour le joueur
+      this.ctx.fillStyle = '#00FF00';
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, -10); // Pointe vers le haut
+      this.ctx.lineTo(-6, 6); // Coin gauche en bas
+      this.ctx.lineTo(6, 6); // Coin droit en bas
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.restore();
     }
   }, {
     key: "update",
     value: function update() {
-      if (this.renderer && this.scene && this.camera) {
-        this.renderer.render(this.scene, this.camera);
-      }
+      // La mise à jour est déjà faite dans updatePlayerPosition
     }
   }, {
     key: "dispose",
     value: function dispose() {
-      var _this = this;
-      // Nettoyer les ressources
-      this.islandMarkers.forEach(function (marker) {
-        _this.scene.remove(marker);
-        marker.geometry.dispose();
-        marker.material.dispose();
-      });
-      this.islandMarkers.clear();
-      if (this.playerMarker) {
-        this.scene.remove(this.playerMarker);
-        this.playerMarker.geometry.dispose();
-        this.playerMarker.material.dispose();
-      }
-      if (this.renderer) {
-        this.renderer.dispose();
-        this.container.removeChild(this.renderer.domElement);
+      if (this.container && this.canvas) {
+        this.container.removeChild(this.canvas);
       }
     }
   }]);
@@ -59139,6 +59137,21 @@ function animate() {
       console.error('Error updating chunks:', error);
     }
   }
+
+  // Animer les ballons
+  if (window.balloons) {
+    window.balloons.forEach(function (balloon) {
+      balloon.userData.angle += balloon.userData.rotationSpeed;
+
+      // Calculer la nouvelle position
+      var newX = balloon.userData.initialX + Math.cos(balloon.userData.angle) * balloon.userData.rotationRadius;
+      var newZ = balloon.userData.initialZ + Math.sin(balloon.userData.angle) * balloon.userData.rotationRadius;
+
+      // Mettre à jour la position du groupe
+      balloon.position.x = newX - balloon.userData.initialX;
+      balloon.position.z = newZ - balloon.userData.initialZ;
+    });
+  }
   renderer.render(scene, camera);
 }
 
@@ -59222,16 +59235,23 @@ function updateChunks(centerX, centerZ) {
   var _iterator6 = _createForOfIteratorHelper(terrain.entries()),
     _step6;
   try {
-    for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+    var _loop = function _loop() {
       var _step6$value = _slicedToArray(_step6.value, 2),
-        _key2 = _step6$value[0],
+        key = _step6$value[0],
         chunk = _step6$value[1];
-      var _key2$split$map = _key2.split(',').map(Number),
-        _key2$split$map2 = _slicedToArray(_key2$split$map, 2),
-        _x2 = _key2$split$map2[0],
-        _z2 = _key2$split$map2[1];
-      var distance = Math.sqrt(Math.pow(_x2 - centerX, 2) + Math.pow(_z2 - centerZ, 2));
+      var _key$split$map = key.split(',').map(Number),
+        _key$split$map2 = _slicedToArray(_key$split$map, 2),
+        x = _key$split$map2[0],
+        z = _key$split$map2[1];
+      var distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(z - centerZ, 2));
       if (distance > RENDER_DISTANCE + PRELOAD_EXTRA_DISTANCE) {
+        // Retirer les îles de la minimap
+        if (window.minimap && chunk.islands) {
+          chunk.islands.forEach(function (island) {
+            window.minimap.removeIsland("".concat(x, ",").concat(z, "-").concat(island.center.x, ",").concat(island.center.z));
+          });
+        }
+
         // Remove chunk and dispose of its resources
         if (chunk.mesh && chunk.mesh.geometry) {
           chunk.mesh.geometry.dispose();
@@ -59264,8 +59284,11 @@ function updateChunks(centerX, centerZ) {
             if (obj.parent) obj.parent.remove(obj);
           });
         }
-        terrain["delete"](_key2);
+        terrain["delete"](key);
       }
+    };
+    for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+      _loop();
     }
 
     // Start loading process if not already in progress
@@ -59311,6 +59334,22 @@ function createChunk(chunkX, chunkZ, callback) {
     islands: generateIslandsForChunk(chunkX, chunkZ),
     objects: [] // For storing all Three.js objects in this chunk
   };
+
+  // Ajouter les îles à la minimap si elle existe
+  if (window.minimap) {
+    chunk.islands.forEach(function (island) {
+      window.minimap.addIsland({
+        x: island.center.x,
+        z: island.center.z,
+        id: "".concat(chunkX, ",").concat(chunkZ, "-").concat(island.center.x, ",").concat(island.center.z)
+      });
+    });
+  }
+
+  // Ajouter un ballon pour chaque île
+  chunk.islands.forEach(function (island) {
+    addBalloonToIsland(island, chunk);
+  });
 
   // Calculer la distance au chunk
   var distanceToCamera = Math.sqrt(Math.pow(chunkX * TERRAIN_SIZE - camera.position.x, 2) + Math.pow(chunkZ * TERRAIN_SIZE - camera.position.z, 2));
@@ -59859,6 +59898,68 @@ function addHouses() {
   } finally {
     _iterator9.f();
   }
+}
+
+/**
+ * Ajoute un ballon flottant au-dessus d'une île
+ */
+function addBalloonToIsland(island, chunk) {
+  // Hauteur du ballon (augmentée)
+  var balloonHeight = 150;
+
+  // Créer le ballon (sphère plus grande)
+  var balloonGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.SphereGeometry(15, 16, 16);
+  var balloonMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+    color: 0xFF4444,
+    roughness: 0.7,
+    metalness: 0.3
+  });
+  var balloon = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(balloonGeometry, balloonMaterial);
+
+  // Position du ballon
+  balloon.position.set(island.center.x, balloonHeight, island.center.z);
+
+  // Créer la corde
+  var ropeGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
+  var ropePoints = [];
+
+  // Point de départ (sur l'île)
+  var startPoint = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x, getTerrainHeightAtPosition(island.center.x, island.center.z) + 1, island.center.z);
+
+  // Point d'arrivée (au ballon)
+  var endPoint = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x, balloonHeight, island.center.z);
+
+  // Créer une courbe légèrement ondulée pour la corde
+  var curve = new three__WEBPACK_IMPORTED_MODULE_2__.CatmullRomCurve3([startPoint, new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x + 4, (startPoint.y + endPoint.y) * 0.3, island.center.z + 4), new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x - 4, (startPoint.y + endPoint.y) * 0.6, island.center.z - 4), endPoint]);
+
+  // Générer les points de la courbe
+  var points = curve.getPoints(50);
+  ropeGeometry.setFromPoints(points);
+  var ropeMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.LineBasicMaterial({
+    color: 0x8B4513,
+    linewidth: 3
+  });
+  var rope = new three__WEBPACK_IMPORTED_MODULE_2__.Line(ropeGeometry, ropeMaterial);
+
+  // Ajouter l'animation de rotation
+  var balloonGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
+  balloonGroup.add(balloon);
+  balloonGroup.add(rope);
+
+  // Ajouter une propriété pour l'animation
+  balloonGroup.userData.rotationSpeed = 0.005;
+  balloonGroup.userData.rotationRadius = 8;
+  balloonGroup.userData.initialX = island.center.x;
+  balloonGroup.userData.initialZ = island.center.z;
+  balloonGroup.userData.angle = Math.random() * Math.PI * 2;
+
+  // Ajouter au chunk
+  scene.add(balloonGroup);
+  chunk.objects.push(balloonGroup);
+
+  // Ajouter l'animation à la boucle d'animation
+  if (!window.balloons) window.balloons = [];
+  window.balloons.push(balloonGroup);
 }
 
 /***/ }),

@@ -906,6 +906,21 @@ function animate() {
         }
     }
     
+    // Animer les ballons
+    if (window.balloons) {
+        window.balloons.forEach(balloon => {
+            balloon.userData.angle += balloon.userData.rotationSpeed;
+            
+            // Calculer la nouvelle position
+            const newX = balloon.userData.initialX + Math.cos(balloon.userData.angle) * balloon.userData.rotationRadius;
+            const newZ = balloon.userData.initialZ + Math.sin(balloon.userData.angle) * balloon.userData.rotationRadius;
+            
+            // Mettre à jour la position du groupe
+            balloon.position.x = newX - balloon.userData.initialX;
+            balloon.position.z = newZ - balloon.userData.initialZ;
+        });
+    }
+    
     renderer.render(scene, camera);
 }
 
@@ -996,6 +1011,13 @@ function updateChunks(centerX, centerZ, velocity = new THREE.Vector3()) {
         );
         
         if (distance > RENDER_DISTANCE + PRELOAD_EXTRA_DISTANCE) {
+            // Retirer les îles de la minimap
+            if (window.minimap && chunk.islands) {
+                chunk.islands.forEach(island => {
+                    window.minimap.removeIsland(`${x},${z}-${island.center.x},${island.center.z}`);
+                });
+            }
+
             // Remove chunk and dispose of its resources
             if (chunk.mesh && chunk.mesh.geometry) {
                 chunk.mesh.geometry.dispose();
@@ -1067,6 +1089,22 @@ function createChunk(chunkX, chunkZ, callback) {
         islands: generateIslandsForChunk(chunkX, chunkZ),
         objects: [] // For storing all Three.js objects in this chunk
     };
+
+    // Ajouter les îles à la minimap si elle existe
+    if (window.minimap) {
+        chunk.islands.forEach(island => {
+            window.minimap.addIsland({
+                x: island.center.x,
+                z: island.center.z,
+                id: `${chunkX},${chunkZ}-${island.center.x},${island.center.z}`
+            });
+        });
+    }
+
+    // Ajouter un ballon pour chaque île
+    chunk.islands.forEach(island => {
+        addBalloonToIsland(island, chunk);
+    });
 
     // Calculer la distance au chunk
     const distanceToCamera = Math.sqrt(
@@ -1601,4 +1639,93 @@ function addHouses() {
             scene.add(houseGroup);
         }
     }
+}
+
+/**
+ * Ajoute un ballon flottant au-dessus d'une île
+ */
+function addBalloonToIsland(island, chunk) {
+    // Hauteur du ballon (augmentée)
+    const balloonHeight = 150;
+    
+    // Créer le ballon (sphère plus grande)
+    const balloonGeometry = new THREE.SphereGeometry(15, 16, 16);
+    const balloonMaterial = new THREE.MeshStandardMaterial({
+        color: 0xFF4444,
+        roughness: 0.7,
+        metalness: 0.3
+    });
+    const balloon = new THREE.Mesh(balloonGeometry, balloonMaterial);
+    
+    // Position du ballon
+    balloon.position.set(
+        island.center.x,
+        balloonHeight,
+        island.center.z
+    );
+    
+    // Créer la corde
+    const ropeGeometry = new THREE.BufferGeometry();
+    const ropePoints = [];
+    
+    // Point de départ (sur l'île)
+    const startPoint = new THREE.Vector3(
+        island.center.x,
+        getTerrainHeightAtPosition(island.center.x, island.center.z) + 1,
+        island.center.z
+    );
+    
+    // Point d'arrivée (au ballon)
+    const endPoint = new THREE.Vector3(
+        island.center.x,
+        balloonHeight,
+        island.center.z
+    );
+    
+    // Créer une courbe légèrement ondulée pour la corde
+    const curve = new THREE.CatmullRomCurve3([
+        startPoint,
+        new THREE.Vector3(
+            island.center.x + 4,
+            (startPoint.y + endPoint.y) * 0.3,
+            island.center.z + 4
+        ),
+        new THREE.Vector3(
+            island.center.x - 4,
+            (startPoint.y + endPoint.y) * 0.6,
+            island.center.z - 4
+        ),
+        endPoint
+    ]);
+    
+    // Générer les points de la courbe
+    const points = curve.getPoints(50);
+    ropeGeometry.setFromPoints(points);
+    
+    const ropeMaterial = new THREE.LineBasicMaterial({
+        color: 0x8B4513,
+        linewidth: 3
+    });
+    
+    const rope = new THREE.Line(ropeGeometry, ropeMaterial);
+    
+    // Ajouter l'animation de rotation
+    const balloonGroup = new THREE.Group();
+    balloonGroup.add(balloon);
+    balloonGroup.add(rope);
+    
+    // Ajouter une propriété pour l'animation
+    balloonGroup.userData.rotationSpeed = 0.005;
+    balloonGroup.userData.rotationRadius = 8;
+    balloonGroup.userData.initialX = island.center.x;
+    balloonGroup.userData.initialZ = island.center.z;
+    balloonGroup.userData.angle = Math.random() * Math.PI * 2;
+    
+    // Ajouter au chunk
+    scene.add(balloonGroup);
+    chunk.objects.push(balloonGroup);
+    
+    // Ajouter l'animation à la boucle d'animation
+    if (!window.balloons) window.balloons = [];
+    window.balloons.push(balloonGroup);
 } 
