@@ -130,6 +130,17 @@ function onKeyUp(event) {
     }
 }
 
+function updateInfoPanel() {
+    const infoPanel = document.getElementById('info-panel');
+    if (infoPanel && deltaplane) {
+        infoPanel.innerHTML = `
+            <div>FPS: ${Math.round(deltaplane.currentFPS)}</div>
+            <div>Online: ${deltaplane.playerCount}</div>
+            <div>Controls: ← →</div>
+        `;
+    }
+}
+
 function animate() {
     // If game hasn't started, don't animate
     if (!gameStarted) return;
@@ -145,6 +156,9 @@ function animate() {
         
         // Update camera to follow hang glider
         deltaplane.updateCamera(camera);
+
+        // Update info panel
+        updateInfoPanel();
         
         // Render scene
         renderer.render(scene, camera);

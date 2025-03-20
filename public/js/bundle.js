@@ -64,8 +64,8 @@ var isProduction = window.location.hostname.includes('onrender.com');
 var config = isProduction ? _config_prod_js__WEBPACK_IMPORTED_MODULE_1__.config : _config_dev_js__WEBPACK_IMPORTED_MODULE_0__.config;
 
 // For debugging
-console.log('Environment:', isProduction ? 'production' : 'development');
-console.log('Active configuration:', config);
+//console.log('Environment:', isProduction ? 'production' : 'development');
+//console.log('Active configuration:', config);
 
 /***/ }),
 
@@ -59988,6 +59988,12 @@ function onKeyUp(event) {
       break;
   }
 }
+function updateInfoPanel() {
+  var infoPanel = document.getElementById('info-panel');
+  if (infoPanel && deltaplane) {
+    infoPanel.innerHTML = "\n            <div>FPS: ".concat(Math.round(deltaplane.currentFPS), "</div>\n            <div>Online: ").concat(deltaplane.playerCount, "</div>\n            <div>Controls: \u2190 \u2192</div>\n        ");
+  }
+}
 function animate() {
   // If game hasn't started, don't animate
   if (!gameStarted) return;
@@ -60002,6 +60008,9 @@ function animate() {
 
     // Update camera to follow hang glider
     deltaplane.updateCamera(camera);
+
+    // Update info panel
+    updateInfoPanel();
 
     // Render scene
     renderer.render(scene, camera);

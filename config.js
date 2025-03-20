@@ -9,5 +9,5 @@ const isProduction = window.location.hostname.includes('onrender.com');
 export const config = isProduction ? prodConfig : devConfig;
 
 // For debugging
-console.log('Environment:', isProduction ? 'production' : 'development');
-console.log('Active configuration:', config); 
+//console.log('Environment:', isProduction ? 'production' : 'development');
+//console.log('Active configuration:', config); 

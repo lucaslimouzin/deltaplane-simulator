@@ -12,6 +12,17 @@ input[type="password"] {
     background: rgba(255, 255, 255, 0.9);
 }
 
+/* Style du panneau d'information */
+#info-panel {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
 /* Style du formulaire de login */
 #login-form {
     position: fixed;
@@ -61,6 +72,23 @@ input[type="password"] {
     canvas {
         width: 100% !important;
         height: 100% !important;
+    }
+}
+
+/* Styles spécifiques pour le mode portrait */
+@media (orientation: portrait) {
+    #info-panel {
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+}
+
+/* Styles spécifiques pour le mode paysage */
+@media (orientation: landscape) {
+    #info-panel {
+        bottom: 20px;
+        left: 20px;
     }
 }
 
