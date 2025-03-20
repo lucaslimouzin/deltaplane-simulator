@@ -86,28 +86,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
-        /* Position du panneau d'information */
-        .information {
-            position: fixed !important;
-            top: 10px !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-            color: white;
-            z-index: 1000;
-        }
-
-        @media (orientation: landscape) {
-            .information {
-                top: auto !important;
-                bottom: 20px !important;
-                left: 20px !important;
-                transform: none !important;
-            }
-        }
     </style>
 </head>
 <body>
@@ -118,7 +96,6 @@
     </div>
     
     <div id="info">Hang Glider Simulator</div>
-    <div id="info-panel"></div>
     <div id="debug">Loading...</div>
     <script>
         // Rediriger les messages de console vers l'élément de débogage

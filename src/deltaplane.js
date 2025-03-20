@@ -566,73 +566,44 @@ export class Deltaplane {
             // this.velocity.x *= 0.999;
             // this.velocity.z *= 0.999;
             
-            // Create or update flight information panel (always visible)
-            let infoDiv = document.getElementById('flight-info');
+            // Styles for the info panel
+            const panelStyle = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.4);
+                padding: 4px 6px;
+                border-radius: 3px;
+                color: white;
+                z-index: 1000;
+                font-size: 10px;
+                min-width: 100px;
+            `;
+
+            const sectionStyle = "line-height: 1.1;";
+            const labelStyle = "color: #87CEEB; display: inline-block; width: 45px;";
+            const valueStyle = "color: white;";
+
+            // Create or update info div
+            let infoDiv = document.getElementById('info-panel');
             if (!infoDiv) {
                 infoDiv = document.createElement('div');
-                infoDiv.id = 'flight-info';
-                infoDiv.style.position = 'absolute';
-                infoDiv.style.bottom = '250px'; // Positioned above controls
-                infoDiv.style.left = '20px'; // Positioned to the left
-                infoDiv.style.padding = '10px';
-                infoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-                infoDiv.style.borderRadius = '5px';
-                infoDiv.style.color = 'white';
-                infoDiv.style.fontFamily = 'Arial, sans-serif';
-                infoDiv.style.fontSize = '14px';
-                infoDiv.style.fontWeight = 'bold';
-                infoDiv.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
-                infoDiv.style.zIndex = '1000';
-                infoDiv.style.width = '200px';
-                infoDiv.style.backdropFilter = 'blur(5px)';
-                infoDiv.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-                infoDiv.style.maxHeight = '60vh'; // Maximum reduced height
-                infoDiv.style.overflowY = 'auto';
+                infoDiv.id = 'info-panel';
                 document.body.appendChild(infoDiv);
             }
-            
-            // Formatage des informations de vol
-            const speedKmh = Math.round(airSpeed * 3.6); // m/s in km/h
-            const altitude = Math.round(this.mesh.position.y);
-            const terrainHeight = this.terrain ? Math.round(this.getTerrainHeightAtPosition(this.mesh.position.x, this.mesh.position.z)) : 0;
-            const heightAboveTerrain = Math.round(altitude - terrainHeight);
-            const windInfo = this.windEnabled ? 
-                `${Math.round(this.windSpeed * 3.6)} km/h (${this.getWindDirectionName()})` : 
-                'disabled';
-            const thermalInfo = this.thermalStrength > 0 ? 
-                `+${Math.round(this.thermalStrength * 3.6)} km/h` : 
-                'None';
-            const angleOfAttackDeg = Math.round(angleOfAttack * 180 / Math.PI);
-            const inclinaisonDeg = Math.round(this.mesh.rotation.z * 180 / Math.PI);
-            
-            // Vérifier si les valeurs sont valides (non NaN)
-            const validAltitude = isNaN(altitude) ? 0 : altitude;
-            const validHeightAboveTerrain = isNaN(heightAboveTerrain) ? 0 : heightAboveTerrain;
-            const validSpeedKmh = isNaN(speedKmh) ? 0 : speedKmh;
-            const validAngleOfAttackDeg = isNaN(angleOfAttackDeg) ? 0 : angleOfAttackDeg;
-            const validInclinaisonDeg = isNaN(inclinaisonDeg) ? 0 : inclinaisonDeg;
-            
-            // Style for labels and values - more compact format
-            const labelStyle = 'color: #8adbff; display: inline-block; width: 100px; font-size: 13px;';
-            const valueStyle = 'color: #ffffff; font-weight: bold; font-size: 13px;';
-            const sectionStyle = 'margin-bottom: 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 5px;';
-            
+
+            infoDiv.style.cssText = panelStyle;
+
             // Compact HTML content with styling
             infoDiv.innerHTML = `
-                <div style="text-align: center; font-size: 14px; margin-bottom: 8px; color: #ffcc00;">INFORMATION</div>
+                <div style="text-align: center; font-size: 10px; margin-bottom: 2px; color: #ffcc00;">INFORMATION</div>
                 <div style="${sectionStyle}">
                     <div><span style="${labelStyle}">FPS:</span> <span style="${valueStyle}">${this.currentFPS}</span></div>
                     <div><span style="${labelStyle}">Online:</span> <span style="${valueStyle}">${this.playerCount}</span></div>
                     <div><span style="${labelStyle}">Controls:</span> <span style="${valueStyle}">← →</span></div>
                 </div>
             `;
-            
-            // Change background color on collision
-            if (this.isColliding) {
-                infoDiv.style.backgroundColor = 'rgba(200, 0, 0, 0.8)';
-            } else {
-                infoDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-            }
 
             // Add sail collision check
             this.checkVoileCollision();
