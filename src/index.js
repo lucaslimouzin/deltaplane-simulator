@@ -4,17 +4,21 @@ import { initScene, getTerrainHeightAtPosition } from './terrain.js';
 import { Deltaplane } from './deltaplane.js';
 import { MultiplayerManager } from './multiplayer.js';
 import { TouchControls } from './touchControls.js';
+import { AIPlaneurManager } from './aiPlaneurs.js';
 
 // Global variables
 let camera, scene, renderer;
 let controls;
-let deltaplane;
 let touchControls;
 let clock = new THREE.Clock();
 let devMode = false; // Development mode disabled
 let multiplayerManager; // Multiplayer manager
 let isMultiplayerMode = false; // Multiplayer mode disabled by default
 let gameStarted = false; // Indicates if the game has started
+let aiManager;  // Gestionnaire des planeurs IA
+
+// Rendre le deltaplane accessible globalement
+window.deltaplane = null;
 
 // Initialization
 init();
@@ -23,7 +27,7 @@ init();
 async function startGame() {
     // Create multiplayer manager if it doesn't exist
     if (!multiplayerManager) {
-        multiplayerManager = new MultiplayerManager(scene, deltaplane);
+        multiplayerManager = new MultiplayerManager(scene, window.deltaplane);
     }
     
     // Connect to WebSocket server
@@ -52,15 +56,18 @@ function init() {
         controls = new OrbitControls(camera, renderer.domElement);
         controls.enabled = false; // Disable orbit controls
         
-        // Create hang glider
-        deltaplane = new Deltaplane(scene);
+        // Create hang glider and make it globally accessible
+        window.deltaplane = new Deltaplane(scene);
         
         // Configure hang glider to use getTerrainHeightAtPosition
-        deltaplane.getTerrainHeightAtPosition = getTerrainHeightAtPosition;
+        window.deltaplane.getTerrainHeightAtPosition = getTerrainHeightAtPosition;
+
+        // Initialize AI Manager
+        aiManager = new AIPlaneurManager(scene);
 
         // Initialize touch controls if on mobile device
         if (TouchControls.isMobileDevice()) {
-            touchControls = new TouchControls(deltaplane);
+            touchControls = new TouchControls(window.deltaplane);
         } else {
             // Keyboard input handling for desktop
             window.addEventListener('keydown', onKeyDown);
@@ -68,10 +75,10 @@ function init() {
         }
         
         // Initial hang glider position
-        deltaplane.mesh.position.set(0, 100, 0);
+        window.deltaplane.mesh.position.set(0, 100, 0);
         
         // Initialize camera to follow hang glider
-        deltaplane.updateCamera(camera);
+        window.deltaplane.updateCamera(camera);
         
         // Start game with multiplayer login
         startGame();
@@ -91,7 +98,7 @@ function onWindowResize() {
 
 function resetPosition() {
     // Reset hang glider position and velocity
-    deltaplane.resetPosition();
+    window.deltaplane.resetPosition();
 }
 
 function onKeyDown(event) {
@@ -107,10 +114,10 @@ function onKeyDown(event) {
     // Update hang glider controls
     switch (event.code) {
         case 'ArrowLeft':
-            deltaplane.setControl('rollLeft', true);
+            window.deltaplane.setControl('rollLeft', true);
             break;
         case 'ArrowRight':
-            deltaplane.setControl('rollRight', true);
+            window.deltaplane.setControl('rollRight', true);
             break;
     }
 }
@@ -122,20 +129,20 @@ function onKeyUp(event) {
     // Update hang glider controls
     switch (event.code) {
         case 'ArrowLeft':
-            deltaplane.setControl('rollLeft', false);
+            window.deltaplane.setControl('rollLeft', false);
             break;
         case 'ArrowRight':
-            deltaplane.setControl('rollRight', false);
+            window.deltaplane.setControl('rollRight', false);
             break;
     }
 }
 
 function updateInfoPanel() {
     const infoPanel = document.getElementById('info-panel');
-    if (infoPanel && deltaplane) {
+    if (infoPanel && window.deltaplane) {
         infoPanel.innerHTML = `
-            <div>FPS: ${Math.round(deltaplane.currentFPS)}</div>
-            <div>Online: ${deltaplane.playerCount}</div>
+            <div>FPS: ${Math.round(window.deltaplane.currentFPS)}</div>
+            <div>Online: ${window.deltaplane.playerCount}</div>
             <div>Controls: ← →</div>
         `;
     }
@@ -152,10 +159,15 @@ function animate() {
         const delta = clock.getDelta();
         
         // Update hang glider
-        deltaplane.update(delta, null);
+        window.deltaplane.update(delta, null);
+        
+        // Update AI planeurs
+        if (aiManager && window.deltaplane.mesh) {
+            aiManager.update(delta, window.deltaplane.mesh.position, window.deltaplane.thermalPositions);
+        }
         
         // Update camera to follow hang glider
-        deltaplane.updateCamera(camera);
+        window.deltaplane.updateCamera(camera);
 
         // Update info panel
         updateInfoPanel();
