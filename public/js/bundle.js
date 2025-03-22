@@ -57075,6 +57075,7 @@ var Deltaplane = /*#__PURE__*/function () {
       this.rollRight = false; // Roll right
       this.yawLeft = false; // Turn left
       this.yawRight = false; // Turn right
+      this.sprinting = false; // Nouvel état pour le sprint
 
       // Flight parameters
       this.airDensity = 1.2; // kg/m³
@@ -57118,6 +57119,14 @@ var Deltaplane = /*#__PURE__*/function () {
       this.lastTime = performance.now();
       this.currentFPS = 0;
       this.playerCount = 0;
+
+      // Sprint parameters
+      this.sprintEnergy = 100; // Énergie maximale du sprint
+      this.currentSprintEnergy = 100; // Énergie actuelle
+      this.sprintSpeed = 2.0; // Multiplicateur de vitesse pendant le sprint
+      this.sprintDrain = 30; // Vitesse de consommation de l'énergie (unités par seconde)
+      this.sprintRecharge = 15; // Vitesse de recharge de l'énergie (unités par seconde)
+      this.minEnergyToSprint = 20; // Énergie minimale requise pour sprinter
     }
 
     // Create the hang glider model
@@ -57349,6 +57358,62 @@ var Deltaplane = /*#__PURE__*/function () {
             _this.piloteGroup.position.y += newLocalY - localPos.y;
           }
         };
+
+        // Création de la jauge de sprint avec un sprite
+        var sprintBarHeight = 128;
+        var sprintBarWidth = 32;
+
+        // Créer une texture pour la jauge
+        var canvas = document.createElement('canvas');
+        canvas.width = sprintBarWidth;
+        canvas.height = sprintBarHeight;
+        this.sprintBarContext = canvas.getContext('2d');
+        var sprintBarTexture = new three__WEBPACK_IMPORTED_MODULE_1__.CanvasTexture(canvas);
+        sprintBarTexture.minFilter = three__WEBPACK_IMPORTED_MODULE_1__.LinearFilter;
+
+        // Créer le sprite
+        var spriteMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.SpriteMaterial({
+          map: sprintBarTexture,
+          transparent: true
+        });
+        this.sprintBarSprite = new three__WEBPACK_IMPORTED_MODULE_1__.Sprite(spriteMaterial);
+        this.sprintBarSprite.scale.set(0.4, 4, 1);
+
+        // Positionner le sprite à droite du pilote
+        this.sprintBarSprite.position.set(2, -4, 0);
+        this.piloteGroup.add(this.sprintBarSprite);
+
+        // Fonction pour mettre à jour la texture de la jauge
+        this.updateSprintBarTexture = function (ratio, isSprinting) {
+          var ctx = _this.sprintBarContext;
+
+          // Sauvegarder le contexte
+          ctx.save();
+
+          // Effacer le canvas
+          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+          // Rotation du contexte
+          ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
+          ctx.rotate(Math.PI / 2);
+          ctx.translate(-ctx.canvas.height / 2, -ctx.canvas.width / 2);
+
+          // Dessiner le fond
+          ctx.fillStyle = 'rgba(51, 51, 51, 0.5)';
+          ctx.fillRect(0, 0, ctx.canvas.height, ctx.canvas.width);
+
+          // Dessiner la barre d'énergie
+          var width = ctx.canvas.height * ratio;
+          ctx.fillStyle = isSprinting ? '#ff3333' : '#33ff33';
+          // Dessiner à partir de la droite pour que ça se vide de haut en bas après rotation
+          ctx.fillRect(ctx.canvas.height - width, 0, width, ctx.canvas.width);
+
+          // Restaurer le contexte
+          ctx.restore();
+
+          // Mettre à jour la texture
+          _this.sprintBarSprite.material.map.needsUpdate = true;
+        };
       } catch (error) {
         console.error('Erreur lors de la création du deltaplane:', error);
       }
@@ -57376,262 +57441,276 @@ var Deltaplane = /*#__PURE__*/function () {
   }, {
     key: "update",
     value: function update(delta) {
-      if (!this.isRemotePlayer) {
-        try {
-          // Calcul des FPS
-          var currentTime = performance.now();
-          var timeDiff = currentTime - this.lastTime;
-          this.currentFPS = Math.round(1000 / timeDiff);
-          this.lastTime = currentTime;
+      var thermalPositions = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+      if (this.isRemotePlayer) return;
+      try {
+        // Calcul des FPS
+        var currentTime = performance.now();
+        var timeDiff = currentTime - this.lastTime;
+        this.currentFPS = Math.round(1000 / timeDiff);
+        this.lastTime = currentTime;
 
-          // Vitesse de rotation pour les contrôles
-          var rotationSpeed = 0.8;
+        // Update sprint energy
+        if (this.sprinting && this.currentSprintEnergy > 0) {
+          // Drain energy while sprinting
+          this.currentSprintEnergy = Math.max(0, this.currentSprintEnergy - this.sprintDrain * delta);
 
-          // Sauvegarder la rotation en lacet actuelle
-          var currentYaw = this.mesh.rotation.y;
-
-          // Application des contrôles d'orientation de la voile
-          if (this.pitchUp) {
-            // Pitch up (raise nose) for climb
-            this.mesh.rotation.x += 1.0 * delta;
-          } else if (this.pitchDown) {
-            // Pitch down (lower nose) for descend
-            this.mesh.rotation.x -= 1.0 * delta;
-          } else {
-            // If no key is pressed, gradually return to horizontal
-            var returnSpeed = 0.5 * delta; // Reduced from 1.0 to 0.5 for a smoother return
-            var smoothFactor = 0.1; // Smoothing factor for interpolation
-
-            // Smooth interpolation towards 0
-            this.mesh.rotation.x += (0 - this.mesh.rotation.x) * smoothFactor;
-
-            // Prevent micro-oscillations near 0
-            if (Math.abs(this.mesh.rotation.x) < 0.01) {
-              this.mesh.rotation.x = 0;
-            }
+          // Disable sprint if energy is too low
+          if (this.currentSprintEnergy < 1) {
+            this.sprinting = false;
           }
-          if (this.rollLeft) {
-            // Roll left
-            this.mesh.rotation.z += 0.5 * delta;
-          } else if (this.rollRight) {
-            // Roll right
-            this.mesh.rotation.z -= 0.5 * delta;
-          } else {
-            // If no key is pressed, gradually return to horizontal
-            var _smoothFactor = 0.1; // Same smoothing factor as for pitch
+        } else if (!this.sprinting && this.currentSprintEnergy < this.sprintEnergy) {
+          // Recharge energy when not sprinting
+          this.currentSprintEnergy = Math.min(this.sprintEnergy, this.currentSprintEnergy + this.sprintRecharge * delta);
+        }
 
-            // Smooth interpolation towards 0
-            this.mesh.rotation.z += (0 - this.mesh.rotation.z) * _smoothFactor;
+        // Store previous position for collision detection
+        var previousPosition = this.mesh.position.clone();
 
-            // Prevent micro-oscillations near 0
-            if (Math.abs(this.mesh.rotation.z) < 0.01) {
-              this.mesh.rotation.z = 0;
-            }
+        // Vitesse de rotation pour les contrôles
+        var rotationSpeed = 0.8;
+
+        // Sauvegarder la rotation en lacet actuelle
+        var currentYaw = this.mesh.rotation.y;
+
+        // Application des contrôles d'orientation de la voile
+        if (this.pitchUp) {
+          // Pitch up (raise nose) for climb
+          this.mesh.rotation.x += 1.0 * delta;
+        } else if (this.pitchDown) {
+          // Pitch down (lower nose) for descend
+          this.mesh.rotation.x -= 1.0 * delta;
+        } else {
+          // If no key is pressed, gradually return to horizontal
+          var returnSpeed = 0.5 * delta; // Reduced from 1.0 to 0.5 for a smoother return
+          var smoothFactor = 0.1; // Smoothing factor for interpolation
+
+          // Smooth interpolation towards 0
+          this.mesh.rotation.x += (0 - this.mesh.rotation.x) * smoothFactor;
+
+          // Prevent micro-oscillations near 0
+          if (Math.abs(this.mesh.rotation.x) < 0.01) {
+            this.mesh.rotation.x = 0;
           }
+        }
+        if (this.rollLeft) {
+          // Roll left
+          this.mesh.rotation.z += 0.5 * delta;
+        } else if (this.rollRight) {
+          // Roll right
+          this.mesh.rotation.z -= 0.5 * delta;
+        } else {
+          // If no key is pressed, gradually return to horizontal
+          var _smoothFactor = 0.1; // Same smoothing factor as for pitch
 
-          // Gestion du lacet avec protection contre les rotations extrêmes
-          if (this.yawLeft) {
-            var newYaw = this.mesh.rotation.y + rotationSpeed * delta;
-            // Normalize angle between -PI and PI
-            this.mesh.rotation.y = Math.atan2(Math.sin(newYaw), Math.cos(newYaw));
-          }
-          if (this.yawRight) {
-            var _newYaw = this.mesh.rotation.y - rotationSpeed * delta;
-            // Normalize angle between -PI and PI
-            this.mesh.rotation.y = Math.atan2(Math.sin(_newYaw), Math.cos(_newYaw));
-          }
+          // Smooth interpolation towards 0
+          this.mesh.rotation.z += (0 - this.mesh.rotation.z) * _smoothFactor;
 
-          // Strict rotation limits to prevent impossible positions
+          // Prevent micro-oscillations near 0
+          if (Math.abs(this.mesh.rotation.z) < 0.01) {
+            this.mesh.rotation.z = 0;
+          }
+        }
+
+        // Gestion du lacet avec protection contre les rotations extrêmes
+        if (this.yawLeft) {
+          var newYaw = this.mesh.rotation.y + rotationSpeed * delta;
+          // Normalize angle between -PI and PI
+          this.mesh.rotation.y = Math.atan2(Math.sin(newYaw), Math.cos(newYaw));
+        }
+        if (this.yawRight) {
+          var _newYaw = this.mesh.rotation.y - rotationSpeed * delta;
+          // Normalize angle between -PI and PI
+          this.mesh.rotation.y = Math.atan2(Math.sin(_newYaw), Math.cos(_newYaw));
+        }
+
+        // Strict rotation limits to prevent impossible positions
+        this.mesh.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.x));
+        this.mesh.rotation.z = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.z));
+
+        // Additional check to prevent flipping
+        var upVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+        upVector.applyEuler(this.mesh.rotation);
+        if (upVector.y < 0) {
+          // Correct orientation if hang glider is flipped
           this.mesh.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.x));
           this.mesh.rotation.z = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.z));
-
-          // Additional check to prevent flipping
-          var upVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
-          upVector.applyEuler(this.mesh.rotation);
-          if (upVector.y < 0) {
-            // Correct orientation if hang glider is flipped
-            this.mesh.rotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.x));
-            this.mesh.rotation.z = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.z));
-          }
-
-          // Sauvegarder la rotation en lacet pour le prochain frame
-          this.lastYaw = this.mesh.rotation.y;
-
-          // Calcul de la direction du deltaplane basée sur son orientation
-          var direction = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
-          direction.applyQuaternion(this.mesh.quaternion);
-
-          // Calcul de la vitesse relative à l'air (sans tenir compte du vent)
-          var airVelocity = this.velocity.clone();
-
-          // Vecteur de vent et effet du vent - désactivés
-          var windVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
-          var windAngleEffect = 0;
-          var windLiftEffect = 0;
-
-          // Le vent est désactivé, donc pas d'effet du vent
-          // if (this.windEnabled) { ... } - Code supprimé
-
-          // Calcul de la vitesse relative à l'air
-          var airSpeed = airVelocity.length();
-
-          // Calcul de la portance (dépend de l'angle d'attaque et de la vitesse)
-          // Angle d'attaque simplifié (basé sur la rotation en x du deltaplane)
-          var angleOfAttack = Math.PI / 2 - this.mesh.rotation.x;
-
-          // Coefficient de portance qui dépend de l'angle d'attaque
-          // Simplifié: maximum à 15 degrés, diminue après
-          var effectiveLiftCoef = this.liftCoefficient * Math.sin(2 * angleOfAttack) * Math.min(1, Math.max(0, (Math.PI / 6 - Math.abs(angleOfAttack - Math.PI / 12)) / (Math.PI / 6)));
-
-          // Force de portance (L = 0.5 * rho * v² * S * CL)
-          // Ajout de l'effet du vent sur la portance
-          var liftForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * (effectiveLiftCoef + windLiftEffect * delta);
-
-          // Direction de la portance (perpendiculaire à la direction du vol)
-          var liftDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
-          liftDirection.applyQuaternion(this.mesh.quaternion);
-
-          // Application de la portance - RÉACTIVÉE pour permettre de monter/descendre en cabrant/piquant
-          // Amplification de l'effet vertical pour un impact plus prononcé sur l'altitude
-          var liftVector = liftDirection.multiplyScalar(liftForce * delta * 3.0); // Multiplied by 3 for a stronger effect
-          this.velocity.add(liftVector);
-
-          // Ajout d'une force verticale directe basée sur l'angle de tangage
-          // Cela garantit un effet immédiat sur l'altitude
-          var pitchEffect = 200 * Math.sin(this.mesh.rotation.x); // Direct vertical force
-          this.velocity.y += pitchEffect * delta;
-
-          // Calcul de la traînée (D = 0.5 * rho * v² * S * CD)
-          var dragForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * this.dragCoefficient;
-
-          // Direction de la traînée (opposée à la direction du vol)
-          if (airSpeed > 0) {
-            var dragDirection = airVelocity.clone().normalize().negate();
-            var dragVector = dragDirection.multiplyScalar(dragForce * delta);
-            this.velocity.add(dragVector);
-          }
-
-          // Propulsion constante dans la direction du deltaplane
-          var maxSpeed = 200; // Vitesse maximum in km/h
-          var currentSpeed = this.velocity.length() * 3.6; // Convert to km/h
-
-          // Reduce propulsion if approaching maximum speed
-          var speedRatio = currentSpeed / maxSpeed;
-          var propulsionForce = 150 * Math.max(0, 1 - speedRatio);
-
-          // Create a horizontal direction vector (ignoring Y component)
-          var forwardDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
-          forwardDirection.applyAxisAngle(new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0), this.mesh.rotation.y);
-          var horizontalDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
-
-          // Apply propulsion only horizontally
-          var propulsionVector = horizontalDirection.multiplyScalar(propulsionForce * delta);
-          this.velocity.add(propulsionVector);
-
-          // Limit maximum speed
-          if (currentSpeed > maxSpeed) {
-            var reduction = maxSpeed / currentSpeed;
-            this.velocity.multiplyScalar(reduction);
-          }
-
-          // Add progressive air resistance
-          var airResistance = Math.pow(speedRatio, 2) * 0.02;
-          this.velocity.multiplyScalar(1 - airResistance);
-
-          // Don't stabilize altitude to allow natural climb/descend
-
-          // Lateral inclination effect (turn)
-          // The more inclined, the more turning
-          var turnFactor = Math.sin(this.mesh.rotation.z) * 2.0;
-
-          // Rotate velocity vector to simulate a turn
-          // But only if not climbing/pitching
-          if (Math.abs(turnFactor) > 0.01) {
-            var turnAxis = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
-            var turnAngle = turnFactor * delta;
-            this.velocity.applyAxisAngle(turnAxis, turnAngle);
-
-            // Add a slight yaw (yaw) rotation for a more natural turn
-            // Use quaternion for this rotation to avoid gimbal lock issues
-            var yawCorrection = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
-            this.mesh.quaternion.multiply(yawCorrection);
-
-            // Update Euler angles after correction
-            this.mesh.rotation.setFromQuaternion(this.mesh.quaternion, 'YXZ');
-          }
-
-          // Position before update for collision detection
-          var previousPosition = this.mesh.position.clone();
-
-          // Apply velocity to position
-          this.mesh.position.x += this.velocity.x * delta;
-          this.mesh.position.y += this.velocity.y * delta;
-          this.mesh.position.z += this.velocity.z * delta;
-
-          // Check minimum altitude
-          if (this.mesh.position.y < this.minAltitude) {
-            this.mesh.position.y = this.minAltitude;
-
-            // If descending too low, cancel negative vertical velocity
-            if (this.velocity.y < 0) {
-              this.velocity.y = 0;
-
-              // Add a slight upward push to prevent sticking to the ground
-              this.velocity.y += 5;
-            }
-          }
-
-          // Check maximum altitude
-          if (this.mesh.position.y > this.maxAltitude) {
-            this.mesh.position.y = this.maxAltitude;
-
-            // If climbing too high, cancel positive vertical velocity
-            if (this.velocity.y > 0) {
-              this.velocity.y = 0;
-
-              // Add a slight downward push to prevent sticking to the ceiling
-              this.velocity.y -= 5;
-            }
-          }
-
-          // Collision detection with terrain
-          this.checkTerrainCollision(previousPosition, delta);
-
-          // Suppression de la friction pour maintenir une vitesse constante
-          // this.velocity.x *= 0.999;
-          // this.velocity.z *= 0.999;
-
-          // Styles for the info panel
-          var panelStyle = "\n                    position: fixed;\n                    bottom: 20px;\n                    left: 50%;\n                    transform: translateX(-50%);\n                    background: rgba(0, 0, 0, 0.4);\n                    padding: 4px 6px;\n                    border-radius: 3px;\n                    color: white;\n                    z-index: 1000;\n                    font-size: 10px;\n                    min-width: 100px;\n                ";
-          var sectionStyle = "line-height: 1.1;";
-          var labelStyle = "color: #87CEEB; display: inline-block; width: 45px;";
-          var valueStyle = "color: white;";
-
-          // Create or update info div
-          var infoDiv = document.getElementById('info-panel');
-          if (!infoDiv) {
-            infoDiv = document.createElement('div');
-            infoDiv.id = 'info-panel';
-            document.body.appendChild(infoDiv);
-          }
-          infoDiv.style.cssText = panelStyle;
-
-          // Compact HTML content with styling
-          infoDiv.innerHTML = "\n                    <div style=\"text-align: center; font-size: 10px; margin-bottom: 2px; color: #ffcc00;\">INFORMATION</div>\n                    <div style=\"".concat(sectionStyle, "\">\n                        <div><span style=\"").concat(labelStyle, "\">FPS:</span> <span style=\"").concat(valueStyle, "\">").concat(this.currentFPS, "</span></div>\n                        <div><span style=\"").concat(labelStyle, "\">Online:</span> <span style=\"").concat(valueStyle, "\">").concat(this.playerCount, "</span></div>\n                        <div><span style=\"").concat(labelStyle, "\">Controls:</span> <span style=\"").concat(valueStyle, "\">\u2190 \u2192</span></div>\n                    </div>\n                ");
-
-          // Add sail collision check
-          this.checkVoileCollision();
-
-          // Mettre à jour la minimap
-          if (minimap && this.mesh) {
-            minimap.updatePlayerPosition(this.mesh.position, {
-              y: this.mesh.rotation.y
-            });
-            minimap.update();
-          }
-        } catch (error) {
-          console.error('Error in deltaplane update:', error);
         }
+
+        // Sauvegarder la rotation en lacet pour le prochain frame
+        this.lastYaw = this.mesh.rotation.y;
+
+        // Calcul de la direction du deltaplane basée sur son orientation
+        var direction = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
+        direction.applyQuaternion(this.mesh.quaternion);
+
+        // Calcul de la vitesse relative à l'air (sans tenir compte du vent)
+        var airVelocity = this.velocity.clone();
+
+        // Vecteur de vent et effet du vent - désactivés
+        var windVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
+        var windAngleEffect = 0;
+        var windLiftEffect = 0;
+
+        // Calcul de la vitesse relative à l'air
+        var airSpeed = airVelocity.length();
+
+        // Calcul de la portance (dépend de l'angle d'attaque et de la vitesse)
+        // Angle d'attaque simplifié (basé sur la rotation en x du deltaplane)
+        var angleOfAttack = Math.PI / 2 - this.mesh.rotation.x;
+
+        // Coefficient de portance qui dépend de l'angle d'attaque
+        // Simplifié: maximum à 15 degrés, diminue après
+        var effectiveLiftCoef = this.liftCoefficient * Math.sin(2 * angleOfAttack) * Math.min(1, Math.max(0, (Math.PI / 6 - Math.abs(angleOfAttack - Math.PI / 12)) / (Math.PI / 6)));
+
+        // Force de portance (L = 0.5 * rho * v² * S * CL)
+        // Ajout de l'effet du vent sur la portance
+        var liftForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * (effectiveLiftCoef + windLiftEffect * delta);
+
+        // Direction de la portance (perpendiculaire à la direction du vol)
+        var liftDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+        liftDirection.applyQuaternion(this.mesh.quaternion);
+
+        // Application de la portance
+        var liftVector = liftDirection.multiplyScalar(liftForce * delta * 3.0);
+        this.velocity.add(liftVector);
+
+        // Ajout d'une force verticale directe basée sur l'angle de tangage
+        var pitchEffect = 200 * Math.sin(this.mesh.rotation.x);
+        this.velocity.y += pitchEffect * delta;
+
+        // Calcul de la traînée (D = 0.5 * rho * v² * S * CD)
+        var dragForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * this.dragCoefficient;
+
+        // Direction de la traînée (opposée à la direction du vol)
+        if (airSpeed > 0) {
+          var dragDirection = airVelocity.clone().normalize().negate();
+          var dragVector = dragDirection.multiplyScalar(dragForce * delta);
+          this.velocity.add(dragVector);
+        }
+
+        // Propulsion constante dans la direction du deltaplane
+        var maxSpeed = 200; // Vitesse maximum in km/h
+        var currentSpeed = this.velocity.length() * 3.6; // Convert to km/h
+
+        // Reduce propulsion if approaching maximum speed
+        var speedRatio = currentSpeed / maxSpeed;
+        var propulsionForce = 150 * Math.max(0, 1 - speedRatio);
+
+        // Create a horizontal direction vector (ignoring Y component)
+        var forwardDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
+        forwardDirection.applyAxisAngle(new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0), this.mesh.rotation.y);
+        var horizontalDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
+
+        // Apply propulsion only horizontally
+        var propulsionVector = horizontalDirection.multiplyScalar(propulsionForce * delta);
+        this.velocity.add(propulsionVector);
+
+        // Apply sprint multiplier if active
+        var speedMultiplier = this.sprinting ? this.sprintSpeed : 1.0;
+        this.velocity.multiplyScalar(speedMultiplier);
+
+        // Limit maximum speed
+        if (currentSpeed > maxSpeed) {
+          var reduction = maxSpeed / currentSpeed;
+          this.velocity.multiplyScalar(reduction);
+        }
+
+        // Add progressive air resistance
+        var airResistance = Math.pow(speedRatio, 2) * 0.02;
+        this.velocity.multiplyScalar(1 - airResistance);
+
+        // Lateral inclination effect (turn)
+        var turnFactor = Math.sin(this.mesh.rotation.z) * 2.0;
+
+        // Rotate velocity vector to simulate a turn
+        if (Math.abs(turnFactor) > 0.01) {
+          var turnAxis = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+          var turnAngle = turnFactor * delta;
+          this.velocity.applyAxisAngle(turnAxis, turnAngle);
+
+          // Add a slight yaw rotation for a more natural turn
+          var yawCorrection = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
+          this.mesh.quaternion.multiply(yawCorrection);
+
+          // Update Euler angles after correction
+          this.mesh.rotation.setFromQuaternion(this.mesh.quaternion, 'YXZ');
+        }
+
+        // Update position
+        this.mesh.position.add(this.velocity.clone().multiplyScalar(delta));
+
+        // Check minimum altitude
+        if (this.mesh.position.y < this.minAltitude) {
+          this.mesh.position.y = this.minAltitude;
+
+          // If descending too low, cancel negative vertical velocity
+          if (this.velocity.y < 0) {
+            this.velocity.y = 0;
+            this.velocity.y += 5;
+          }
+        }
+
+        // Check maximum altitude
+        if (this.mesh.position.y > this.maxAltitude) {
+          this.mesh.position.y = this.maxAltitude;
+
+          // If climbing too high, cancel positive vertical velocity
+          if (this.velocity.y > 0) {
+            this.velocity.y = 0;
+            this.velocity.y -= 5;
+          }
+        }
+
+        // Collision detection with terrain
+        this.checkTerrainCollision(previousPosition, delta);
+
+        // Update info panel
+        var panelStyle = "\n                position: fixed;\n                bottom: 20px;\n                left: 50%;\n                transform: translateX(-50%);\n                background: rgba(0, 0, 0, 0.4);\n                padding: 4px 6px;\n                border-radius: 3px;\n                color: white;\n                z-index: 1000;\n                font-size: 10px;\n                min-width: 100px;\n            ";
+        var sectionStyle = "line-height: 1.1;";
+        var labelStyle = "color: #87CEEB; display: inline-block; width: 45px;";
+        var valueStyle = "color: white;";
+
+        // Create sprint gauge style
+        var sprintGaugeContainerStyle = "\n                width: 100%;\n                height: 4px;\n                background: rgba(255, 255, 255, 0.2);\n                border-radius: 2px;\n                margin-top: 4px;\n            ";
+        var sprintGaugeStyle = "\n                width: ".concat(this.currentSprintEnergy / this.sprintEnergy * 100, "%;\n                height: 100%;\n                background: ").concat(this.sprinting ? '#ff3333' : '#33ff33', ";\n                border-radius: 2px;\n                transition: width 0.1s ease-out;\n            ");
+
+        // Create or update info div
+        var infoDiv = document.getElementById('info-panel');
+        if (!infoDiv) {
+          infoDiv = document.createElement('div');
+          infoDiv.id = 'info-panel';
+          document.body.appendChild(infoDiv);
+        }
+        infoDiv.style.cssText = panelStyle;
+
+        // Compact HTML content with styling and sprint gauge
+        infoDiv.innerHTML = "\n                <div style=\"text-align: center; font-size: 10px; margin-bottom: 2px; color: #ffcc00;\">INFORMATION</div>\n                <div style=\"".concat(sectionStyle, "\">\n                    <div><span style=\"").concat(labelStyle, "\">FPS:</span> <span style=\"").concat(valueStyle, "\">").concat(this.currentFPS, "</span></div>\n                    <div><span style=\"").concat(labelStyle, "\">Online:</span> <span style=\"").concat(valueStyle, "\">").concat(this.playerCount, "</span></div>\n                    <div><span style=\"").concat(labelStyle, "\">Controls:</span> <span style=\"").concat(valueStyle, "\">\u2190 \u2192</span></div>\n                    <div><span style=\"").concat(labelStyle, "\">Sprint:</span> <span style=\"").concat(valueStyle, "\">[SPACE]</span></div>\n                    <div style=\"").concat(sprintGaugeContainerStyle, "\">\n                        <div style=\"").concat(sprintGaugeStyle, "\"></div>\n                    </div>\n                </div>\n            ");
+
+        // Add sail collision check
+        this.checkVoileCollision();
+
+        // Update minimap
+        if (minimap && this.mesh) {
+          minimap.updatePlayerPosition(this.mesh.position, {
+            y: this.mesh.rotation.y
+          });
+          minimap.update();
+        }
+
+        // Mettre à jour la jauge de sprint
+        if (this.sprintBarSprite && this.updateSprintBarTexture) {
+          var energyRatio = this.currentSprintEnergy / this.sprintEnergy;
+          this.updateSprintBarTexture(energyRatio, this.sprinting);
+
+          // Faire toujours face à la caméra (propriété des sprites)
+          this.sprintBarSprite.position.set(2, -4, 0);
+
+          // Appliquer la rotation du deltaplane à la jauge (sens inversé)
+          this.sprintBarSprite.material.rotation = this.mesh.rotation.z;
+        }
+      } catch (error) {
+        console.error('Error in deltaplane update:', error);
       }
     }
 
@@ -57908,6 +57987,15 @@ var Deltaplane = /*#__PURE__*/function () {
       // Clean up other resources
       this.voile = null;
       this.scene = null;
+    }
+  }, {
+    key: "toggleSprint",
+    value: function toggleSprint(activate) {
+      if (activate && this.currentSprintEnergy >= this.minEnergyToSprint) {
+        this.sprinting = true;
+      } else {
+        this.sprinting = false;
+      }
     }
   }]);
 }();
@@ -60900,6 +60988,39 @@ function init() {
 
     // Add resize handler
     window.addEventListener('resize', onWindowResize, false);
+
+    // Add sprint button for mobile
+    var sprintButton = document.createElement('button');
+    sprintButton.innerHTML = 'SPRINT';
+    sprintButton.style.cssText = "\n            position: fixed;\n            bottom: 120px;\n            right: 20px;\n            padding: 10px 20px;\n            background: rgba(255, 255, 255, 0.2);\n            border: 1px solid rgba(255, 255, 255, 0.4);\n            border-radius: 5px;\n            color: white;\n            font-size: 14px;\n            cursor: pointer;\n            touch-action: manipulation;\n            user-select: none;\n            z-index: 1000;\n        ";
+    document.body.appendChild(sprintButton);
+
+    // Sprint button touch events
+    var isSprinting = false;
+    sprintButton.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      window.deltaplane.toggleSprint(true);
+      isSprinting = true;
+    });
+    sprintButton.addEventListener('touchend', function (e) {
+      e.preventDefault();
+      window.deltaplane.toggleSprint(false);
+      isSprinting = false;
+    });
+
+    // Keyboard sprint control
+    document.addEventListener('keydown', function (e) {
+      if (e.code === 'Space' && !isSprinting) {
+        window.deltaplane.toggleSprint(true);
+        isSprinting = true;
+      }
+    });
+    document.addEventListener('keyup', function (e) {
+      if (e.code === 'Space') {
+        window.deltaplane.toggleSprint(false);
+        isSprinting = false;
+      }
+    });
   } catch (error) {
     console.error('Error during initialization:', error);
   }
