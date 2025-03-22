@@ -1,0 +1,54 @@
+name: Auto-merge dev to main
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.event.commits[0].message != 'Auto-merge dev into main'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+      
+      - name: Check if dev was merged into
+        id: check-merge
+        run: |
+          # Vérifier si le dernier commit est un merge
+          LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
+          if [[ $LAST_COMMIT_MSG == "Merge"* ]]; then
+            echo "is_merge=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_merge=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Merge dev into main
+        if: steps.check-merge.outputs.is_merge == 'true'
+        run: |
+          # S'assurer qu'on a les dernières modifications
+          git fetch origin main
+          git fetch origin dev
+          
+          # Basculer sur main
+          git checkout main
+          
+          # Merger dev dans main
+          git merge --no-ff origin/dev -m "Auto-merge dev into main"
+          
+          # Pousser les changements
+          git push origin main 
