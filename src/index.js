@@ -90,6 +90,56 @@ function init() {
 
         // Add resize handler
         window.addEventListener('resize', onWindowResize, false);
+
+        // Add sprint button for mobile
+        const sprintButton = document.createElement('button');
+        sprintButton.innerHTML = 'SPRINT';
+        sprintButton.style.cssText = `
+            position: fixed;
+            bottom: 120px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            touch-action: manipulation;
+            user-select: none;
+            z-index: 1000;
+        `;
+
+        document.body.appendChild(sprintButton);
+
+        // Sprint button touch events
+        let isSprinting = false;
+        sprintButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            window.deltaplane.toggleSprint(true);
+            isSprinting = true;
+        });
+
+        sprintButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            window.deltaplane.toggleSprint(false);
+            isSprinting = false;
+        });
+
+        // Keyboard sprint control
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !isSprinting) {
+                window.deltaplane.toggleSprint(true);
+                isSprinting = true;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                window.deltaplane.toggleSprint(false);
+                isSprinting = false;
+            }
+        });
     } catch (error) {
         console.error('Error during initialization:', error);
     }
