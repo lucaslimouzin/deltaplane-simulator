@@ -79,14 +79,16 @@ input[type="password"] {
 
 #minimap-container {
     position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 200px;
-    height: 200px;
+    top: 10px;
+    right: 10px;
+    width: 180px;
+    height: 180px;
     z-index: 1000;
     pointer-events: none;
     border-radius: 50%;
     overflow: hidden;
+    opacity: 0.9;
+    background: rgba(0, 0, 0, 0.15);
 }
 
 #minimap-container canvas {
@@ -94,4 +96,60 @@ input[type="password"] {
     height: 100%;
     image-rendering: pixelated;
     border-radius: 50%;
-} 
+}
+
+/* Styles responsifs pour la minimap */
+@media (max-width: 768px) {
+    #minimap-container {
+        width: 130px;
+        height: 130px;
+        top: 8px;
+        right: 8px;
+        opacity: 0.85;
+    }
+}
+
+@media (max-width: 480px) {
+    #minimap-container {
+        width: 110px;
+        height: 110px;
+        top: 8px;
+        right: 8px;
+        opacity: 0.85;
+    }
+}
+
+@media (max-height: 480px) {
+    #minimap-container {
+        width: 100px;
+        height: 100px;
+        top: 8px;
+        right: 8px;
+        opacity: 0.85;
+    }
+}
+
+#fullscreen-button {
+    font-family: 'system-ui', sans-serif;
+    position: fixed;
+    top: -1px;
+    left: -1px;
+    padding: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #fff;
+    color: #000;
+    text-decoration: none;
+    z-index: 10000;
+    border-bottom-right-radius: 8px;
+    border: 1px solid #fff;
+    cursor: pointer;
+    display: none;
+}
+
+@media (max-width: 768px) {
+    #fullscreen-button {
+        display: block;
+    }
+}
+
