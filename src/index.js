@@ -5,6 +5,7 @@ import { Deltaplane } from './deltaplane.js';
 import { MultiplayerManager } from './multiplayer.js';
 import { TouchControls } from './touchControls.js';
 import { AIPlaneurManager } from './aiPlaneurs.js';
+import { CloudSystem } from './clouds.js';
 
 // Global variables
 let camera, scene, renderer;
@@ -16,6 +17,7 @@ let multiplayerManager; // Multiplayer manager
 let isMultiplayerMode = false; // Multiplayer mode disabled by default
 let gameStarted = false; // Indicates if the game has started
 let aiManager;  // Gestionnaire des planeurs IA
+let cloudSystem; // Système de nuages
 
 // Rendre le deltaplane accessible globalement
 window.deltaplane = null;
@@ -64,6 +66,9 @@ function init() {
 
         // Initialize AI Manager
         aiManager = new AIPlaneurManager(scene);
+
+        // Initialize cloud system
+        cloudSystem = new CloudSystem(scene);
 
         // Initialize touch controls if on mobile device
         if (TouchControls.isMobileDevice()) {
@@ -164,6 +169,11 @@ function animate() {
         // Update AI planeurs
         if (aiManager && window.deltaplane.mesh) {
             aiManager.update(delta, window.deltaplane.mesh.position, window.deltaplane.thermalPositions);
+        }
+
+        // Update clouds with player position
+        if (cloudSystem && window.deltaplane.mesh) {
+            cloudSystem.update(delta, window.deltaplane.mesh.position);
         }
         
         // Update camera to follow hang glider
