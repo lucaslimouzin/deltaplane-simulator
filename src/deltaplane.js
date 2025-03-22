@@ -642,39 +642,20 @@ export class Deltaplane {
             this.checkTerrainCollision(previousPosition, delta);
             
             // Update info panel
-            const panelStyle = `
+            const containerStyle = `
+                font-family: 'system-ui', sans-serif;
                 position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0, 0, 0, 0.4);
-                padding: 4px 6px;
-                border-radius: 3px;
-                color: white;
-                z-index: 1000;
-                font-size: 10px;
-                min-width: 100px;
-            `;
-
-            const sectionStyle = "line-height: 1.1;";
-            const labelStyle = "color: #87CEEB; display: inline-block; width: 45px;";
-            const valueStyle = "color: white;";
-            
-            // Create sprint gauge style
-            const sprintGaugeContainerStyle = `
-                width: 100%;
-                height: 4px;
-                background: rgba(255, 255, 255, 0.2);
-                border-radius: 2px;
-                margin-top: 4px;
-            `;
-            
-            const sprintGaugeStyle = `
-                width: ${(this.currentSprintEnergy / this.sprintEnergy) * 100}%;
-                height: 100%;
-                background: ${this.sprinting ? '#ff3333' : '#33ff33'};
-                border-radius: 2px;
-                transition: width 0.1s ease-out;
+                bottom: -1px;
+                left: -1px;
+                padding: 5px;
+                font-size: 12px;
+                font-weight: 500;
+                background: #fff;
+                color: #000;
+                text-decoration: none;
+                z-index: 10000;
+                border-top-right-radius: 8px;
+                border: 1px solid #fff;
             `;
 
             // Create or update info div
@@ -685,19 +666,13 @@ export class Deltaplane {
                 document.body.appendChild(infoDiv);
             }
 
-            infoDiv.style.cssText = panelStyle;
+            infoDiv.style.cssText = containerStyle;
 
             // Compact HTML content with styling and sprint gauge
             infoDiv.innerHTML = `
-                <div style="text-align: center; font-size: 10px; margin-bottom: 2px; color: #ffcc00;">INFORMATION</div>
-                <div style="${sectionStyle}">
-                    <div><span style="${labelStyle}">FPS:</span> <span style="${valueStyle}">${this.currentFPS}</span></div>
-                    <div><span style="${labelStyle}">Online:</span> <span style="${valueStyle}">${this.playerCount}</span></div>
-                    <div><span style="${labelStyle}">Controls:</span> <span style="${valueStyle}">← →</span></div>
-                    <div><span style="${labelStyle}">Sprint:</span> <span style="${valueStyle}">[SPACE]</span></div>
-                    <div style="${sprintGaugeContainerStyle}">
-                        <div style="${sprintGaugeStyle}"></div>
-                    </div>
+                <div style="${containerStyle}">
+                    <div>Online: ${this.playerCount}</div>
+                    <div>Controls: ← →</div>
                 </div>
             `;
 
