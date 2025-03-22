@@ -1,5 +1,6 @@
 name: Auto-merge dev to main
 
+# Workflow to automatically merge dev into main when dev receives a merge
 on:
   push:
     branches:
@@ -31,7 +32,7 @@ jobs:
         run: |
           # Vérifier si le dernier commit est un merge
           LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
-          if [[ $LAST_COMMIT_MSG == "Merge"* ]]; then
+          if [[ $LAST_COMMIT_MSG == "Merge"* ]] || [[ $LAST_COMMIT_MSG == "feat: merge"* ]]; then
             echo "is_merge=true" >> $GITHUB_OUTPUT
           else
             echo "is_merge=false" >> $GITHUB_OUTPUT
