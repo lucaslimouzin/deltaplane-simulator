@@ -6,6 +6,7 @@ import { MultiplayerManager } from './multiplayer.js';
 import { TouchControls } from './touchControls.js';
 import { AIPlaneurManager } from './aiPlaneurs.js';
 import { CloudSystem } from './clouds.js';
+import nipplejs from 'nipplejs';
 
 // Global variables
 let camera, scene, renderer;
@@ -72,7 +73,65 @@ function init() {
 
         // Initialize touch controls if on mobile device
         if (TouchControls.isMobileDevice()) {
-            touchControls = new TouchControls(window.deltaplane);
+            // Create joystick container
+            const joystickContainer = document.createElement('div');
+            joystickContainer.id = 'joystick-zone';
+            joystickContainer.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                left: 50px;
+                width: 120px;
+                height: 120px;
+                z-index: 1000;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 50%;
+                touch-action: none;
+                @media (max-height: 600px) {
+                    bottom: 60px;
+                    width: 100px;
+                    height: 100px;
+                }
+                @media (max-width: 400px) {
+                    left: 30px;
+                    width: 100px;
+                    height: 100px;
+                }
+            `;
+            document.body.appendChild(joystickContainer);
+
+            // Initialize joystick
+            const joystick = nipplejs.create({
+                zone: joystickContainer,
+                mode: 'static',
+                position: { left: '50%', bottom: '50%' },
+                color: 'white',
+                size: window.innerWidth <= 400 ? 100 : 120,
+                restOpacity: 0.5,
+                fadeTime: 200,
+                dynamicPage: true
+            });
+
+            // Joystick event handlers
+            joystick.on('move', (evt, data) => {
+                if (data.direction) {
+                    // Reset controls first
+                    window.deltaplane.setControl('rollLeft', false);
+                    window.deltaplane.setControl('rollRight', false);
+
+                    // Apply controls based on joystick direction
+                    if (data.direction.x === 'left') {
+                        window.deltaplane.setControl('rollLeft', true);
+                    } else if (data.direction.x === 'right') {
+                        window.deltaplane.setControl('rollRight', true);
+                    }
+                }
+            });
+
+            joystick.on('end', () => {
+                // Reset controls when joystick is released
+                window.deltaplane.setControl('rollLeft', false);
+                window.deltaplane.setControl('rollRight', false);
+            });
         } else {
             // Keyboard input handling for desktop
             window.addEventListener('keydown', onKeyDown);
@@ -92,54 +151,59 @@ function init() {
         window.addEventListener('resize', onWindowResize, false);
 
         // Add sprint button for mobile
-        const sprintButton = document.createElement('button');
-        sprintButton.innerHTML = 'SPRINT';
-        sprintButton.style.cssText = `
-            position: fixed;
-            bottom: 120px;
-            right: 20px;
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 5px;
-            color: white;
-            font-size: 14px;
-            cursor: pointer;
-            touch-action: manipulation;
-            user-select: none;
-            z-index: 1000;
-        `;
+        if (TouchControls.isMobileDevice()) {
+            const sprintButton = document.createElement('button');
+            sprintButton.innerHTML = 'SPRINT';
+            sprintButton.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                right: 20px;
+                padding: 10px 20px;
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                border-radius: 5px;
+                color: white;
+                font-size: 14px;
+                cursor: pointer;
+                touch-action: manipulation;
+                user-select: none;
+                z-index: 1000;
+            `;
 
-        document.body.appendChild(sprintButton);
+            document.body.appendChild(sprintButton);
 
-        // Sprint button touch events
-        let isSprinting = false;
-        sprintButton.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            window.deltaplane.toggleSprint(true);
-            isSprinting = true;
-        });
-
-        sprintButton.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            window.deltaplane.toggleSprint(false);
-            isSprinting = false;
-        });
-
-        // Keyboard sprint control
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !isSprinting) {
+            // Sprint button touch events
+            let isSprinting = false;
+            sprintButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
                 window.deltaplane.toggleSprint(true);
                 isSprinting = true;
-            }
-        });
+            });
 
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'Space') {
+            sprintButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
                 window.deltaplane.toggleSprint(false);
                 isSprinting = false;
-            }
-        });
+            });
+        }
+
+        // Keyboard sprint control (desktop only)
+        if (!TouchControls.isMobileDevice()) {
+            let isSprinting = false;
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !isSprinting) {
+                    window.deltaplane.toggleSprint(true);
+                    isSprinting = true;
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'Space') {
+                    window.deltaplane.toggleSprint(false);
+                    isSprinting = false;
+                }
+            });
+        }
     } catch (error) {
         console.error('Error during initialization:', error);
     }
@@ -196,7 +260,6 @@ function updateInfoPanel() {
     const infoPanel = document.getElementById('info-panel');
     if (infoPanel && window.deltaplane) {
         infoPanel.innerHTML = `
-            <div>FPS: ${Math.round(window.deltaplane.currentFPS)}</div>
             <div>Online: ${window.deltaplane.playerCount}</div>
             <div>Controls: ← →</div>
         `;
@@ -237,4 +300,9 @@ function animate() {
     } catch (error) {
         console.error('Error during animation:', error);
     }
+}
+
+// Fonction pour détecter si on est sur mobile
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 800;
 } 

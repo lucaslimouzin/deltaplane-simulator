@@ -2,8 +2,6 @@ export class Minimap {
     constructor() {
         // Créer le canvas pour la minimap
         this.canvas = document.createElement('canvas');
-        this.canvas.width = 200;
-        this.canvas.height = 200;
         
         // Récupérer le conteneur
         this.container = document.getElementById('minimap-container');
@@ -15,14 +13,32 @@ export class Minimap {
         // Ajouter le canvas au conteneur
         this.container.appendChild(this.canvas);
         
+        // Ajuster la taille du canvas à celle du conteneur
+        this.resizeCanvas();
+        
+        // Ajouter un listener pour le redimensionnement
+        window.addEventListener('resize', () => this.resizeCanvas());
+        
         // Contexte 2D pour le dessin
         this.ctx = this.canvas.getContext('2d');
         
         // Configuration
         this.scale = 0.02; // Échelle de la carte (1 unité = 50 unités monde)
+        this.updateDimensions();
+    }
+
+    resizeCanvas() {
+        // Obtenir la taille réelle du conteneur
+        const rect = this.container.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+        this.updateDimensions();
+    }
+
+    updateDimensions() {
         this.centerX = this.canvas.width / 2;
         this.centerY = this.canvas.height / 2;
-        this.radius = Math.min(this.canvas.width, this.canvas.height) / 2 - 2; // Rayon du cercle
+        this.radius = Math.min(this.canvas.width, this.canvas.height) / 2 - 2;
     }
 
     updatePlayerPosition(position, rotation) {
@@ -35,25 +51,10 @@ export class Minimap {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         this.ctx.fill();
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = Math.max(1, this.canvas.width / 100);
         this.ctx.stroke();
 
-        // Ajouter les points cardinaux
-        this.ctx.font = '12px Arial';
-        this.ctx.fillStyle = 'white';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        
-        // Nord (en haut)
-        this.ctx.fillText('N', this.centerX, this.centerY - this.radius + 15);
-        // Sud (en bas)
-        this.ctx.fillText('S', this.centerX, this.centerY + this.radius - 15);
-        // Est (à droite)
-        this.ctx.fillText('E', this.centerX + this.radius - 15, this.centerY);
-        // Ouest (à gauche)
-        this.ctx.fillText('W', this.centerX - this.radius + 15, this.centerY);
-
-        // Créer un masque circulaire
+        // Créer un masque circulaire pour les éléments de jeu
         this.ctx.save();
         this.ctx.beginPath();
         this.ctx.arc(this.centerX, this.centerY, this.radius, 0, Math.PI * 2);
@@ -73,13 +74,16 @@ export class Minimap {
                 const x = this.centerX + relativeX;
                 const y = this.centerY + relativeZ;
                 
+                // Calculer la taille du point en fonction de la taille du canvas
+                const pointSize = Math.max(2, this.canvas.width / 30);
+                
                 // Dessiner un petit cercle rouge pour représenter le ballon
                 this.ctx.beginPath();
-                this.ctx.arc(x, y, 4, 0, Math.PI * 2);
+                this.ctx.arc(x, y, pointSize, 0, Math.PI * 2);
                 this.ctx.fillStyle = '#FF4444';
                 this.ctx.fill();
                 this.ctx.strokeStyle = 'white';
-                this.ctx.lineWidth = 1;
+                this.ctx.lineWidth = Math.max(0.5, pointSize / 4);
                 this.ctx.stroke();
             });
         }
@@ -88,16 +92,45 @@ export class Minimap {
         this.ctx.translate(this.centerX, this.centerY);
         this.ctx.rotate(-rotation.y);
         
+        // Calculer la taille du triangle en fonction de la taille du canvas
+        const triangleSize = Math.max(4, this.canvas.width / 15);
+        
         // Triangle vert pour le joueur
         this.ctx.fillStyle = '#00FF00';
         this.ctx.beginPath();
-        this.ctx.moveTo(0, -10); // Pointe vers le haut
-        this.ctx.lineTo(-6, 6);  // Coin gauche en bas
-        this.ctx.lineTo(6, 6);   // Coin droit en bas
+        this.ctx.moveTo(0, -triangleSize);
+        this.ctx.lineTo(-triangleSize * 0.6, triangleSize * 0.6);
+        this.ctx.lineTo(triangleSize * 0.6, triangleSize * 0.6);
         this.ctx.closePath();
         this.ctx.fill();
         
         this.ctx.restore();
+
+        // Dessiner les points cardinaux par-dessus tout le reste
+        const fontSize = Math.max(8, Math.floor(this.canvas.width / 15));
+        this.ctx.font = `bold ${fontSize}px Arial`;
+        this.ctx.fillStyle = 'white';
+        this.ctx.strokeStyle = 'black';
+        this.ctx.lineWidth = Math.max(1, fontSize / 4);
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        const padding = Math.max(8, this.radius / 10);
+        
+        // Dessiner le texte avec contour
+        const drawCardinalPoint = (text, x, y) => {
+            this.ctx.strokeText(text, x, y);
+            this.ctx.fillText(text, x, y);
+        };
+
+        // Nord (en haut)
+        drawCardinalPoint('N', this.centerX, this.centerY - this.radius + padding);
+        // Sud (en bas)
+        drawCardinalPoint('S', this.centerX, this.centerY + this.radius - padding);
+        // Est (à droite)
+        drawCardinalPoint('E', this.centerX + this.radius - padding, this.centerY);
+        // Ouest (à gauche)
+        drawCardinalPoint('W', this.centerX - this.radius + padding, this.centerY);
     }
 
     update() {
