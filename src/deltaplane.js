@@ -1141,6 +1141,9 @@ export class Deltaplane {
     checkPortalCollisions() {
         if (!window.balloons) return;
 
+        // Si un timer est en cours, on ne vérifie pas les collisions
+        if (this.portalCollisionTimer) return;
+
         for (const portal of window.balloons) {
             const distance = Math.sqrt(
                 Math.pow(portal.position.x - this.mesh.position.x, 2) +
@@ -1148,6 +1151,11 @@ export class Deltaplane {
             );
 
             if (distance < 35) {
+                // Activer le timer pour éviter les collisions multiples
+                this.portalCollisionTimer = setTimeout(() => {
+                    this.portalCollisionTimer = null;
+                }, 2000);
+
                 if (portal.userData.isGoldenPortal) {
                     // Calculer la vitesse actuelle en mètres par seconde
                     const currentSpeed = Math.sqrt(

@@ -58187,7 +58187,11 @@ var Deltaplane = /*#__PURE__*/function () {
   }, {
     key: "checkPortalCollisions",
     value: function checkPortalCollisions() {
+      var _this3 = this;
       if (!window.balloons) return;
+
+      // Si un timer est en cours, on ne vérifie pas les collisions
+      if (this.portalCollisionTimer) return;
       var _iterator = _createForOfIteratorHelper(window.balloons),
         _step;
       try {
@@ -58195,6 +58199,10 @@ var Deltaplane = /*#__PURE__*/function () {
           var portal = _step.value;
           var distance = Math.sqrt(Math.pow(portal.position.x - this.mesh.position.x, 2) + Math.pow(portal.position.z - this.mesh.position.z, 2));
           if (distance < 35) {
+            // Activer le timer pour éviter les collisions multiples
+            this.portalCollisionTimer = setTimeout(function () {
+              _this3.portalCollisionTimer = null;
+            }, 2000);
             if (portal.userData.isGoldenPortal) {
               // Calculer la vitesse actuelle en mètres par seconde
               var currentSpeed = Math.sqrt(Math.pow(this.velocity.x, 2) + Math.pow(this.velocity.y, 2) + Math.pow(this.velocity.z, 2));
@@ -58837,18 +58845,6 @@ var MultiplayerManager = /*#__PURE__*/function () {
     }
 
     /**
-     * Check URL parameters for auto-login
-     * @returns {string|null} The username from URL parameters, or null if not present
-     */
-  }, {
-    key: "checkUrlParameters",
-    value: function checkUrlParameters() {
-      var urlParams = new URLSearchParams(window.location.search);
-      var username = urlParams.get('username');
-      return username && username.length >= 3 ? username : null;
-    }
-
-    /**
      * Creates a multiplayer manager instance
      * @param {THREE.Scene} scene - The Three.js scene
      * @param {Deltaplane} localPlayer - The local player's hang glider
@@ -58857,143 +58853,145 @@ var MultiplayerManager = /*#__PURE__*/function () {
     key: "createLoginUI",
     value: function createLoginUI() {
       var _this = this;
-      return new Promise(/*#__PURE__*/function () {
-        var _ref = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(resolve) {
-          var autoUsername, overlay, loginForm, title, creditLine, subtitle, nameInput, playButton, errorMessage;
-          return _regeneratorRuntime().wrap(function _callee$(_context) {
-            while (1) switch (_context.prev = _context.next) {
-              case 0:
-                // Vérifier d'abord les paramètres d'URL
-                autoUsername = _this.checkUrlParameters();
-                if (!autoUsername) {
-                  _context.next = 5;
-                  break;
-                }
-                _this.playerName = autoUsername;
-                resolve(autoUsername);
-                return _context.abrupt("return");
-              case 5:
-                // Si pas d'auto-login, afficher l'interface normale
-                overlay = document.createElement('div');
-                overlay.style.position = 'fixed';
-                overlay.style.top = '0';
-                overlay.style.left = '0';
-                overlay.style.width = '100%';
-                overlay.style.height = '100%';
-                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-                overlay.style.display = 'flex';
-                overlay.style.justifyContent = 'center';
-                overlay.style.alignItems = 'center';
-                overlay.style.zIndex = '1000';
+      return new Promise(function (resolve) {
+        // Créer l'élément de fond
+        var overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '1000';
 
-                // Créer le formulaire de connexion
-                loginForm = document.createElement('div');
-                loginForm.style.backgroundColor = 'white';
-                loginForm.style.padding = '20px';
-                loginForm.style.borderRadius = '10px';
-                loginForm.style.width = '300px';
-                loginForm.style.textAlign = 'center';
+        // Créer le formulaire de connexion
+        var loginForm = document.createElement('div');
+        loginForm.style.backgroundColor = 'white';
+        loginForm.style.padding = '20px';
+        loginForm.style.borderRadius = '10px';
+        loginForm.style.width = '90%'; // Utilise un pourcentage au lieu d'une largeur fixe
+        loginForm.style.maxWidth = '600px'; // Largeur maximale sur desktop
+        loginForm.style.margin = '10px'; // Marge pour éviter que le formulaire touche les bords
+        loginForm.style.textAlign = 'center';
+        loginForm.style.boxSizing = 'border-box'; // Pour inclure padding dans la largeur
 
-                // Title
-                title = document.createElement('h2');
-                title.textContent = 'Glider Simulator';
-                title.style.marginBottom = '10px';
-                title.style.color = '#333';
+        // Title
+        var title = document.createElement('h2');
+        title.textContent = 'Glider Simulator';
+        title.style.marginBottom = '10px';
+        title.style.color = '#333';
+        title.style.fontSize = 'clamp(24px, 5vw, 32px)'; // Taille de police responsive
 
-                // Credit line
-                creditLine = document.createElement('div');
-                creditLine.style.marginBottom = '20px';
-                creditLine.style.color = '#666';
-                creditLine.style.fontSize = '14px';
-                creditLine.innerHTML = 'Created by <a href="https://x.com/givros" target="_blank" style="color: #4CAF50; text-decoration: none;">Givros</a>';
+        // Credit line
+        var creditLine = document.createElement('div');
+        creditLine.style.marginBottom = '20px';
+        creditLine.style.color = '#666';
+        creditLine.style.fontSize = 'clamp(12px, 3vw, 14px)'; // Taille de police responsive
+        creditLine.innerHTML = 'Created by <a href="https://x.com/givros" target="_blank" style="color: #4CAF50; text-decoration: none;">Givros</a>';
 
-                // Subtitle
-                subtitle = document.createElement('p');
-                subtitle.textContent = '';
-                subtitle.style.marginBottom = '20px';
-                subtitle.style.color = '#666';
+        // Tagline
+        var tagline = document.createElement('div');
+        tagline.style.marginBottom = '20px';
+        tagline.style.color = '#333';
+        tagline.style.fontSize = 'clamp(14px, 4vw, 16px)'; // Taille de police responsive
+        tagline.style.fontWeight = 'bold';
+        tagline.style.lineHeight = '1.5';
+        tagline.style.fontFamily = 'Arial, sans-serif';
+        tagline.innerHTML = 'Chill, fly and discover the secrets of the islands<br>A multiplayer glider simulator';
 
-                // Input field for username
-                nameInput = document.createElement('input');
-                nameInput.type = 'text';
-                nameInput.placeholder = 'Enter your username';
-                nameInput.style.width = '100%';
-                nameInput.style.padding = '10px';
-                nameInput.style.marginBottom = '20px';
-                nameInput.style.boxSizing = 'border-box';
-                nameInput.style.border = '1px solid #ddd';
-                nameInput.style.borderRadius = '5px';
+        // Subtitle
+        var subtitle = document.createElement('p');
+        subtitle.textContent = '';
+        subtitle.style.marginBottom = '20px';
+        subtitle.style.color = '#666';
 
-                // Connect button
-                playButton = document.createElement('button');
-                playButton.textContent = 'Play';
-                playButton.style.backgroundColor = '#4CAF50';
-                playButton.style.color = 'white';
-                playButton.style.padding = '10px 20px';
-                playButton.style.border = 'none';
-                playButton.style.borderRadius = '5px';
-                playButton.style.cursor = 'pointer';
-                playButton.style.fontSize = '16px';
-                playButton.style.width = '100%';
+        // Input field for username
+        var nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.placeholder = 'Enter your username';
+        nameInput.style.width = '100%';
+        nameInput.style.padding = 'clamp(8px, 2vw, 10px)';
+        nameInput.style.fontSize = 'clamp(14px, 3vw, 16px)';
+        nameInput.style.marginBottom = '20px';
+        nameInput.style.boxSizing = 'border-box';
+        nameInput.style.border = '1px solid #ddd';
+        nameInput.style.borderRadius = '5px';
 
-                // Message d'erreur
-                errorMessage = document.createElement('p');
-                errorMessage.style.color = 'red';
-                errorMessage.style.marginTop = '10px';
-                errorMessage.style.display = 'none';
+        // Connect button
+        var playButton = document.createElement('button');
+        playButton.textContent = 'Play';
+        playButton.style.width = '100%';
+        playButton.style.padding = 'clamp(8px, 2vw, 10px) clamp(15px, 4vw, 20px)';
+        playButton.style.fontSize = 'clamp(14px, 3vw, 16px)';
+        playButton.style.backgroundColor = '#4CAF50';
+        playButton.style.color = 'white';
+        playButton.style.border = 'none';
+        playButton.style.borderRadius = '5px';
+        playButton.style.cursor = 'pointer';
 
-                // Ajouter les éléments au formulaire
-                loginForm.appendChild(title);
-                loginForm.appendChild(creditLine);
-                loginForm.appendChild(subtitle);
-                loginForm.appendChild(nameInput);
-                loginForm.appendChild(playButton);
-                loginForm.appendChild(errorMessage);
+        // Message d'erreur
+        var errorMessage = document.createElement('p');
+        errorMessage.style.color = 'red';
+        errorMessage.style.marginTop = '10px';
+        errorMessage.style.display = 'none';
 
-                // Ajouter le formulaire à l'overlay
-                overlay.appendChild(loginForm);
+        // Promotional text
+        var promoText = document.createElement('div');
+        promoText.style.marginTop = '20px';
+        promoText.style.fontSize = 'clamp(12px, 3vw, 14px)'; // Taille de police responsive
+        promoText.style.color = '#666';
+        promoText.style.whiteSpace = 'normal'; // Permet le retour à la ligne sur mobile
+        promoText.style.overflow = 'visible';
+        promoText.style.wordWrap = 'break-word'; // Assure que les longs mots ne débordent pas
+        promoText.innerHTML = '<a href="https://buy.stripe.com/aEUaEJbIUbs6guI4gh" target="_blank" style="color: #4CAF50; text-decoration: underline; font-weight: bold;">Promote your Startup</a> with a giant portal and <a href="https://www.tiktok.com/@givros_gaming" target="_blank" style="color: #4CAF50; text-decoration: underline; font-weight: bold;">reach 60,000+ people</a><br><br><a href="https://buy.stripe.com/aEUcMRfZabs65Q4288" target="_blank" style="color: #4A90E2; text-decoration: underline; font-weight: bold;">Promote your account (X, Instagram, Tiktok, other) or website/game with a portal</a>';
 
-                // Ajouter l'overlay au document
-                document.body.appendChild(overlay);
+        // Ajouter les éléments au formulaire
+        loginForm.appendChild(title);
+        loginForm.appendChild(creditLine);
+        loginForm.appendChild(tagline);
+        loginForm.appendChild(nameInput);
+        loginForm.appendChild(playButton);
+        loginForm.appendChild(errorMessage);
+        loginForm.appendChild(promoText);
 
-                // Focus sur le champ de saisie
-                nameInput.focus();
+        // Ajouter le formulaire à l'overlay
+        overlay.appendChild(loginForm);
 
-                // Gérer le clic sur le bouton de connexion
-                playButton.addEventListener('click', function () {
-                  var name = nameInput.value.trim();
-                  if (name.length < 3) {
-                    errorMessage.textContent = 'Username must be at least 3 characters long';
-                    errorMessage.style.display = 'block';
-                    return;
-                  }
+        // Ajouter l'overlay au document
+        document.body.appendChild(overlay);
 
-                  // Stocker le nom du joueur
-                  _this.playerName = name;
+        // Focus sur le champ de saisie
+        nameInput.focus();
 
-                  // Supprimer l'overlay
-                  document.body.removeChild(overlay);
+        // Gérer le clic sur le bouton de connexion
+        playButton.addEventListener('click', function () {
+          var name = nameInput.value.trim();
+          if (name.length < 3) {
+            errorMessage.textContent = 'Username must be at least 3 characters long';
+            errorMessage.style.display = 'block';
+            return;
+          }
 
-                  // Résoudre la promesse
-                  resolve(name);
-                });
+          // Stocker le nom du joueur
+          _this.playerName = name;
 
-                // Gérer la touche Entrée
-                nameInput.addEventListener('keypress', function (event) {
-                  if (event.key === 'Enter') {
-                    playButton.click();
-                  }
-                });
-              case 69:
-              case "end":
-                return _context.stop();
-            }
-          }, _callee);
-        }));
-        return function (_x) {
-          return _ref.apply(this, arguments);
-        };
-      }());
+          // Supprimer l'overlay
+          document.body.removeChild(overlay);
+
+          // Résoudre la promesse
+          resolve(name);
+        });
+
+        // Gérer la touche Entrée
+        nameInput.addEventListener('keypress', function (event) {
+          if (event.key === 'Enter') {
+            playButton.click();
+          }
+        });
+      });
     }
 
     /**
@@ -59002,14 +59000,14 @@ var MultiplayerManager = /*#__PURE__*/function () {
   }, {
     key: "connect",
     value: (function () {
-      var _connect = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
+      var _connect = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
         var _this2 = this;
         var wsProtocol, wsHost, wsPath, wsUrl;
-        return _regeneratorRuntime().wrap(function _callee2$(_context2) {
-          while (1) switch (_context2.prev = _context2.next) {
+        return _regeneratorRuntime().wrap(function _callee$(_context) {
+          while (1) switch (_context.prev = _context.next) {
             case 0:
-              _context2.prev = 0;
-              _context2.next = 3;
+              _context.prev = 0;
+              _context.next = 3;
               return this.createLoginUI();
             case 3:
               // Connect to WebSocket server using configuration
@@ -59018,7 +59016,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
               wsPath = '/ws';
               wsUrl = "".concat(wsProtocol, "//").concat(wsHost).concat(wsPath);
               console.log('Connecting to WebSocket server at:', wsUrl);
-              return _context2.abrupt("return", new Promise(function (resolve, reject) {
+              return _context.abrupt("return", new Promise(function (resolve, reject) {
                 try {
                   _this2.socket = new WebSocket(wsUrl);
 
@@ -59111,15 +59109,15 @@ var MultiplayerManager = /*#__PURE__*/function () {
                 }
               }));
             case 11:
-              _context2.prev = 11;
-              _context2.t0 = _context2["catch"](0);
-              console.error('Connection error:', _context2.t0);
-              throw _context2.t0;
+              _context.prev = 11;
+              _context.t0 = _context["catch"](0);
+              console.error('Connection error:', _context.t0);
+              throw _context.t0;
             case 15:
             case "end":
-              return _context2.stop();
+              return _context.stop();
           }
-        }, _callee2, this, [[0, 11]]);
+        }, _callee, this, [[0, 11]]);
       }));
       function connect() {
         return _connect.apply(this, arguments);

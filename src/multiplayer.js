@@ -49,31 +49,13 @@ export class MultiplayerManager {
     }
     
     /**
-     * Check URL parameters for auto-login
-     * @returns {string|null} The username from URL parameters, or null if not present
-     */
-    checkUrlParameters() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username');
-        return username && username.length >= 3 ? username : null;
-    }
-    
-    /**
      * Creates a multiplayer manager instance
      * @param {THREE.Scene} scene - The Three.js scene
      * @param {Deltaplane} localPlayer - The local player's hang glider
      */
     createLoginUI() {
-        return new Promise(async (resolve) => {
-            // Vérifier d'abord les paramètres d'URL
-            const autoUsername = this.checkUrlParameters();
-            if (autoUsername) {
-                this.playerName = autoUsername;
-                resolve(autoUsername);
-                return;
-            }
-
-            // Si pas d'auto-login, afficher l'interface normale
+        return new Promise((resolve) => {
+            // Créer l'élément de fond
             const overlay = document.createElement('div');
             overlay.style.position = 'fixed';
             overlay.style.top = '0';
@@ -91,21 +73,35 @@ export class MultiplayerManager {
             loginForm.style.backgroundColor = 'white';
             loginForm.style.padding = '20px';
             loginForm.style.borderRadius = '10px';
-            loginForm.style.width = '300px';
+            loginForm.style.width = '90%'; // Utilise un pourcentage au lieu d'une largeur fixe
+            loginForm.style.maxWidth = '600px'; // Largeur maximale sur desktop
+            loginForm.style.margin = '10px'; // Marge pour éviter que le formulaire touche les bords
             loginForm.style.textAlign = 'center';
+            loginForm.style.boxSizing = 'border-box'; // Pour inclure padding dans la largeur
             
             // Title
             const title = document.createElement('h2');
             title.textContent = 'Glider Simulator';
             title.style.marginBottom = '10px';
             title.style.color = '#333';
+            title.style.fontSize = 'clamp(24px, 5vw, 32px)'; // Taille de police responsive
 
             // Credit line
             const creditLine = document.createElement('div');
             creditLine.style.marginBottom = '20px';
             creditLine.style.color = '#666';
-            creditLine.style.fontSize = '14px';
+            creditLine.style.fontSize = 'clamp(12px, 3vw, 14px)'; // Taille de police responsive
             creditLine.innerHTML = 'Created by <a href="https://x.com/givros" target="_blank" style="color: #4CAF50; text-decoration: none;">Givros</a>';
+
+            // Tagline
+            const tagline = document.createElement('div');
+            tagline.style.marginBottom = '20px';
+            tagline.style.color = '#333';
+            tagline.style.fontSize = 'clamp(14px, 4vw, 16px)'; // Taille de police responsive
+            tagline.style.fontWeight = 'bold';
+            tagline.style.lineHeight = '1.5';
+            tagline.style.fontFamily = 'Arial, sans-serif';
+            tagline.innerHTML = 'Chill, fly and discover the secrets of the islands<br>A multiplayer glider simulator';
 
             // Subtitle
             const subtitle = document.createElement('p');
@@ -118,7 +114,8 @@ export class MultiplayerManager {
             nameInput.type = 'text';
             nameInput.placeholder = 'Enter your username';
             nameInput.style.width = '100%';
-            nameInput.style.padding = '10px';
+            nameInput.style.padding = 'clamp(8px, 2vw, 10px)';
+            nameInput.style.fontSize = 'clamp(14px, 3vw, 16px)';
             nameInput.style.marginBottom = '20px';
             nameInput.style.boxSizing = 'border-box';
             nameInput.style.border = '1px solid #ddd';
@@ -127,14 +124,14 @@ export class MultiplayerManager {
             // Connect button
             const playButton = document.createElement('button');
             playButton.textContent = 'Play';
+            playButton.style.width = '100%';
+            playButton.style.padding = 'clamp(8px, 2vw, 10px) clamp(15px, 4vw, 20px)';
+            playButton.style.fontSize = 'clamp(14px, 3vw, 16px)';
             playButton.style.backgroundColor = '#4CAF50';
             playButton.style.color = 'white';
-            playButton.style.padding = '10px 20px';
             playButton.style.border = 'none';
             playButton.style.borderRadius = '5px';
             playButton.style.cursor = 'pointer';
-            playButton.style.fontSize = '16px';
-            playButton.style.width = '100%';
             
             // Message d'erreur
             const errorMessage = document.createElement('p');
@@ -142,13 +139,24 @@ export class MultiplayerManager {
             errorMessage.style.marginTop = '10px';
             errorMessage.style.display = 'none';
             
+            // Promotional text
+            const promoText = document.createElement('div');
+            promoText.style.marginTop = '20px';
+            promoText.style.fontSize = 'clamp(12px, 3vw, 14px)'; // Taille de police responsive
+            promoText.style.color = '#666';
+            promoText.style.whiteSpace = 'normal'; // Permet le retour à la ligne sur mobile
+            promoText.style.overflow = 'visible';
+            promoText.style.wordWrap = 'break-word'; // Assure que les longs mots ne débordent pas
+            promoText.innerHTML = '<a href="https://buy.stripe.com/aEUaEJbIUbs6guI4gh" target="_blank" style="color: #4CAF50; text-decoration: underline; font-weight: bold;">Promote your Startup</a> with a giant portal and <a href="https://www.tiktok.com/@givros_gaming" target="_blank" style="color: #4CAF50; text-decoration: underline; font-weight: bold;">reach 60,000+ people</a><br><br><a href="https://buy.stripe.com/aEUcMRfZabs65Q4288" target="_blank" style="color: #4A90E2; text-decoration: underline; font-weight: bold;">Promote your account (X, Instagram, Tiktok, other) or website/game with a portal</a>';
+            
             // Ajouter les éléments au formulaire
             loginForm.appendChild(title);
             loginForm.appendChild(creditLine);
-            loginForm.appendChild(subtitle);
+            loginForm.appendChild(tagline);
             loginForm.appendChild(nameInput);
             loginForm.appendChild(playButton);
             loginForm.appendChild(errorMessage);
+            loginForm.appendChild(promoText);
             
             // Ajouter le formulaire à l'overlay
             overlay.appendChild(loginForm);
