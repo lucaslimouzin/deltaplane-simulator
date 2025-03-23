@@ -8,6 +8,9 @@ import { AIPlaneurManager } from './aiPlaneurs.js';
 import { CloudSystem } from './clouds.js';
 import nipplejs from 'nipplejs';
 
+// Constants
+export const INITIAL_ALTITUDE = 250; // Altitude initiale en mètres
+
 // Global variables
 let camera, scene, renderer;
 let controls;
@@ -113,24 +116,35 @@ function init() {
 
             // Joystick event handlers
             joystick.on('move', (evt, data) => {
-                if (data.direction) {
-                    // Reset controls first
-                    window.deltaplane.setControl('rollLeft', false);
-                    window.deltaplane.setControl('rollRight', false);
+                const angle = data.angle.degree;
+                const force = Math.min(data.force, 1.0);
 
-                    // Apply controls based on joystick direction
-                    if (data.direction.x === 'left') {
-                        window.deltaplane.setControl('rollLeft', true);
-                    } else if (data.direction.x === 'right') {
-                        window.deltaplane.setControl('rollRight', true);
-                    }
+                // Reset all controls first
+                window.deltaplane.setControl('rollLeft', false);
+                window.deltaplane.setControl('rollRight', false);
+                window.deltaplane.setControl('descendDown', false);
+                window.deltaplane.setControl('ascendUp', false);
+
+                // Horizontal controls (left/right)
+                if (angle > 60 && angle < 120) { // Up
+                    window.deltaplane.setControl('descendDown', true);
+                } else if (angle > 240 && angle < 300) { // Down
+                    window.deltaplane.setControl('ascendUp', true);
+                }
+
+                if (angle > 150 && angle < 210) { // Left
+                    window.deltaplane.setControl('rollLeft', true);
+                } else if ((angle >= 330 || angle <= 30)) { // Right
+                    window.deltaplane.setControl('rollRight', true);
                 }
             });
 
             joystick.on('end', () => {
-                // Reset controls when joystick is released
+                // Reset all controls when joystick is released
                 window.deltaplane.setControl('rollLeft', false);
                 window.deltaplane.setControl('rollRight', false);
+                window.deltaplane.setControl('descendDown', false);
+                window.deltaplane.setControl('ascendUp', false);
             });
         } else {
             // Keyboard input handling for desktop
@@ -138,8 +152,8 @@ function init() {
             window.addEventListener('keyup', onKeyUp);
         }
         
-        // Initial hang glider position
-        window.deltaplane.mesh.position.set(0, 100, 0);
+        // Set initial position
+        window.deltaplane.mesh.position.set(0, INITIAL_ALTITUDE, 0);
         
         // Initialize camera to follow hang glider
         window.deltaplane.updateCamera(camera);
@@ -238,6 +252,12 @@ function onKeyDown(event) {
         case 'ArrowRight':
             window.deltaplane.setControl('rollRight', true);
             break;
+        case 'ArrowUp':
+            window.deltaplane.setControl('descendDown', true);
+            break;
+        case 'ArrowDown':
+            window.deltaplane.setControl('ascendUp', true);
+            break;
     }
 }
 
@@ -253,14 +273,24 @@ function onKeyUp(event) {
         case 'ArrowRight':
             window.deltaplane.setControl('rollRight', false);
             break;
+        case 'ArrowUp':
+            window.deltaplane.setControl('descendDown', false);
+            break;
+        case 'ArrowDown':
+            window.deltaplane.setControl('ascendUp', false);
+            break;
     }
 }
 
 function updateInfoPanel() {
     const infoPanel = document.getElementById('info-panel');
     if (infoPanel && window.deltaplane) {
+        // Calculer l'altitude arrondie à l'entier le plus proche
+        const altitude = Math.round(window.deltaplane.mesh.position.y);
+        
         infoPanel.innerHTML = `
             <div>Online: ${window.deltaplane.playerCount}</div>
+            <div>Altitude: ${altitude}m</div>
             <div>Controls: ← →</div>
         `;
     }

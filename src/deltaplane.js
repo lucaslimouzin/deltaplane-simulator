@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { Minimap } from './minimap.js';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
+import { INITIAL_ALTITUDE } from './index.js';
 
 // Variables globales
 let minimap;
@@ -18,6 +21,7 @@ export class Deltaplane {
         this.mesh = null;
         this.voile = null; // Reference to the sail for separate manipulation
         this.isRemotePlayer = isRemotePlayer;
+        this.lightspeedParticles = null; // Pour stocker le système de particules
         
         // Ces propriétés ne sont nécessaires que pour le joueur local
         if (!isRemotePlayer) {
@@ -38,6 +42,8 @@ export class Deltaplane {
             this.yawLeft = false;    // Turn left
             this.yawRight = false;   // Turn right
             this.sprinting = false;  // Nouvel état pour le sprint
+            this.descendDown = false; // Nouvelle propriété pour la descente
+            this.ascendUp = false;   // Nouvelle propriété pour la montée
             
             // Flight parameters
             this.airDensity = 1.2; // kg/m³
@@ -46,7 +52,7 @@ export class Deltaplane {
             this.dragCoefficient = 0.001;
             this.weight = 100; // kg (pilot + hang glider)
             this.lastYaw = 0; // To track yaw rotation
-            this.minAltitude = 250; // Minimum altitude in meters
+            this.minAltitude = 50; // Minimum altitude in meters
             this.maxAltitude = 500; // Maximum altitude in meters
             
             // Wind parameters
@@ -89,6 +95,45 @@ export class Deltaplane {
             this.sprintDrain = 30;  // Vitesse de consommation de l'énergie (unités par seconde)
             this.sprintRecharge = 15;  // Vitesse de recharge de l'énergie (unités par seconde)
             this.minEnergyToSprint = 20;  // Énergie minimale requise pour sprinter
+
+            // Control states
+            this.controls = {
+                rollLeft: false,
+                rollRight: false,
+                descendDown: false,
+                ascendUp: false
+            };
+
+            // Liste des couleurs possibles pour la voile
+            this.availableColors = [
+                0xFF0000, // Rouge
+                0x00FF00, // Vert
+                0x0000FF, // Bleu
+                0xFFFF00, // Jaune
+                0xFF00FF, // Magenta
+                0x00FFFF, // Cyan
+                0xFF8000, // Orange
+                0x8000FF, // Violet
+                0x0080FF, // Bleu clair
+                0xFF0080  // Rose
+            ];
+
+            // Liste des couleurs pour le personnage
+            this.pilotColors = [
+                0x2244aa, // Bleu original
+                0x22aa44, // Vert forêt
+                0xaa2244, // Rouge foncé
+                0x8822aa, // Violet foncé
+                0xaa8822, // Or foncé
+                0x227788, // Bleu canard
+                0x884422, // Marron
+                0x442288, // Indigo
+                0x228844, // Vert émeraude
+                0x882244  // Bordeaux
+            ];
+
+            // Appliquer les paramètres d'URL si disponibles
+            this.applyUrlParameters();
         }
         
         // Create the hang glider model
@@ -97,6 +142,62 @@ export class Deltaplane {
         // Create random thermals only for local player
         if (!isRemotePlayer) {
             this.createThermals();
+        }
+
+        // Création de la boîte de collision pour le deltaplane
+        const collisionGeometry = new THREE.BoxGeometry(20, 10, 20);
+        this.collisionBox = new THREE.Box3();
+
+        // Ajouter une propriété pour le portail de retour
+        this.returnPortal = null;
+        
+        // Vérifier si on arrive d'un autre jeu
+        if (!isRemotePlayer) {
+            this.createStartPortalIfNeeded();
+        }
+    }
+    
+    /**
+     * Applique les paramètres d'URL au deltaplane
+     */
+    applyUrlParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Appliquer la vitesse si spécifiée
+        const speed = parseFloat(urlParams.get('speed'));
+        if (!isNaN(speed)) {
+            // Convertir la vitesse en vecteur de vélocité
+            const direction = new THREE.Vector3(0, 0, -1);
+            this.velocity.copy(direction.multiplyScalar(speed));
+        }
+
+        // Appliquer la couleur si spécifiée
+        const color = urlParams.get('color');
+        if (color) {
+            // Attendre que le mesh soit créé
+            const applyColor = () => {
+                if (this.voile) {
+                    let colorValue;
+                    if (color.startsWith('#')) {
+                        colorValue = color;
+                    } else {
+                        // Convertir les noms de couleur en valeurs hexadécimales
+                        const colorMap = {
+                            'red': '#FF0000',
+                            'green': '#00FF00',
+                            'blue': '#0000FF',
+                            'yellow': '#FFFF00',
+                            // Ajouter d'autres couleurs si nécessaire
+                        };
+                        colorValue = colorMap[color.toLowerCase()] || '#FFFFFF';
+                    }
+                    this.voile.material.color.set(colorValue);
+                } else {
+                    // Si le mesh n'est pas encore créé, réessayer dans 100ms
+                    setTimeout(applyColor, 100);
+                }
+            };
+            applyColor();
         }
     }
     
@@ -109,7 +210,7 @@ export class Deltaplane {
             this.mesh = new THREE.Group();
             
             // Position initiale différente selon le type de joueur
-            this.mesh.position.y = this.minAltitude;
+            this.mesh.position.y = INITIAL_ALTITUDE;
             
             this.scene.add(this.mesh);
             
@@ -123,8 +224,11 @@ export class Deltaplane {
             voileGeometry.setAttribute('position', new THREE.BufferAttribute(voileVertices, 3));
             voileGeometry.computeVertexNormals();
             
+            // Sélection aléatoire d'une couleur pour la voile
+            const randomColor = this.availableColors[Math.floor(Math.random() * this.availableColors.length)];
+            
             const voileMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x00ff00, 
+                color: randomColor, 
                 side: THREE.DoubleSide,
                 flatShading: true,
                 roughness: 0.7,
@@ -173,10 +277,13 @@ export class Deltaplane {
             // Création du personnage (pilote)
             const piloteGroup = new THREE.Group();
             
+            // Sélection aléatoire d'une couleur pour le pilote
+            const randomPilotColor = this.pilotColors[Math.floor(Math.random() * this.pilotColors.length)];
+
             // Corps du pilote - plus vertical
             const corpsGeometry = new THREE.CylinderGeometry(1.2, 1.2, 6, 4);
             const corpsMaterial = new THREE.MeshStandardMaterial({
-                color: 0x2244aa,
+                color: randomPilotColor,
                 flatShading: true,
                 roughness: 0.8
             });
@@ -201,7 +308,7 @@ export class Deltaplane {
             // Bras du pilote en U
             const brasGeometry = new THREE.CylinderGeometry(0.45, 0.45, 3.6, 3);
             const brasMaterial = new THREE.MeshStandardMaterial({
-                color: 0x2244aa,
+                color: randomPilotColor, // Utiliser la même couleur que le corps
                 flatShading: true,
                 roughness: 0.8
             });
@@ -295,7 +402,7 @@ export class Deltaplane {
             });
             
             // Orientation initiale du deltaplane
-            this.mesh.rotation.x = Math.PI / 12;
+            this.mesh.rotation.x = Math.PI / 24;
             
             // Ajout d'une caméra seulement pour le joueur local
             if (!this.isRemotePlayer) {
@@ -394,10 +501,10 @@ export class Deltaplane {
      * Réinitialise la position et la vitesse du deltaplane
      */
     resetPosition() {
-        this.mesh.position.set(0, this.minAltitude, 0); // Hauteur de réinitialisation à l'altitude minimum
+        this.mesh.position.set(0, INITIAL_ALTITUDE, 0);
         
         // Réinitialiser la rotation avec des quaternions
-        this.mesh.rotation.set(Math.PI / 12, 0, 0);
+        this.mesh.rotation.set(Math.PI / 24, 0, 0);
         this.mesh.quaternion.setFromEuler(this.mesh.rotation);
         
         this.velocity.set(0, 0, 0);
@@ -465,10 +572,10 @@ export class Deltaplane {
                 }
             }
             
-            if (this.rollLeft) {
+            if (this.controls.rollLeft) {
                 // Roll left
                 this.mesh.rotation.z += 0.5 * delta;
-            } else if (this.rollRight) {
+            } else if (this.controls.rollRight) {
                 // Roll right
                 this.mesh.rotation.z -= 0.5 * delta;
             } else {
@@ -512,6 +619,16 @@ export class Deltaplane {
             // Sauvegarder la rotation en lacet pour le prochain frame
             this.lastYaw = this.mesh.rotation.y;
             
+            // Application de la descente
+            if (this.controls.descendDown) {
+                this.velocity.y -= 200 * delta;
+            }
+
+            // Apply ascent if ascendUp is active
+            if (this.controls.ascendUp) {
+                this.velocity.y += 200 * delta;
+            }
+
             // Calcul de la direction du deltaplane basée sur son orientation
             const direction = new THREE.Vector3(0, 0, -1);
             direction.applyQuaternion(this.mesh.quaternion);
@@ -699,6 +816,12 @@ export class Deltaplane {
                 // Appliquer la rotation du deltaplane à la jauge (sens inversé)
                 this.sprintBarSprite.material.rotation = this.mesh.rotation.z;
             }
+
+            // Mise à jour de la boîte de collision
+            this.collisionBox.setFromObject(this.mesh);
+
+            // Vérification des collisions avec les portails
+            this.checkPortalCollisions();
         } catch (error) {
             console.error('Error in deltaplane update:', error);
         }
@@ -770,8 +893,8 @@ export class Deltaplane {
      * @param {boolean} state - Le nouvel état du contrôle
      */
     setControl(control, state) {
-        if (this[control] !== undefined) {
-            this[control] = state;
+        if (control in this.controls) {
+            this.controls[control] = state;
         }
     }
     
@@ -974,6 +1097,107 @@ export class Deltaplane {
             this.sprinting = true;
         } else {
             this.sprinting = false;
+        }
+    }
+
+    createStartPortalIfNeeded() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromPortal = urlParams.get('portal') === 'true';
+        const refUrl = urlParams.get('ref');
+
+        if (fromPortal && refUrl) {
+            // Créer un portail de retour près du point de spawn
+            const portalGeometry = new THREE.TorusGeometry(10, 1, 16, 100);
+            const portalMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4444ff,
+                metalness: 0.8,
+                roughness: 0.2,
+                emissive: 0x0000ff,
+                emissiveIntensity: 0.5
+            });
+
+            this.returnPortal = new THREE.Mesh(portalGeometry, portalMaterial);
+            this.returnPortal.position.set(
+                this.mesh.position.x + 20,  // Légèrement à droite du point de spawn
+                this.mesh.position.y,       // Même hauteur
+                this.mesh.position.z + 20   // Légèrement devant
+            );
+            
+            // Stocker l'URL de retour et les paramètres dans les données du portail
+            this.returnPortal.userData = {
+                isReturnPortal: true,
+                returnUrl: refUrl,
+                originalParams: Object.fromEntries(urlParams)
+            };
+
+            this.scene.add(this.returnPortal);
+            
+            // Ajouter le portail de retour à la liste des portails
+            if (!window.balloons) window.balloons = [];
+            window.balloons.push(this.returnPortal);
+        }
+    }
+
+    checkPortalCollisions() {
+        if (!window.balloons) return;
+
+        // Si un timer est en cours, on ne vérifie pas les collisions
+        if (this.portalCollisionTimer) return;
+
+        for (const portal of window.balloons) {
+            const distance = Math.sqrt(
+                Math.pow(portal.position.x - this.mesh.position.x, 2) +
+                Math.pow(portal.position.z - this.mesh.position.z, 2)
+            );
+
+            if (distance < 35) {
+                // Activer le timer pour éviter les collisions multiples
+                this.portalCollisionTimer = setTimeout(() => {
+                    this.portalCollisionTimer = null;
+                }, 2000);
+
+                if (portal.userData.isGoldenPortal) {
+                    // Calculer la vitesse actuelle en mètres par seconde
+                    const currentSpeed = Math.sqrt(
+                        Math.pow(this.velocity.x, 2) +
+                        Math.pow(this.velocity.y, 2) +
+                        Math.pow(this.velocity.z, 2)
+                    );
+
+                    // Récupérer le nom du joueur depuis le système multiplayer
+                    const username = window.multiplayerManager ? window.multiplayerManager.playerName : 'player';
+
+                    // Construire l'URL avec les paramètres
+                    const params = new URLSearchParams({
+                        username: username,
+                        color: 'yellow',
+                        speed: currentSpeed.toFixed(2),
+                        portal: 'true',
+                        ref: window.location.href
+                    });
+
+                    // Redirection instantanée
+                    window.location.href = `http://portal.pieter.com/?${params.toString()}`;
+                } else if (portal.userData.isReturnPortal) {
+                    // Récupérer l'URL de retour et les paramètres originaux
+                    const returnUrl = portal.userData.returnUrl;
+                    const originalParams = portal.userData.originalParams;
+                    
+                    // Construire les paramètres de retour
+                    const params = new URLSearchParams(originalParams);
+                    params.set('portal', 'true');  // Indiquer qu'on vient d'un portail
+                    
+                    // Redirection vers l'URL de retour avec les paramètres
+                    window.location.href = `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}${params.toString()}`;
+                } else if (portal.userData.portalData && portal.userData.portalData.url) {
+                    // Ajouter les paramètres nécessaires pour les portails normaux
+                    const url = new URL(portal.userData.portalData.url);
+                    url.searchParams.set('portal', 'true');
+                    url.searchParams.set('ref', window.location.href);
+                    
+                    window.open(url.toString(), '_blank');
+                }
+            }
         }
     }
 } 

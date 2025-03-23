@@ -57036,14 +57036,21 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   Deltaplane: () => (/* binding */ Deltaplane)
 /* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 /* harmony import */ var _minimap_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./minimap.js */ "./src/minimap.js");
+/* harmony import */ var _index_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./index.js */ "./src/index.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+
+
+
 
 
 
@@ -57066,10 +57073,11 @@ var Deltaplane = /*#__PURE__*/function () {
     this.mesh = null;
     this.voile = null; // Reference to the sail for separate manipulation
     this.isRemotePlayer = isRemotePlayer;
+    this.lightspeedParticles = null; // Pour stocker le système de particules
 
     // Ces propriétés ne sont nécessaires que pour le joueur local
     if (!isRemotePlayer) {
-      this.velocity = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
+      this.velocity = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, 0);
       this.camera = null;
       this.currentLookAt = null;
 
@@ -57086,6 +57094,8 @@ var Deltaplane = /*#__PURE__*/function () {
       this.yawLeft = false; // Turn left
       this.yawRight = false; // Turn right
       this.sprinting = false; // Nouvel état pour le sprint
+      this.descendDown = false; // Nouvelle propriété pour la descente
+      this.ascendUp = false; // Nouvelle propriété pour la montée
 
       // Flight parameters
       this.airDensity = 1.2; // kg/m³
@@ -57094,12 +57104,12 @@ var Deltaplane = /*#__PURE__*/function () {
       this.dragCoefficient = 0.001;
       this.weight = 100; // kg (pilot + hang glider)
       this.lastYaw = 0; // To track yaw rotation
-      this.minAltitude = 250; // Minimum altitude in meters
+      this.minAltitude = 50; // Minimum altitude in meters
       this.maxAltitude = 500; // Maximum altitude in meters
 
       // Wind parameters
       this.windEnabled = false;
-      this.windDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
+      this.windDirection = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, 0);
       this.windSpeed = 0;
       this.windVariation = 0;
       this.thermalStrength = 0;
@@ -57115,15 +57125,15 @@ var Deltaplane = /*#__PURE__*/function () {
       this.maxCollisionDamage = 100;
 
       // Add quaternions for more stable rotation handling
-      this.pitchQuaternion = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion();
-      this.yawQuaternion = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion();
-      this.rollQuaternion = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion();
-      this.targetQuaternion = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion();
+      this.pitchQuaternion = new three__WEBPACK_IMPORTED_MODULE_2__.Quaternion();
+      this.yawQuaternion = new three__WEBPACK_IMPORTED_MODULE_2__.Quaternion();
+      this.rollQuaternion = new three__WEBPACK_IMPORTED_MODULE_2__.Quaternion();
+      this.targetQuaternion = new three__WEBPACK_IMPORTED_MODULE_2__.Quaternion();
 
       // Rotation axes
-      this.PITCH_AXIS = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(1, 0, 0);
-      this.YAW_AXIS = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
-      this.ROLL_AXIS = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 1);
+      this.PITCH_AXIS = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(1, 0, 0);
+      this.YAW_AXIS = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 1, 0);
+      this.ROLL_AXIS = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, 1);
 
       // Variables for FPS calculation
       this.lastTime = performance.now();
@@ -57137,6 +57147,61 @@ var Deltaplane = /*#__PURE__*/function () {
       this.sprintDrain = 30; // Vitesse de consommation de l'énergie (unités par seconde)
       this.sprintRecharge = 15; // Vitesse de recharge de l'énergie (unités par seconde)
       this.minEnergyToSprint = 20; // Énergie minimale requise pour sprinter
+
+      // Control states
+      this.controls = {
+        rollLeft: false,
+        rollRight: false,
+        descendDown: false,
+        ascendUp: false
+      };
+
+      // Liste des couleurs possibles pour la voile
+      this.availableColors = [0xFF0000,
+      // Rouge
+      0x00FF00,
+      // Vert
+      0x0000FF,
+      // Bleu
+      0xFFFF00,
+      // Jaune
+      0xFF00FF,
+      // Magenta
+      0x00FFFF,
+      // Cyan
+      0xFF8000,
+      // Orange
+      0x8000FF,
+      // Violet
+      0x0080FF,
+      // Bleu clair
+      0xFF0080 // Rose
+      ];
+
+      // Liste des couleurs pour le personnage
+      this.pilotColors = [0x2244aa,
+      // Bleu original
+      0x22aa44,
+      // Vert forêt
+      0xaa2244,
+      // Rouge foncé
+      0x8822aa,
+      // Violet foncé
+      0xaa8822,
+      // Or foncé
+      0x227788,
+      // Bleu canard
+      0x884422,
+      // Marron
+      0x442288,
+      // Indigo
+      0x228844,
+      // Vert émeraude
+      0x882244 // Bordeaux
+      ];
+
+      // Appliquer les paramètres d'URL si disponibles
+      this.applyUrlParameters();
     }
 
     // Create the hang glider model
@@ -57146,176 +57211,242 @@ var Deltaplane = /*#__PURE__*/function () {
     if (!isRemotePlayer) {
       this.createThermals();
     }
+
+    // Création de la boîte de collision pour le deltaplane
+    var collisionGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BoxGeometry(20, 10, 20);
+    this.collisionBox = new three__WEBPACK_IMPORTED_MODULE_2__.Box3();
+
+    // Ajouter une propriété pour le portail de retour
+    this.returnPortal = null;
+
+    // Vérifier si on arrive d'un autre jeu
+    if (!isRemotePlayer) {
+      this.createStartPortalIfNeeded();
+    }
   }
 
   /**
-   * Crée le modèle 3D du deltaplane
+   * Applique les paramètres d'URL au deltaplane
    */
   return _createClass(Deltaplane, [{
+    key: "applyUrlParameters",
+    value: function applyUrlParameters() {
+      var _this = this;
+      var urlParams = new URLSearchParams(window.location.search);
+
+      // Appliquer la vitesse si spécifiée
+      var speed = parseFloat(urlParams.get('speed'));
+      if (!isNaN(speed)) {
+        // Convertir la vitesse en vecteur de vélocité
+        var direction = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, -1);
+        this.velocity.copy(direction.multiplyScalar(speed));
+      }
+
+      // Appliquer la couleur si spécifiée
+      var color = urlParams.get('color');
+      if (color) {
+        // Attendre que le mesh soit créé
+        var _applyColor = function applyColor() {
+          if (_this.voile) {
+            var colorValue;
+            if (color.startsWith('#')) {
+              colorValue = color;
+            } else {
+              // Convertir les noms de couleur en valeurs hexadécimales
+              var colorMap = {
+                'red': '#FF0000',
+                'green': '#00FF00',
+                'blue': '#0000FF',
+                'yellow': '#FFFF00'
+                // Ajouter d'autres couleurs si nécessaire
+              };
+              colorValue = colorMap[color.toLowerCase()] || '#FFFFFF';
+            }
+            _this.voile.material.color.set(colorValue);
+          } else {
+            // Si le mesh n'est pas encore créé, réessayer dans 100ms
+            setTimeout(_applyColor, 100);
+          }
+        };
+        _applyColor();
+      }
+    }
+
+    /**
+     * Crée le modèle 3D du deltaplane
+     */
+  }, {
     key: "createModel",
     value: function createModel() {
-      var _this = this;
+      var _this2 = this;
       try {
         // Création d'un groupe pour contenir tous les éléments du deltaplane
-        this.mesh = new three__WEBPACK_IMPORTED_MODULE_1__.Group();
+        this.mesh = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
 
         // Position initiale différente selon le type de joueur
-        this.mesh.position.y = this.minAltitude;
+        this.mesh.position.y = _index_js__WEBPACK_IMPORTED_MODULE_1__.INITIAL_ALTITUDE;
         this.scene.add(this.mesh);
 
         // Création de la voile triangulaire
-        var voileGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.BufferGeometry();
+        var voileGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
         var voileVertices = new Float32Array([0, 0, -10,
         // pointe avant
         -15, 0, 5,
         // coin gauche
         15, 0, 5 // coin droit
         ]);
-        voileGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_1__.BufferAttribute(voileVertices, 3));
+        voileGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(voileVertices, 3));
         voileGeometry.computeVertexNormals();
-        var voileMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
-          color: 0x00ff00,
-          side: three__WEBPACK_IMPORTED_MODULE_1__.DoubleSide,
+
+        // Sélection aléatoire d'une couleur pour la voile
+        var randomColor = this.availableColors[Math.floor(Math.random() * this.availableColors.length)];
+        var voileMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+          color: randomColor,
+          side: three__WEBPACK_IMPORTED_MODULE_2__.DoubleSide,
           flatShading: true,
           roughness: 0.7,
           metalness: 0.1
         });
-        this.voile = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(voileGeometry, voileMaterial);
+        this.voile = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(voileGeometry, voileMaterial);
         this.voile.castShadow = true;
         this.mesh.add(this.voile);
 
         // Création de l'armature
-        var armatureGroup = new three__WEBPACK_IMPORTED_MODULE_1__.Group();
+        var armatureGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
 
         // Barre horizontale pour le pilote
-        var barreGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(20, 0.3, 0.3);
-        var barreMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
+        var barreGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BoxGeometry(20, 0.3, 0.3);
+        var barreMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
           color: 0x333333,
           flatShading: true,
           metalness: 0.3,
           roughness: 0.7
         });
-        var barre = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(barreGeometry, barreMaterial);
+        var barre = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(barreGeometry, barreMaterial);
         barre.position.y = -3;
         barre.position.z = -2;
         barre.castShadow = true;
         armatureGroup.add(barre);
 
         // Montants verticaux
-        var montantGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.BoxGeometry(0.3, 2.5, 0.3);
+        var montantGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BoxGeometry(0.3, 2.5, 0.3);
 
         // Montant gauche
-        var montantGauche = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(montantGeometry, barreMaterial);
+        var montantGauche = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(montantGeometry, barreMaterial);
         montantGauche.position.set(-10, -1.75, -2);
         montantGauche.castShadow = true;
         armatureGroup.add(montantGauche);
 
         // Montant droit
-        var montantDroit = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(montantGeometry, barreMaterial);
+        var montantDroit = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(montantGeometry, barreMaterial);
         montantDroit.position.set(10, -1.75, -2);
         montantDroit.castShadow = true;
         armatureGroup.add(montantDroit);
         this.mesh.add(armatureGroup);
 
         // Création du personnage (pilote)
-        var piloteGroup = new three__WEBPACK_IMPORTED_MODULE_1__.Group();
+        var piloteGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
+
+        // Sélection aléatoire d'une couleur pour le pilote
+        var randomPilotColor = this.pilotColors[Math.floor(Math.random() * this.pilotColors.length)];
 
         // Corps du pilote - plus vertical
-        var corpsGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(1.2, 1.2, 6, 4);
-        var corpsMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
-          color: 0x2244aa,
+        var corpsGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.CylinderGeometry(1.2, 1.2, 6, 4);
+        var corpsMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+          color: randomPilotColor,
           flatShading: true,
           roughness: 0.8
         });
-        var corps = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(corpsGeometry, corpsMaterial);
+        var corps = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(corpsGeometry, corpsMaterial);
         corps.position.y = -2;
         corps.rotation.x = -Math.PI * 0.1;
         corps.castShadow = true;
         piloteGroup.add(corps);
 
         // Tête du pilote
-        var teteGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.SphereGeometry(1.2, 4, 4);
-        var teteMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
+        var teteGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.SphereGeometry(1.2, 4, 4);
+        var teteMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
           color: 0xffdbac,
           flatShading: true,
           roughness: 0.7
         });
-        var tete = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(teteGeometry, teteMaterial);
+        var tete = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(teteGeometry, teteMaterial);
         tete.position.y = 1.6;
         tete.castShadow = true;
         piloteGroup.add(tete);
 
         // Bras du pilote en U
-        var brasGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(0.45, 0.45, 3.6, 3);
-        var brasMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
-          color: 0x2244aa,
+        var brasGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.CylinderGeometry(0.45, 0.45, 3.6, 3);
+        var brasMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+          color: randomPilotColor,
+          // Utiliser la même couleur que le corps
           flatShading: true,
           roughness: 0.8
         });
 
         // Bras gauche - partie horizontale
-        var brasGaucheHorizontal = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(0.45, 0.45, 2.4, 3), brasMaterial);
+        var brasGaucheHorizontal = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(new three__WEBPACK_IMPORTED_MODULE_2__.CylinderGeometry(0.45, 0.45, 2.4, 3), brasMaterial);
         brasGaucheHorizontal.rotation.z = Math.PI / 2;
         brasGaucheHorizontal.position.set(-1.2, 0, 0);
         brasGaucheHorizontal.castShadow = true;
         piloteGroup.add(brasGaucheHorizontal);
 
         // Bras gauche - partie verticale
-        var brasGaucheVertical = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(brasGeometry, brasMaterial);
+        var brasGaucheVertical = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(brasGeometry, brasMaterial);
         brasGaucheVertical.position.set(-2.4, 1.8, 0);
         brasGaucheVertical.castShadow = true;
         piloteGroup.add(brasGaucheVertical);
 
         // Bras droit - partie horizontale
-        var brasDroitHorizontal = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(0.45, 0.45, 2.4, 3), brasMaterial);
+        var brasDroitHorizontal = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(new three__WEBPACK_IMPORTED_MODULE_2__.CylinderGeometry(0.45, 0.45, 2.4, 3), brasMaterial);
         brasDroitHorizontal.rotation.z = -Math.PI / 2;
         brasDroitHorizontal.position.set(1.2, 0, 0);
         brasDroitHorizontal.castShadow = true;
         piloteGroup.add(brasDroitHorizontal);
 
         // Bras droit - partie verticale
-        var brasDroitVertical = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(brasGeometry, brasMaterial);
+        var brasDroitVertical = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(brasGeometry, brasMaterial);
         brasDroitVertical.position.set(2.4, 1.8, 0);
         brasDroitVertical.castShadow = true;
         piloteGroup.add(brasDroitVertical);
 
         // Mains du pilote
-        var mainGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.SphereGeometry(0.6, 4, 4);
-        var mainMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
+        var mainGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.SphereGeometry(0.6, 4, 4);
+        var mainMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
           color: 0xffdbac,
           flatShading: true,
           roughness: 0.7
         });
 
         // Main gauche
-        var mainGauche = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(mainGeometry, mainMaterial);
+        var mainGauche = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(mainGeometry, mainMaterial);
         mainGauche.position.set(-2.4, 3.6, 0);
         mainGauche.castShadow = true;
         piloteGroup.add(mainGauche);
 
         // Main droite
-        var mainDroite = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(mainGeometry, mainMaterial);
+        var mainDroite = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(mainGeometry, mainMaterial);
         mainDroite.position.set(2.4, 3.6, 0);
         mainDroite.castShadow = true;
         piloteGroup.add(mainDroite);
 
         // Jambes du pilote
-        var jambeGeometry = new three__WEBPACK_IMPORTED_MODULE_1__.CylinderGeometry(0.45, 0.45, 3.6, 3);
-        var jambeMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.MeshStandardMaterial({
+        var jambeGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.CylinderGeometry(0.45, 0.45, 3.6, 3);
+        var jambeMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
           color: 0x1a1a1a,
           flatShading: true,
           roughness: 0.8
         });
 
         // Jambe gauche
-        var jambeGauche = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(jambeGeometry, jambeMaterial);
+        var jambeGauche = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(jambeGeometry, jambeMaterial);
         jambeGauche.position.set(-0.8, -6, 0);
         jambeGauche.rotation.z = 0;
         jambeGauche.castShadow = true;
         piloteGroup.add(jambeGauche);
 
         // Jambe droite
-        var jambeDroite = new three__WEBPACK_IMPORTED_MODULE_1__.Mesh(jambeGeometry, jambeMaterial);
+        var jambeDroite = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(jambeGeometry, jambeMaterial);
         jambeDroite.position.set(0.8, -6, 0);
         jambeDroite.rotation.z = 0;
         jambeDroite.castShadow = true;
@@ -57328,7 +57459,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
         // S'assurer que le pilote est visible
         piloteGroup.traverse(function (child) {
-          if (child instanceof three__WEBPACK_IMPORTED_MODULE_1__.Mesh) {
+          if (child instanceof three__WEBPACK_IMPORTED_MODULE_2__.Mesh) {
             child.castShadow = true;
             child.receiveShadow = true;
             child.visible = true;
@@ -57336,11 +57467,11 @@ var Deltaplane = /*#__PURE__*/function () {
         });
 
         // Orientation initiale du deltaplane
-        this.mesh.rotation.x = Math.PI / 12;
+        this.mesh.rotation.x = Math.PI / 24;
 
         // Ajout d'une caméra seulement pour le joueur local
         if (!this.isRemotePlayer) {
-          this.camera = new three__WEBPACK_IMPORTED_MODULE_1__.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+          this.camera = new three__WEBPACK_IMPORTED_MODULE_2__.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
           this.mesh.add(this.camera);
           this.camera.position.set(0, 2, 10);
           this.camera.lookAt(0, 0, -10);
@@ -57349,12 +57480,12 @@ var Deltaplane = /*#__PURE__*/function () {
         // Ajout de la méthode pour vérifier la collision avec la voile
         this.checkVoileCollision = function () {
           // Obtenir la position globale de la tête du pilote
-          var worldPos = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3();
+          var worldPos = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3();
           tete.getWorldPosition(worldPos);
 
           // Convertir en coordonnées locales de la voile
           var localPos = worldPos.clone();
-          _this.voile.worldToLocal(localPos);
+          _this2.voile.worldToLocal(localPos);
 
           // Si la tête est au-dessus de la voile (y > 0), la ramener en dessous
           if (localPos.y > -1) {
@@ -57362,10 +57493,10 @@ var Deltaplane = /*#__PURE__*/function () {
             var newLocalY = -1;
 
             // Convertir en coordonnées globales
-            var newWorldPos = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(worldPos.x, worldPos.y + (newLocalY - localPos.y), worldPos.z);
+            var newWorldPos = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(worldPos.x, worldPos.y + (newLocalY - localPos.y), worldPos.z);
 
             // Mettre à jour la position du groupe du pilote
-            _this.piloteGroup.position.y += newLocalY - localPos.y;
+            _this2.piloteGroup.position.y += newLocalY - localPos.y;
           }
         };
 
@@ -57378,15 +57509,15 @@ var Deltaplane = /*#__PURE__*/function () {
         canvas.width = sprintBarWidth;
         canvas.height = sprintBarHeight;
         this.sprintBarContext = canvas.getContext('2d');
-        var sprintBarTexture = new three__WEBPACK_IMPORTED_MODULE_1__.CanvasTexture(canvas);
-        sprintBarTexture.minFilter = three__WEBPACK_IMPORTED_MODULE_1__.LinearFilter;
+        var sprintBarTexture = new three__WEBPACK_IMPORTED_MODULE_2__.CanvasTexture(canvas);
+        sprintBarTexture.minFilter = three__WEBPACK_IMPORTED_MODULE_2__.LinearFilter;
 
         // Créer le sprite
-        var spriteMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.SpriteMaterial({
+        var spriteMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.SpriteMaterial({
           map: sprintBarTexture,
           transparent: true
         });
-        this.sprintBarSprite = new three__WEBPACK_IMPORTED_MODULE_1__.Sprite(spriteMaterial);
+        this.sprintBarSprite = new three__WEBPACK_IMPORTED_MODULE_2__.Sprite(spriteMaterial);
         this.sprintBarSprite.scale.set(0.4, 4, 1);
 
         // Positionner le sprite à droite du pilote
@@ -57395,7 +57526,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
         // Fonction pour mettre à jour la texture de la jauge
         this.updateSprintBarTexture = function (ratio, isSprinting) {
-          var ctx = _this.sprintBarContext;
+          var ctx = _this2.sprintBarContext;
 
           // Sauvegarder le contexte
           ctx.save();
@@ -57422,7 +57553,7 @@ var Deltaplane = /*#__PURE__*/function () {
           ctx.restore();
 
           // Mettre à jour la texture
-          _this.sprintBarSprite.material.map.needsUpdate = true;
+          _this2.sprintBarSprite.material.map.needsUpdate = true;
         };
       } catch (error) {
         console.error('Erreur lors de la création du deltaplane:', error);
@@ -57435,10 +57566,10 @@ var Deltaplane = /*#__PURE__*/function () {
   }, {
     key: "resetPosition",
     value: function resetPosition() {
-      this.mesh.position.set(0, this.minAltitude, 0); // Hauteur de réinitialisation à l'altitude minimum
+      this.mesh.position.set(0, _index_js__WEBPACK_IMPORTED_MODULE_1__.INITIAL_ALTITUDE, 0);
 
       // Réinitialiser la rotation avec des quaternions
-      this.mesh.rotation.set(Math.PI / 12, 0, 0);
+      this.mesh.rotation.set(Math.PI / 24, 0, 0);
       this.mesh.quaternion.setFromEuler(this.mesh.rotation);
       this.velocity.set(0, 0, 0);
       this.collisionDamage = 0; // Réinitialiser les dommages
@@ -57503,10 +57634,10 @@ var Deltaplane = /*#__PURE__*/function () {
             this.mesh.rotation.x = 0;
           }
         }
-        if (this.rollLeft) {
+        if (this.controls.rollLeft) {
           // Roll left
           this.mesh.rotation.z += 0.5 * delta;
-        } else if (this.rollRight) {
+        } else if (this.controls.rollRight) {
           // Roll right
           this.mesh.rotation.z -= 0.5 * delta;
         } else {
@@ -57539,7 +57670,7 @@ var Deltaplane = /*#__PURE__*/function () {
         this.mesh.rotation.z = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.mesh.rotation.z));
 
         // Additional check to prevent flipping
-        var upVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+        var upVector = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 1, 0);
         upVector.applyEuler(this.mesh.rotation);
         if (upVector.y < 0) {
           // Correct orientation if hang glider is flipped
@@ -57550,15 +57681,25 @@ var Deltaplane = /*#__PURE__*/function () {
         // Sauvegarder la rotation en lacet pour le prochain frame
         this.lastYaw = this.mesh.rotation.y;
 
+        // Application de la descente
+        if (this.controls.descendDown) {
+          this.velocity.y -= 200 * delta;
+        }
+
+        // Apply ascent if ascendUp is active
+        if (this.controls.ascendUp) {
+          this.velocity.y += 200 * delta;
+        }
+
         // Calcul de la direction du deltaplane basée sur son orientation
-        var direction = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
+        var direction = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, -1);
         direction.applyQuaternion(this.mesh.quaternion);
 
         // Calcul de la vitesse relative à l'air (sans tenir compte du vent)
         var airVelocity = this.velocity.clone();
 
         // Vecteur de vent et effet du vent - désactivés
-        var windVector = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, 0);
+        var windVector = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, 0);
         var windAngleEffect = 0;
         var windLiftEffect = 0;
 
@@ -57578,7 +57719,7 @@ var Deltaplane = /*#__PURE__*/function () {
         var liftForce = 0.5 * this.airDensity * airSpeed * airSpeed * this.wingArea * (effectiveLiftCoef + windLiftEffect * delta);
 
         // Direction de la portance (perpendiculaire à la direction du vol)
-        var liftDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+        var liftDirection = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 1, 0);
         liftDirection.applyQuaternion(this.mesh.quaternion);
 
         // Application de la portance
@@ -57608,9 +57749,9 @@ var Deltaplane = /*#__PURE__*/function () {
         var propulsionForce = 150 * Math.max(0, 1 - speedRatio);
 
         // Create a horizontal direction vector (ignoring Y component)
-        var forwardDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
-        forwardDirection.applyAxisAngle(new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0), this.mesh.rotation.y);
-        var horizontalDirection = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
+        var forwardDirection = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, -1);
+        forwardDirection.applyAxisAngle(new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 1, 0), this.mesh.rotation.y);
+        var horizontalDirection = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(forwardDirection.x, 0, forwardDirection.z).normalize();
 
         // Apply propulsion only horizontally
         var propulsionVector = horizontalDirection.multiplyScalar(propulsionForce * delta);
@@ -57635,12 +57776,12 @@ var Deltaplane = /*#__PURE__*/function () {
 
         // Rotate velocity vector to simulate a turn
         if (Math.abs(turnFactor) > 0.01) {
-          var turnAxis = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+          var turnAxis = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 1, 0);
           var turnAngle = turnFactor * delta;
           this.velocity.applyAxisAngle(turnAxis, turnAngle);
 
           // Add a slight yaw rotation for a more natural turn
-          var yawCorrection = new three__WEBPACK_IMPORTED_MODULE_1__.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
+          var yawCorrection = new three__WEBPACK_IMPORTED_MODULE_2__.Quaternion().setFromAxisAngle(this.YAW_AXIS, turnFactor * delta * 0.5);
           this.mesh.quaternion.multiply(yawCorrection);
 
           // Update Euler angles after correction
@@ -57712,6 +57853,12 @@ var Deltaplane = /*#__PURE__*/function () {
           // Appliquer la rotation du deltaplane à la jauge (sens inversé)
           this.sprintBarSprite.material.rotation = this.mesh.rotation.z;
         }
+
+        // Mise à jour de la boîte de collision
+        this.collisionBox.setFromObject(this.mesh);
+
+        // Vérification des collisions avec les portails
+        this.checkPortalCollisions();
       } catch (error) {
         console.error('Error in deltaplane update:', error);
       }
@@ -57725,16 +57872,16 @@ var Deltaplane = /*#__PURE__*/function () {
     key: "updateCamera",
     value: function updateCamera(mainCamera) {
       // Obtenir la direction dans laquelle le deltaplane pointe
-      var direction = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 0, -1);
+      var direction = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, -1);
       direction.applyQuaternion(this.mesh.quaternion);
 
       // Position de base derrière le deltaplane - plus éloignée et plus haute
-      var offset = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 8, 35); // Augmenté la distance et la hauteur pour une meilleure vue
+      var offset = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 8, 35); // Augmenté la distance et la hauteur pour une meilleure vue
 
       // Calculer la rotation du deltaplane en excluant le pitch (rotation X)
       // Cela permet de garder une vue stable même lors des montées/descentes
       var smoothedRotationY = this.mesh.rotation.y;
-      var rotatedOffset = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(offset.x * Math.cos(smoothedRotationY) + offset.z * Math.sin(smoothedRotationY), offset.y, -offset.x * Math.sin(smoothedRotationY) + offset.z * Math.cos(smoothedRotationY));
+      var rotatedOffset = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(offset.x * Math.cos(smoothedRotationY) + offset.z * Math.sin(smoothedRotationY), offset.y, -offset.x * Math.sin(smoothedRotationY) + offset.z * Math.cos(smoothedRotationY));
 
       // Position cible de la caméra
       var targetPosition = this.mesh.position.clone().add(rotatedOffset);
@@ -57781,8 +57928,8 @@ var Deltaplane = /*#__PURE__*/function () {
   }, {
     key: "setControl",
     value: function setControl(control, state) {
-      if (this[control] !== undefined) {
-        this[control] = state;
+      if (control in this.controls) {
+        this.controls[control] = state;
       }
     }
 
@@ -57881,7 +58028,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
           // Calculer la normale à la surface au point de collision
           // Simplification: on considère que la normale est verticale
-          this.collisionNormal = new three__WEBPACK_IMPORTED_MODULE_1__.Vector3(0, 1, 0);
+          this.collisionNormal = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 1, 0);
 
           // Réaction à la collision
           if (this.collisionDamage >= this.maxCollisionDamage) {
@@ -57949,7 +58096,7 @@ var Deltaplane = /*#__PURE__*/function () {
     value: function createThermals() {
       // Création de quelques thermiques aléatoires
       for (var i = 0; i < 5; i++) {
-        this.thermalPositions.push(new three__WEBPACK_IMPORTED_MODULE_1__.Vector3((Math.random() - 0.5) * 2000, 0, (Math.random() - 0.5) * 2000));
+        this.thermalPositions.push(new three__WEBPACK_IMPORTED_MODULE_2__.Vector3((Math.random() - 0.5) * 2000, 0, (Math.random() - 0.5) * 2000));
       }
     }
 
@@ -58000,8 +58147,448 @@ var Deltaplane = /*#__PURE__*/function () {
         this.sprinting = false;
       }
     }
+  }, {
+    key: "createStartPortalIfNeeded",
+    value: function createStartPortalIfNeeded() {
+      var urlParams = new URLSearchParams(window.location.search);
+      var fromPortal = urlParams.get('portal') === 'true';
+      var refUrl = urlParams.get('ref');
+      if (fromPortal && refUrl) {
+        // Créer un portail de retour près du point de spawn
+        var portalGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.TorusGeometry(10, 1, 16, 100);
+        var portalMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+          color: 0x4444ff,
+          metalness: 0.8,
+          roughness: 0.2,
+          emissive: 0x0000ff,
+          emissiveIntensity: 0.5
+        });
+        this.returnPortal = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(portalGeometry, portalMaterial);
+        this.returnPortal.position.set(this.mesh.position.x + 20,
+        // Légèrement à droite du point de spawn
+        this.mesh.position.y,
+        // Même hauteur
+        this.mesh.position.z + 20 // Légèrement devant
+        );
+
+        // Stocker l'URL de retour et les paramètres dans les données du portail
+        this.returnPortal.userData = {
+          isReturnPortal: true,
+          returnUrl: refUrl,
+          originalParams: Object.fromEntries(urlParams)
+        };
+        this.scene.add(this.returnPortal);
+
+        // Ajouter le portail de retour à la liste des portails
+        if (!window.balloons) window.balloons = [];
+        window.balloons.push(this.returnPortal);
+      }
+    }
+  }, {
+    key: "checkPortalCollisions",
+    value: function checkPortalCollisions() {
+      var _this3 = this;
+      if (!window.balloons) return;
+
+      // Si un timer est en cours, on ne vérifie pas les collisions
+      if (this.portalCollisionTimer) return;
+      var _iterator = _createForOfIteratorHelper(window.balloons),
+        _step;
+      try {
+        for (_iterator.s(); !(_step = _iterator.n()).done;) {
+          var portal = _step.value;
+          var distance = Math.sqrt(Math.pow(portal.position.x - this.mesh.position.x, 2) + Math.pow(portal.position.z - this.mesh.position.z, 2));
+          if (distance < 35) {
+            // Activer le timer pour éviter les collisions multiples
+            this.portalCollisionTimer = setTimeout(function () {
+              _this3.portalCollisionTimer = null;
+            }, 2000);
+            if (portal.userData.isGoldenPortal) {
+              // Calculer la vitesse actuelle en mètres par seconde
+              var currentSpeed = Math.sqrt(Math.pow(this.velocity.x, 2) + Math.pow(this.velocity.y, 2) + Math.pow(this.velocity.z, 2));
+
+              // Récupérer le nom du joueur depuis le système multiplayer
+              var username = window.multiplayerManager ? window.multiplayerManager.playerName : 'player';
+
+              // Construire l'URL avec les paramètres
+              var params = new URLSearchParams({
+                username: username,
+                color: 'yellow',
+                speed: currentSpeed.toFixed(2),
+                portal: 'true',
+                ref: window.location.href
+              });
+
+              // Redirection instantanée
+              window.location.href = "http://portal.pieter.com/?".concat(params.toString());
+            } else if (portal.userData.isReturnPortal) {
+              // Récupérer l'URL de retour et les paramètres originaux
+              var returnUrl = portal.userData.returnUrl;
+              var originalParams = portal.userData.originalParams;
+
+              // Construire les paramètres de retour
+              var _params = new URLSearchParams(originalParams);
+              _params.set('portal', 'true'); // Indiquer qu'on vient d'un portail
+
+              // Redirection vers l'URL de retour avec les paramètres
+              window.location.href = "".concat(returnUrl).concat(returnUrl.includes('?') ? '&' : '?').concat(_params.toString());
+            } else if (portal.userData.portalData && portal.userData.portalData.url) {
+              // Ajouter les paramètres nécessaires pour les portails normaux
+              var url = new URL(portal.userData.portalData.url);
+              url.searchParams.set('portal', 'true');
+              url.searchParams.set('ref', window.location.href);
+              window.open(url.toString(), '_blank');
+            }
+          }
+        }
+      } catch (err) {
+        _iterator.e(err);
+      } finally {
+        _iterator.f();
+      }
+    }
   }]);
 }();
+
+/***/ }),
+
+/***/ "./src/index.js":
+/*!**********************!*\
+  !*** ./src/index.js ***!
+  \**********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   INITIAL_ALTITUDE: () => (/* binding */ INITIAL_ALTITUDE)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
+/* harmony import */ var _terrain_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./terrain.js */ "./src/terrain.js");
+/* harmony import */ var _deltaplane_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./deltaplane.js */ "./src/deltaplane.js");
+/* harmony import */ var _multiplayer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./multiplayer.js */ "./src/multiplayer.js");
+/* harmony import */ var _touchControls_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./touchControls.js */ "./src/touchControls.js");
+/* harmony import */ var _aiPlaneurs_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./aiPlaneurs.js */ "./src/aiPlaneurs.js");
+/* harmony import */ var _clouds_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./clouds.js */ "./src/clouds.js");
+/* harmony import */ var nipplejs__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! nipplejs */ "./node_modules/nipplejs/dist/nipplejs.js");
+/* harmony import */ var nipplejs__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(nipplejs__WEBPACK_IMPORTED_MODULE_6__);
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+
+
+
+
+
+
+
+
+
+
+// Constants
+var INITIAL_ALTITUDE = 250; // Altitude initiale en mètres
+
+// Global variables
+var camera, scene, renderer;
+var controls;
+var touchControls;
+var clock = new three__WEBPACK_IMPORTED_MODULE_7__.Clock();
+var devMode = false; // Development mode disabled
+var multiplayerManager; // Multiplayer manager
+var isMultiplayerMode = false; // Multiplayer mode disabled by default
+var gameStarted = false; // Indicates if the game has started
+var aiManager; // Gestionnaire des planeurs IA
+var cloudSystem; // Système de nuages
+
+// Rendre le deltaplane accessible globalement
+window.deltaplane = null;
+
+// Initialization
+init();
+
+// Function to start the game after connection
+function startGame() {
+  return _startGame.apply(this, arguments);
+}
+function _startGame() {
+  _startGame = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) switch (_context.prev = _context.next) {
+        case 0:
+          // Create multiplayer manager if it doesn't exist
+          if (!multiplayerManager) {
+            multiplayerManager = new _multiplayer_js__WEBPACK_IMPORTED_MODULE_2__.MultiplayerManager(scene, window.deltaplane);
+          }
+
+          // Connect to WebSocket server
+          _context.prev = 1;
+          _context.next = 4;
+          return multiplayerManager.connect();
+        case 4:
+          isMultiplayerMode = true;
+          gameStarted = true;
+
+          // Start animation loop
+          animate();
+          _context.next = 13;
+          break;
+        case 9:
+          _context.prev = 9;
+          _context.t0 = _context["catch"](1);
+          console.error('Error connecting to server:', _context.t0);
+          alert('Error connecting to server. Please try again.');
+        case 13:
+        case "end":
+          return _context.stop();
+      }
+    }, _callee, null, [[1, 9]]);
+  }));
+  return _startGame.apply(this, arguments);
+}
+function init() {
+  try {
+    // Initialize scene with main.js
+    var sceneObjects = (0,_terrain_js__WEBPACK_IMPORTED_MODULE_0__.initScene)(document.body);
+    scene = sceneObjects.scene;
+    camera = sceneObjects.camera;
+    renderer = sceneObjects.renderer;
+
+    // Add controls for development
+    controls = new three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_8__.OrbitControls(camera, renderer.domElement);
+    controls.enabled = false; // Disable orbit controls
+
+    // Create hang glider and make it globally accessible
+    window.deltaplane = new _deltaplane_js__WEBPACK_IMPORTED_MODULE_1__.Deltaplane(scene);
+
+    // Configure hang glider to use getTerrainHeightAtPosition
+    window.deltaplane.getTerrainHeightAtPosition = _terrain_js__WEBPACK_IMPORTED_MODULE_0__.getTerrainHeightAtPosition;
+
+    // Initialize AI Manager
+    aiManager = new _aiPlaneurs_js__WEBPACK_IMPORTED_MODULE_4__.AIPlaneurManager(scene);
+
+    // Initialize cloud system
+    cloudSystem = new _clouds_js__WEBPACK_IMPORTED_MODULE_5__.CloudSystem(scene);
+
+    // Initialize touch controls if on mobile device
+    if (_touchControls_js__WEBPACK_IMPORTED_MODULE_3__.TouchControls.isMobileDevice()) {
+      // Create joystick container
+      var joystickContainer = document.createElement('div');
+      joystickContainer.id = 'joystick-zone';
+      joystickContainer.style.cssText = "\n                position: fixed;\n                bottom: 80px;\n                left: 50px;\n                width: 120px;\n                height: 120px;\n                z-index: 1000;\n                background: rgba(255, 255, 255, 0.1);\n                border-radius: 50%;\n                touch-action: none;\n                @media (max-height: 600px) {\n                    bottom: 60px;\n                    width: 100px;\n                    height: 100px;\n                }\n                @media (max-width: 400px) {\n                    left: 30px;\n                    width: 100px;\n                    height: 100px;\n                }\n            ";
+      document.body.appendChild(joystickContainer);
+
+      // Initialize joystick
+      var joystick = nipplejs__WEBPACK_IMPORTED_MODULE_6___default().create({
+        zone: joystickContainer,
+        mode: 'static',
+        position: {
+          left: '50%',
+          bottom: '50%'
+        },
+        color: 'white',
+        size: window.innerWidth <= 400 ? 100 : 120,
+        restOpacity: 0.5,
+        fadeTime: 200,
+        dynamicPage: true
+      });
+
+      // Joystick event handlers
+      joystick.on('move', function (evt, data) {
+        var angle = data.angle.degree;
+        var force = Math.min(data.force, 1.0);
+
+        // Reset all controls first
+        window.deltaplane.setControl('rollLeft', false);
+        window.deltaplane.setControl('rollRight', false);
+        window.deltaplane.setControl('descendDown', false);
+        window.deltaplane.setControl('ascendUp', false);
+
+        // Horizontal controls (left/right)
+        if (angle > 60 && angle < 120) {
+          // Up
+          window.deltaplane.setControl('descendDown', true);
+        } else if (angle > 240 && angle < 300) {
+          // Down
+          window.deltaplane.setControl('ascendUp', true);
+        }
+        if (angle > 150 && angle < 210) {
+          // Left
+          window.deltaplane.setControl('rollLeft', true);
+        } else if (angle >= 330 || angle <= 30) {
+          // Right
+          window.deltaplane.setControl('rollRight', true);
+        }
+      });
+      joystick.on('end', function () {
+        // Reset all controls when joystick is released
+        window.deltaplane.setControl('rollLeft', false);
+        window.deltaplane.setControl('rollRight', false);
+        window.deltaplane.setControl('descendDown', false);
+        window.deltaplane.setControl('ascendUp', false);
+      });
+    } else {
+      // Keyboard input handling for desktop
+      window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('keyup', onKeyUp);
+    }
+
+    // Set initial position
+    window.deltaplane.mesh.position.set(0, INITIAL_ALTITUDE, 0);
+
+    // Initialize camera to follow hang glider
+    window.deltaplane.updateCamera(camera);
+
+    // Start game with multiplayer login
+    startGame();
+
+    // Add resize handler
+    window.addEventListener('resize', onWindowResize, false);
+
+    // Add sprint button for mobile
+    if (_touchControls_js__WEBPACK_IMPORTED_MODULE_3__.TouchControls.isMobileDevice()) {
+      var sprintButton = document.createElement('button');
+      sprintButton.innerHTML = 'SPRINT';
+      sprintButton.style.cssText = "\n                position: fixed;\n                bottom: 80px;\n                right: 20px;\n                padding: 10px 20px;\n                background: rgba(255, 255, 255, 0.2);\n                border: 1px solid rgba(255, 255, 255, 0.4);\n                border-radius: 5px;\n                color: white;\n                font-size: 14px;\n                cursor: pointer;\n                touch-action: manipulation;\n                user-select: none;\n                z-index: 1000;\n            ";
+      document.body.appendChild(sprintButton);
+
+      // Sprint button touch events
+      var isSprinting = false;
+      sprintButton.addEventListener('touchstart', function (e) {
+        e.preventDefault();
+        window.deltaplane.toggleSprint(true);
+        isSprinting = true;
+      });
+      sprintButton.addEventListener('touchend', function (e) {
+        e.preventDefault();
+        window.deltaplane.toggleSprint(false);
+        isSprinting = false;
+      });
+    }
+
+    // Keyboard sprint control (desktop only)
+    if (!_touchControls_js__WEBPACK_IMPORTED_MODULE_3__.TouchControls.isMobileDevice()) {
+      var _isSprinting = false;
+      document.addEventListener('keydown', function (e) {
+        if (e.code === 'Space' && !_isSprinting) {
+          window.deltaplane.toggleSprint(true);
+          _isSprinting = true;
+        }
+      });
+      document.addEventListener('keyup', function (e) {
+        if (e.code === 'Space') {
+          window.deltaplane.toggleSprint(false);
+          _isSprinting = false;
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error during initialization:', error);
+  }
+}
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+function resetPosition() {
+  // Reset hang glider position and velocity
+  window.deltaplane.resetPosition();
+}
+function onKeyDown(event) {
+  // If game hasn't started, ignore keys
+  if (!gameStarted) return;
+
+  // Reset position with R key
+  if (event.code === 'KeyR') {
+    resetPosition();
+    return;
+  }
+
+  // Update hang glider controls
+  switch (event.code) {
+    case 'ArrowLeft':
+      window.deltaplane.setControl('rollLeft', true);
+      break;
+    case 'ArrowRight':
+      window.deltaplane.setControl('rollRight', true);
+      break;
+    case 'ArrowUp':
+      window.deltaplane.setControl('descendDown', true);
+      break;
+    case 'ArrowDown':
+      window.deltaplane.setControl('ascendUp', true);
+      break;
+  }
+}
+function onKeyUp(event) {
+  // If game hasn't started, ignore keys
+  if (!gameStarted) return;
+
+  // Update hang glider controls
+  switch (event.code) {
+    case 'ArrowLeft':
+      window.deltaplane.setControl('rollLeft', false);
+      break;
+    case 'ArrowRight':
+      window.deltaplane.setControl('rollRight', false);
+      break;
+    case 'ArrowUp':
+      window.deltaplane.setControl('descendDown', false);
+      break;
+    case 'ArrowDown':
+      window.deltaplane.setControl('ascendUp', false);
+      break;
+  }
+}
+function updateInfoPanel() {
+  var infoPanel = document.getElementById('info-panel');
+  if (infoPanel && window.deltaplane) {
+    // Calculer l'altitude arrondie à l'entier le plus proche
+    var altitude = Math.round(window.deltaplane.mesh.position.y);
+    infoPanel.innerHTML = "\n            <div>Online: ".concat(window.deltaplane.playerCount, "</div>\n            <div>Altitude: ").concat(altitude, "m</div>\n            <div>Controls: \u2190 \u2192</div>\n        ");
+  }
+}
+function animate() {
+  // If game hasn't started, don't animate
+  if (!gameStarted) return;
+  try {
+    requestAnimationFrame(animate);
+
+    // Get elapsed time
+    var delta = clock.getDelta();
+
+    // Update hang glider
+    window.deltaplane.update(delta, null);
+
+    // Update AI planeurs
+    if (aiManager && window.deltaplane.mesh) {
+      aiManager.update(delta, window.deltaplane.mesh.position, window.deltaplane.thermalPositions);
+    }
+
+    // Update clouds with player position
+    if (cloudSystem && window.deltaplane.mesh) {
+      cloudSystem.update(delta, window.deltaplane.mesh.position);
+    }
+
+    // Update camera to follow hang glider
+    window.deltaplane.updateCamera(camera);
+
+    // Update info panel
+    updateInfoPanel();
+
+    // Render scene
+    renderer.render(scene, camera);
+  } catch (error) {
+    console.error('Error during animation:', error);
+  }
+}
+
+// Fonction pour détecter si on est sur mobile
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 800;
+}
 
 /***/ }),
 
@@ -58094,10 +58681,10 @@ var Minimap = /*#__PURE__*/function () {
 
       // Dessiner les ballons (représentant les îles)
       if (window.balloons) {
-        window.balloons.forEach(function (balloon) {
-          // Calculer la position relative par rapport au joueur
-          var worldX = balloon.userData.initialX;
-          var worldZ = balloon.userData.initialZ;
+        window.balloons.forEach(function (portal) {
+          // Utiliser directement la position du portail
+          var worldX = portal.position.x;
+          var worldZ = portal.position.z;
           var relativeX = (worldX - position.x) * _this2.scale;
           var relativeZ = (worldZ - position.z) * _this2.scale;
 
@@ -58108,10 +58695,10 @@ var Minimap = /*#__PURE__*/function () {
           // Calculer la taille du point en fonction de la taille du canvas
           var pointSize = Math.max(2, _this2.canvas.width / 30);
 
-          // Dessiner un petit cercle rouge pour représenter le ballon
+          // Dessiner un petit cercle cyan pour représenter le portail
           _this2.ctx.beginPath();
           _this2.ctx.arc(x, y, pointSize, 0, Math.PI * 2);
-          _this2.ctx.fillStyle = '#FF4444';
+          _this2.ctx.fillStyle = '#00FFFF';
           _this2.ctx.fill();
           _this2.ctx.strokeStyle = 'white';
           _this2.ctx.lineWidth = Math.max(0.5, pointSize / 4);
@@ -58285,21 +58872,35 @@ var MultiplayerManager = /*#__PURE__*/function () {
         loginForm.style.backgroundColor = 'white';
         loginForm.style.padding = '20px';
         loginForm.style.borderRadius = '10px';
-        loginForm.style.width = '300px';
+        loginForm.style.width = '90%'; // Utilise un pourcentage au lieu d'une largeur fixe
+        loginForm.style.maxWidth = '600px'; // Largeur maximale sur desktop
+        loginForm.style.margin = '10px'; // Marge pour éviter que le formulaire touche les bords
         loginForm.style.textAlign = 'center';
+        loginForm.style.boxSizing = 'border-box'; // Pour inclure padding dans la largeur
 
         // Title
         var title = document.createElement('h2');
         title.textContent = 'Glider Simulator';
         title.style.marginBottom = '10px';
         title.style.color = '#333';
+        title.style.fontSize = 'clamp(24px, 5vw, 32px)'; // Taille de police responsive
 
         // Credit line
         var creditLine = document.createElement('div');
         creditLine.style.marginBottom = '20px';
         creditLine.style.color = '#666';
-        creditLine.style.fontSize = '14px';
+        creditLine.style.fontSize = 'clamp(12px, 3vw, 14px)'; // Taille de police responsive
         creditLine.innerHTML = 'Created by <a href="https://x.com/givros" target="_blank" style="color: #4CAF50; text-decoration: none;">Givros</a>';
+
+        // Tagline
+        var tagline = document.createElement('div');
+        tagline.style.marginBottom = '20px';
+        tagline.style.color = '#333';
+        tagline.style.fontSize = 'clamp(14px, 4vw, 16px)'; // Taille de police responsive
+        tagline.style.fontWeight = 'bold';
+        tagline.style.lineHeight = '1.5';
+        tagline.style.fontFamily = 'Arial, sans-serif';
+        tagline.innerHTML = 'Chill, fly and discover the secrets of the islands<br>A multiplayer glider simulator';
 
         // Subtitle
         var subtitle = document.createElement('p');
@@ -58312,7 +58913,8 @@ var MultiplayerManager = /*#__PURE__*/function () {
         nameInput.type = 'text';
         nameInput.placeholder = 'Enter your username';
         nameInput.style.width = '100%';
-        nameInput.style.padding = '10px';
+        nameInput.style.padding = 'clamp(8px, 2vw, 10px)';
+        nameInput.style.fontSize = 'clamp(14px, 3vw, 16px)';
         nameInput.style.marginBottom = '20px';
         nameInput.style.boxSizing = 'border-box';
         nameInput.style.border = '1px solid #ddd';
@@ -58321,14 +58923,14 @@ var MultiplayerManager = /*#__PURE__*/function () {
         // Connect button
         var playButton = document.createElement('button');
         playButton.textContent = 'Play';
+        playButton.style.width = '100%';
+        playButton.style.padding = 'clamp(8px, 2vw, 10px) clamp(15px, 4vw, 20px)';
+        playButton.style.fontSize = 'clamp(14px, 3vw, 16px)';
         playButton.style.backgroundColor = '#4CAF50';
         playButton.style.color = 'white';
-        playButton.style.padding = '10px 20px';
         playButton.style.border = 'none';
         playButton.style.borderRadius = '5px';
         playButton.style.cursor = 'pointer';
-        playButton.style.fontSize = '16px';
-        playButton.style.width = '100%';
 
         // Message d'erreur
         var errorMessage = document.createElement('p');
@@ -58336,13 +58938,24 @@ var MultiplayerManager = /*#__PURE__*/function () {
         errorMessage.style.marginTop = '10px';
         errorMessage.style.display = 'none';
 
+        // Promotional text
+        var promoText = document.createElement('div');
+        promoText.style.marginTop = '20px';
+        promoText.style.fontSize = 'clamp(12px, 3vw, 14px)'; // Taille de police responsive
+        promoText.style.color = '#666';
+        promoText.style.whiteSpace = 'normal'; // Permet le retour à la ligne sur mobile
+        promoText.style.overflow = 'visible';
+        promoText.style.wordWrap = 'break-word'; // Assure que les longs mots ne débordent pas
+        promoText.innerHTML = '<a href="https://buy.stripe.com/aEUaEJbIUbs6guI4gh" target="_blank" style="color: #4CAF50; text-decoration: underline; font-weight: bold;">Promote your Startup</a> with a giant portal and <a href="https://www.tiktok.com/@givros_gaming" target="_blank" style="color: #4CAF50; text-decoration: underline; font-weight: bold;">reach 60,000+ people</a><br><br><a href="https://buy.stripe.com/aEUcMRfZabs65Q4288" target="_blank" style="color: #4A90E2; text-decoration: underline; font-weight: bold;">Promote your account (X, Instagram, Tiktok, other) or website/game with a portal</a>';
+
         // Ajouter les éléments au formulaire
         loginForm.appendChild(title);
         loginForm.appendChild(creditLine);
-        loginForm.appendChild(subtitle);
+        loginForm.appendChild(tagline);
         loginForm.appendChild(nameInput);
         loginForm.appendChild(playButton);
         loginForm.appendChild(errorMessage);
+        loginForm.appendChild(promoText);
 
         // Ajouter le formulaire à l'overlay
         overlay.appendChild(loginForm);
@@ -58832,6 +59445,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var seedrandom__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! seedrandom */ "./node_modules/seedrandom/index.js");
 /* harmony import */ var seedrandom__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(seedrandom__WEBPACK_IMPORTED_MODULE_0__);
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
@@ -59860,18 +60475,64 @@ function animate() {
     }
   }
 
-  // Animer les ballons
+  // Animer les portails
   if (window.balloons) {
-    window.balloons.forEach(function (balloon) {
-      balloon.userData.angle += balloon.userData.rotationSpeed;
+    window.balloons.forEach(function (portal) {
+      if (portal.userData.mainParticles) {
+        var time = Date.now() * 0.001;
+        var positions = portal.userData.mainParticles.geometry.attributes.position.array;
 
-      // Calculer la nouvelle position
-      var newX = balloon.userData.initialX + Math.cos(balloon.userData.angle) * balloon.userData.rotationRadius;
-      var newZ = balloon.userData.initialZ + Math.sin(balloon.userData.angle) * balloon.userData.rotationRadius;
+        // Animer les particules principales (effet électrique)
+        for (var i = 0; i < positions.length; i += 3) {
+          var angle = Math.atan2(positions[i + 2], positions[i + 1]);
+          var radius = Math.sqrt(positions[i + 1] * positions[i + 1] + positions[i + 2] * positions[i + 2]);
+          var newAngle = angle + 0.3 * Math.sin(time + radius);
+          positions[i] = (Math.random() - 0.5) * 4; // X (profondeur) fluctuante
+          positions[i + 1] = Math.cos(newAngle) * radius; // Y (hauteur)
+          positions[i + 2] = Math.sin(newAngle) * radius; // Z (largeur)
+        }
+        portal.userData.mainParticles.geometry.attributes.position.needsUpdate = true;
+      }
+      if (portal.userData.secondaryParticles) {
+        var _time = Date.now() * 0.001;
+        var _positions = portal.userData.secondaryParticles.geometry.attributes.position.array;
 
-      // Mettre à jour la position du groupe
-      balloon.position.x = newX - balloon.userData.initialX;
-      balloon.position.z = newZ - balloon.userData.initialZ;
+        // Animer les particules secondaires (effet de brume)
+        for (var _i = 0; _i < _positions.length; _i += 3) {
+          var _angle = Math.atan2(_positions[_i + 2], _positions[_i + 1]);
+          var _radius = Math.sqrt(_positions[_i + 1] * _positions[_i + 1] + _positions[_i + 2] * _positions[_i + 2]);
+          var _newAngle = _angle + 0.2;
+          _positions[_i] = (Math.random() - 0.5) * 8; // X (profondeur) fluctuante
+          _positions[_i + 1] = Math.cos(_newAngle) * _radius; // Y (hauteur)
+          _positions[_i + 2] = Math.sin(_newAngle) * _radius; // Z (largeur)
+        }
+        portal.userData.secondaryParticles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      // Animer les roches flottantes
+      if (portal.userData.rocks) {
+        var _time2 = Date.now() * 0.001;
+        portal.userData.rocks.forEach(function (rock, index) {
+          var offset = index * (Math.PI * 2 / portal.userData.rocks.length);
+          rock.position.x = Math.sin(_time2 + offset) * 3; // Oscillation en profondeur
+          rock.rotation.x += 0.002;
+          rock.rotation.y += 0.003;
+        });
+      }
+
+      // Animation de l'anneau
+      if (portal.userData.ring) {
+        var _time3 = Date.now() * 0.001;
+        portal.userData.ring.material.emissiveIntensity = 0.5 + Math.sin(_time3 * 2) * 0.3;
+        portal.userData.ring.material.opacity = 0.8 + Math.sin(_time3 * 3) * 0.2;
+      }
+
+      // Mettre à jour la rotation du texte
+      if (window.portalTextUpdates) {
+        window.portalTextUpdates.forEach(function (update) {
+          return update();
+        });
+      }
     });
   }
   renderer.render(scene, camera);
@@ -60070,7 +60731,7 @@ function createChunk(chunkX, chunkZ, callback) {
 
   // Ajouter un ballon pour chaque île
   chunk.islands.forEach(function (island) {
-    addBalloonToIsland(island, chunk);
+    addPortalToIsland(island, chunk);
   });
 
   // Calculer la distance au chunk
@@ -60625,63 +61286,300 @@ function addHouses() {
 /**
  * Ajoute un ballon flottant au-dessus d'une île
  */
-function addBalloonToIsland(island, chunk) {
-  // Hauteur du ballon (augmentée)
-  var balloonHeight = 150;
+function addPortalToIsland(island, chunk) {
+  // Vérifier si c'est le chunk central (0,0) et la deuxième île
+  var isCentralChunk = chunk.offset.x === 0 && chunk.offset.z === 0;
+  var isSecondIsland = chunk.islands.indexOf(island) === 1;
 
-  // Créer le ballon (sphère plus grande)
-  var balloonGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.SphereGeometry(15, 16, 16);
-  var balloonMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
-    color: 0xFF4444,
-    roughness: 0.7,
-    metalness: 0.3
-  });
-  var balloon = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(balloonGeometry, balloonMaterial);
+  // Si c'est la deuxième île du chunk central et qu'on n'a pas encore de Golden Portal
+  if (isCentralChunk && isSecondIsland) {
+    // Créer le Golden Portal
+    createPortal(true);
+    return;
+  }
 
-  // Position du ballon
-  balloon.position.set(island.center.x, balloonHeight, island.center.z);
+  // Pour les autres portails, chance de 25% comme avant
+  if (Math.random() > 0.25) {
+    return;
+  }
 
-  // Créer la corde
-  var ropeGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
-  var ropePoints = [];
+  // Vérifier la distance avec les autres portails existants
+  if (window.balloons) {
+    var MIN_PORTAL_DISTANCE = 300;
+    var _iterator10 = _createForOfIteratorHelper(window.balloons),
+      _step10;
+    try {
+      for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
+        var existingPortal = _step10.value;
+        var distance = Math.sqrt(Math.pow(existingPortal.position.x - island.center.x, 2) + Math.pow(existingPortal.position.z - island.center.z, 2));
+        if (distance < MIN_PORTAL_DISTANCE) {
+          return;
+        }
+      }
+    } catch (err) {
+      _iterator10.e(err);
+    } finally {
+      _iterator10.f();
+    }
+  }
 
-  // Point de départ (sur l'île)
-  var startPoint = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x, getTerrainHeightAtPosition(island.center.x, island.center.z) + 1, island.center.z);
+  // Créer un portail normal
+  createPortal(false);
+  function createPortal(isGolden) {
+    // Créer le groupe du portail
+    var portalGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
+    portalGroup.userData.isPortal = true;
 
-  // Point d'arrivée (au ballon)
-  var endPoint = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x, balloonHeight, island.center.z);
+    // Charger le fichier JSON pour obtenir un portail aléatoire
+    fetch('/data/portals.json').then(function (response) {
+      return response.json();
+    }).then(function (data) {
+      var portalData;
+      if (isGolden) {
+        portalData = data.goldenPortal;
+        window.hasGoldenPortal = true;
+        portalGroup.userData.isGoldenPortal = true;
+      } else {
+        var portals = data.portals;
+        portalData = portals[Math.floor(Math.random() * portals.length)];
+      }
 
-  // Créer une courbe légèrement ondulée pour la corde
-  var curve = new three__WEBPACK_IMPORTED_MODULE_2__.CatmullRomCurve3([startPoint, new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x + 4, (startPoint.y + endPoint.y) * 0.3, island.center.z + 4), new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x - 4, (startPoint.y + endPoint.y) * 0.6, island.center.z - 4), endPoint]);
+      // Stocker les données du portail
+      portalGroup.userData.portalData = portalData;
 
-  // Générer les points de la courbe
-  var points = curve.getPoints(50);
-  ropeGeometry.setFromPoints(points);
-  var ropeMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.LineBasicMaterial({
-    color: 0x8B4513,
-    linewidth: 3
-  });
-  var rope = new three__WEBPACK_IMPORTED_MODULE_2__.Line(ropeGeometry, ropeMaterial);
+      // Créer le texte du portail
+      var canvas = document.createElement('canvas');
+      var context = canvas.getContext('2d', {
+        alpha: true
+      });
+      canvas.width = 2048; // Augmenté pour plus de netteté
+      canvas.height = 512; // Augmenté pour plus de netteté
 
-  // Ajouter l'animation de rotation
-  var balloonGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
-  balloonGroup.add(balloon);
-  balloonGroup.add(rope);
+      // Style du texte
+      context.fillStyle = 'rgba(0, 0, 0, 0)';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.font = 'bold 160px Arial'; // Taille de police doublée
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.imageSmoothingEnabled = false; // Désactiver le lissage
 
-  // Ajouter une propriété pour l'animation
-  balloonGroup.userData.rotationSpeed = 0.005;
-  balloonGroup.userData.rotationRadius = 8;
-  balloonGroup.userData.initialX = island.center.x;
-  balloonGroup.userData.initialZ = island.center.z;
-  balloonGroup.userData.angle = Math.random() * Math.PI * 2;
+      var text = portalData.titre;
 
-  // Ajouter au chunk
-  scene.add(balloonGroup);
-  chunk.objects.push(balloonGroup);
+      // Mesurer la largeur du texte
+      var textMetrics = context.measureText(text);
+      var textWidth = textMetrics.width;
+      var padding = 120; // Padding doublé
 
-  // Ajouter l'animation à la boucle d'animation
-  if (!window.balloons) window.balloons = [];
-  window.balloons.push(balloonGroup);
+      // Calculer les dimensions du plan en fonction du texte
+      var planeWidth = textWidth * 0.125 + padding * 0.5; // Ajusté pour la nouvelle taille de canvas
+      var planeHeight = 25;
+
+      // Ajouter la bordure noire ou dorée
+      context.strokeStyle = isGolden ? '#000000' : 'black'; // Bordure noire pour le Golden Portal
+      context.lineWidth = 32; // Bordure plus épaisse
+      context.strokeText(text, canvas.width / 2, canvas.height / 2);
+
+      // Texte blanc ou doré
+      context.fillStyle = isGolden ? '#FFD700' : '#FFFFFF';
+      context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+      // Créer la texture à partir du canvas
+      var texture = new three__WEBPACK_IMPORTED_MODULE_2__.CanvasTexture(canvas);
+      texture.minFilter = three__WEBPACK_IMPORTED_MODULE_2__.LinearFilter;
+      texture.magFilter = three__WEBPACK_IMPORTED_MODULE_2__.LinearFilter;
+      texture.needsUpdate = true;
+
+      // Créer le matériau pour le texte
+      var textMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: three__WEBPACK_IMPORTED_MODULE_2__.DoubleSide,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        opacity: 1.0,
+        alphaTest: 0.1
+      });
+
+      // Créer le plan avec les dimensions calculées
+      var textGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.PlaneGeometry(planeWidth, planeHeight);
+      var textMesh = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(textGeometry, textMaterial);
+
+      // Positionner le texte
+      textMesh.position.set(0, 60, 0);
+      textMesh.renderOrder = 999;
+      portalGroup.add(textMesh);
+
+      // Créer les particules principales (effet électrique)
+      var mainParticleCount = 800;
+      var mainParticlesGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
+      var mainPositions = new Float32Array(mainParticleCount * 3);
+      var mainColors = new Float32Array(mainParticleCount * 3);
+      for (var i = 0; i < mainParticleCount; i++) {
+        var angle = i / mainParticleCount * Math.PI * 2;
+        var radius = 35 + Math.random() * 8;
+        mainPositions[i * 3] = (Math.random() - 0.5) * 4;
+        mainPositions[i * 3 + 1] = Math.cos(angle) * radius;
+        mainPositions[i * 3 + 2] = Math.sin(angle) * radius;
+        if (isGolden) {
+          // Toutes les particules en jaune vif pour le Golden Portal
+          mainColors[i * 3] = 1.0; // R - Rouge à 100%
+          mainColors[i * 3 + 1] = 1.0; // G - Vert à 100%
+          mainColors[i * 3 + 2] = 0.0; // B - Bleu à 0%
+        } else {
+          // Couleurs normales pour les autres portails
+          mainColors[i * 3] = 0.7 + Math.random() * 0.3;
+          mainColors[i * 3 + 1] = 0.8 + Math.random() * 0.2;
+          mainColors[i * 3 + 2] = 1;
+        }
+      }
+      mainParticlesGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(mainPositions, 3));
+      mainParticlesGeometry.setAttribute('color', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(mainColors, 3));
+      var mainParticlesMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.PointsMaterial({
+        size: isGolden ? 1.5 : 1.2,
+        transparent: true,
+        opacity: 0.8,
+        vertexColors: true,
+        blending: three__WEBPACK_IMPORTED_MODULE_2__.AdditiveBlending
+      });
+      var mainParticles = new three__WEBPACK_IMPORTED_MODULE_2__.Points(mainParticlesGeometry, mainParticlesMaterial);
+
+      // Créer les particules secondaires (effet de brume)
+      var secondaryParticleCount = 500;
+      var secondaryParticlesGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
+      var secondaryPositions = new Float32Array(secondaryParticleCount * 3);
+      var secondaryColors = new Float32Array(secondaryParticleCount * 3);
+      for (var _i2 = 0; _i2 < secondaryParticleCount; _i2++) {
+        var _angle2 = Math.random() * Math.PI * 2;
+        var _radius2 = Math.random() * 35;
+        secondaryPositions[_i2 * 3] = (Math.random() - 0.5) * 8;
+        secondaryPositions[_i2 * 3 + 1] = Math.cos(_angle2) * _radius2;
+        secondaryPositions[_i2 * 3 + 2] = Math.sin(_angle2) * _radius2;
+        if (isGolden) {
+          // Brume intérieure en jaune vif pour le Golden Portal
+          secondaryColors[_i2 * 3] = 1.0; // R - Rouge à 100%
+          secondaryColors[_i2 * 3 + 1] = 1.0; // G - Vert à 100%
+          secondaryColors[_i2 * 3 + 2] = 0.0; // B - Bleu à 0%
+        } else {
+          // Brume normale pour les autres portails
+          secondaryColors[_i2 * 3] = 0.8;
+          secondaryColors[_i2 * 3 + 1] = 0.9;
+          secondaryColors[_i2 * 3 + 2] = 1;
+        }
+      }
+      secondaryParticlesGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(secondaryPositions, 3));
+      secondaryParticlesGeometry.setAttribute('color', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(secondaryColors, 3));
+      var secondaryParticlesMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.PointsMaterial({
+        size: isGolden ? 2.5 : 2.0,
+        transparent: true,
+        opacity: 0.3,
+        vertexColors: true,
+        blending: three__WEBPACK_IMPORTED_MODULE_2__.AdditiveBlending
+      });
+      var secondaryParticles = new three__WEBPACK_IMPORTED_MODULE_2__.Points(secondaryParticlesGeometry, secondaryParticlesMaterial);
+
+      // Créer les roches flottantes
+      var numRocks = 16;
+      var rockGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.TetrahedronGeometry(3.5, 0);
+      var rockMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+        color: isGolden ? 0xFFD700 : 0x808080,
+        roughness: isGolden ? 0.3 : 0.8,
+        metalness: isGolden ? 0.8 : 0.1,
+        flatShading: true
+      });
+      var rocks = [];
+      for (var _i3 = 0; _i3 < numRocks; _i3++) {
+        var rock = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(rockGeometry, rockMaterial);
+        var _angle3 = _i3 / numRocks * Math.PI * 2;
+        var _radius3 = 42;
+        rock.position.set((Math.random() - 0.5) * 5, Math.cos(_angle3) * _radius3, Math.sin(_angle3) * _radius3);
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        var rockColor = new three__WEBPACK_IMPORTED_MODULE_2__.Color(isGolden ? 0xFFD700 : 0x808080);
+        var variation = (Math.random() - 0.5) * (isGolden ? 0.1 : 0.2);
+        rockColor.r += variation;
+        rockColor.g += variation;
+        rockColor.b += variation;
+        rock.material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+          color: rockColor,
+          roughness: isGolden ? 0.3 : 0.8,
+          metalness: isGolden ? 0.8 : 0.1,
+          flatShading: true
+        });
+        rock.scale.set(0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4);
+        portalGroup.add(rock);
+        rocks.push(rock);
+      }
+
+      // Ajouter tous les éléments au groupe
+      portalGroup.add(mainParticles);
+      portalGroup.add(secondaryParticles);
+
+      // Position du portail
+      if (isGolden) {
+        // Positionner le Golden Portal sur la première île
+        var terrainHeight = getTerrainHeightAtPosition(island.center.x, island.center.z);
+        portalGroup.position.set(island.center.x, terrainHeight + 150, island.center.z);
+      } else {
+        // Position normale pour les autres portails
+        var _terrainHeight = getTerrainHeightAtPosition(island.center.x, island.center.z);
+        portalGroup.position.set(island.center.x, _terrainHeight + 150, island.center.z);
+      }
+
+      // Ajouter au chunk et à la scène
+      scene.add(portalGroup);
+      chunk.objects.push(portalGroup);
+
+      // Ajouter à la liste des portails pour l'animation
+      if (!window.balloons) window.balloons = [];
+      window.balloons.push(portalGroup);
+
+      // Ajouter les propriétés d'animation
+      portalGroup.userData = _objectSpread(_objectSpread({}, portalGroup.userData), {}, {
+        mainParticles: mainParticles,
+        secondaryParticles: secondaryParticles,
+        rocks: rocks,
+        initialRotation: portalGroup.rotation.clone(),
+        textMesh: textMesh
+      });
+
+      // Modifier la fonction animate pour faire face à la caméra
+      var updatePortalRotation = function updatePortalRotation() {
+        if (camera) {
+          var direction = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3();
+          direction.subVectors(camera.position, portalGroup.position);
+          var _angle4 = Math.atan2(direction.x, direction.z);
+
+          // Rotation du groupe entier pour faire face à la caméra
+          portalGroup.rotation.y = _angle4 + Math.PI / 2;
+
+          // Rotation du texte pour qu'il reste droit et lisible
+          if (textMesh) {
+            textMesh.rotation.y = -_angle4 - Math.PI / 2;
+            var _distance = camera.position.distanceTo(portalGroup.position);
+            var scale = Math.max(0.8, Math.min(1.8, _distance / 400));
+            textMesh.scale.set(scale, scale, 1);
+          }
+        }
+      };
+
+      // Ajouter la fonction de mise à jour à la boucle d'animation
+      if (!window.portalTextUpdates) window.portalTextUpdates = [];
+      window.portalTextUpdates.push(updatePortalRotation);
+    })["catch"](function (error) {
+      console.error('Erreur lors du chargement des portails:', error);
+      scene.remove(portalGroup);
+      var index = chunk.objects.indexOf(portalGroup);
+      if (index > -1) {
+        chunk.objects.splice(index, 1);
+      }
+      if (window.balloons) {
+        var balloonIndex = window.balloons.indexOf(portalGroup);
+        if (balloonIndex > -1) {
+          window.balloons.splice(balloonIndex, 1);
+        }
+      }
+    });
+  }
 }
 
 /***/ }),
@@ -60898,311 +61796,12 @@ var TouchControls = /*#__PURE__*/function () {
 /******/ 	})();
 /******/ 	
 /************************************************************************/
-var __webpack_exports__ = {};
-// This entry needs to be wrapped in an IIFE because it needs to be in strict mode.
-(() => {
-"use strict";
-/*!**********************!*\
-  !*** ./src/index.js ***!
-  \**********************/
-__webpack_require__.r(__webpack_exports__);
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! three/examples/jsm/controls/OrbitControls.js */ "./node_modules/three/examples/jsm/controls/OrbitControls.js");
-/* harmony import */ var _terrain_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./terrain.js */ "./src/terrain.js");
-/* harmony import */ var _deltaplane_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./deltaplane.js */ "./src/deltaplane.js");
-/* harmony import */ var _multiplayer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./multiplayer.js */ "./src/multiplayer.js");
-/* harmony import */ var _touchControls_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./touchControls.js */ "./src/touchControls.js");
-/* harmony import */ var _aiPlaneurs_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./aiPlaneurs.js */ "./src/aiPlaneurs.js");
-/* harmony import */ var _clouds_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./clouds.js */ "./src/clouds.js");
-/* harmony import */ var nipplejs__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! nipplejs */ "./node_modules/nipplejs/dist/nipplejs.js");
-/* harmony import */ var nipplejs__WEBPACK_IMPORTED_MODULE_6___default = /*#__PURE__*/__webpack_require__.n(nipplejs__WEBPACK_IMPORTED_MODULE_6__);
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
-function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
-function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
-
-
-
-
-
-
-
-
-
-
-// Global variables
-var camera, scene, renderer;
-var controls;
-var touchControls;
-var clock = new three__WEBPACK_IMPORTED_MODULE_7__.Clock();
-var devMode = false; // Development mode disabled
-var multiplayerManager; // Multiplayer manager
-var isMultiplayerMode = false; // Multiplayer mode disabled by default
-var gameStarted = false; // Indicates if the game has started
-var aiManager; // Gestionnaire des planeurs IA
-var cloudSystem; // Système de nuages
-
-// Rendre le deltaplane accessible globalement
-window.deltaplane = null;
-
-// Initialization
-init();
-
-// Function to start the game after connection
-function startGame() {
-  return _startGame.apply(this, arguments);
-}
-function _startGame() {
-  _startGame = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
-    return _regeneratorRuntime().wrap(function _callee$(_context) {
-      while (1) switch (_context.prev = _context.next) {
-        case 0:
-          // Create multiplayer manager if it doesn't exist
-          if (!multiplayerManager) {
-            multiplayerManager = new _multiplayer_js__WEBPACK_IMPORTED_MODULE_2__.MultiplayerManager(scene, window.deltaplane);
-          }
-
-          // Connect to WebSocket server
-          _context.prev = 1;
-          _context.next = 4;
-          return multiplayerManager.connect();
-        case 4:
-          isMultiplayerMode = true;
-          gameStarted = true;
-
-          // Start animation loop
-          animate();
-          _context.next = 13;
-          break;
-        case 9:
-          _context.prev = 9;
-          _context.t0 = _context["catch"](1);
-          console.error('Error connecting to server:', _context.t0);
-          alert('Error connecting to server. Please try again.');
-        case 13:
-        case "end":
-          return _context.stop();
-      }
-    }, _callee, null, [[1, 9]]);
-  }));
-  return _startGame.apply(this, arguments);
-}
-function init() {
-  try {
-    // Initialize scene with main.js
-    var sceneObjects = (0,_terrain_js__WEBPACK_IMPORTED_MODULE_0__.initScene)(document.body);
-    scene = sceneObjects.scene;
-    camera = sceneObjects.camera;
-    renderer = sceneObjects.renderer;
-
-    // Add controls for development
-    controls = new three_examples_jsm_controls_OrbitControls_js__WEBPACK_IMPORTED_MODULE_8__.OrbitControls(camera, renderer.domElement);
-    controls.enabled = false; // Disable orbit controls
-
-    // Create hang glider and make it globally accessible
-    window.deltaplane = new _deltaplane_js__WEBPACK_IMPORTED_MODULE_1__.Deltaplane(scene);
-
-    // Configure hang glider to use getTerrainHeightAtPosition
-    window.deltaplane.getTerrainHeightAtPosition = _terrain_js__WEBPACK_IMPORTED_MODULE_0__.getTerrainHeightAtPosition;
-
-    // Initialize AI Manager
-    aiManager = new _aiPlaneurs_js__WEBPACK_IMPORTED_MODULE_4__.AIPlaneurManager(scene);
-
-    // Initialize cloud system
-    cloudSystem = new _clouds_js__WEBPACK_IMPORTED_MODULE_5__.CloudSystem(scene);
-
-    // Initialize touch controls if on mobile device
-    if (_touchControls_js__WEBPACK_IMPORTED_MODULE_3__.TouchControls.isMobileDevice()) {
-      // Create joystick container
-      var joystickContainer = document.createElement('div');
-      joystickContainer.id = 'joystick-zone';
-      joystickContainer.style.cssText = "\n                position: fixed;\n                bottom: 80px;\n                left: 50px;\n                width: 120px;\n                height: 120px;\n                z-index: 1000;\n                background: rgba(255, 255, 255, 0.1);\n                border-radius: 50%;\n                touch-action: none;\n                @media (max-height: 600px) {\n                    bottom: 60px;\n                    width: 100px;\n                    height: 100px;\n                }\n                @media (max-width: 400px) {\n                    left: 30px;\n                    width: 100px;\n                    height: 100px;\n                }\n            ";
-      document.body.appendChild(joystickContainer);
-
-      // Initialize joystick
-      var joystick = nipplejs__WEBPACK_IMPORTED_MODULE_6___default().create({
-        zone: joystickContainer,
-        mode: 'static',
-        position: {
-          left: '50%',
-          bottom: '50%'
-        },
-        color: 'white',
-        size: window.innerWidth <= 400 ? 100 : 120,
-        restOpacity: 0.5,
-        fadeTime: 200,
-        dynamicPage: true
-      });
-
-      // Joystick event handlers
-      joystick.on('move', function (evt, data) {
-        if (data.direction) {
-          // Reset controls first
-          window.deltaplane.setControl('rollLeft', false);
-          window.deltaplane.setControl('rollRight', false);
-
-          // Apply controls based on joystick direction
-          if (data.direction.x === 'left') {
-            window.deltaplane.setControl('rollLeft', true);
-          } else if (data.direction.x === 'right') {
-            window.deltaplane.setControl('rollRight', true);
-          }
-        }
-      });
-      joystick.on('end', function () {
-        // Reset controls when joystick is released
-        window.deltaplane.setControl('rollLeft', false);
-        window.deltaplane.setControl('rollRight', false);
-      });
-    } else {
-      // Keyboard input handling for desktop
-      window.addEventListener('keydown', onKeyDown);
-      window.addEventListener('keyup', onKeyUp);
-    }
-
-    // Initial hang glider position
-    window.deltaplane.mesh.position.set(0, 100, 0);
-
-    // Initialize camera to follow hang glider
-    window.deltaplane.updateCamera(camera);
-
-    // Start game with multiplayer login
-    startGame();
-
-    // Add resize handler
-    window.addEventListener('resize', onWindowResize, false);
-
-    // Add sprint button for mobile
-    if (_touchControls_js__WEBPACK_IMPORTED_MODULE_3__.TouchControls.isMobileDevice()) {
-      var sprintButton = document.createElement('button');
-      sprintButton.innerHTML = 'SPRINT';
-      sprintButton.style.cssText = "\n                position: fixed;\n                bottom: 80px;\n                right: 20px;\n                padding: 10px 20px;\n                background: rgba(255, 255, 255, 0.2);\n                border: 1px solid rgba(255, 255, 255, 0.4);\n                border-radius: 5px;\n                color: white;\n                font-size: 14px;\n                cursor: pointer;\n                touch-action: manipulation;\n                user-select: none;\n                z-index: 1000;\n            ";
-      document.body.appendChild(sprintButton);
-
-      // Sprint button touch events
-      var isSprinting = false;
-      sprintButton.addEventListener('touchstart', function (e) {
-        e.preventDefault();
-        window.deltaplane.toggleSprint(true);
-        isSprinting = true;
-      });
-      sprintButton.addEventListener('touchend', function (e) {
-        e.preventDefault();
-        window.deltaplane.toggleSprint(false);
-        isSprinting = false;
-      });
-    }
-
-    // Keyboard sprint control (desktop only)
-    if (!_touchControls_js__WEBPACK_IMPORTED_MODULE_3__.TouchControls.isMobileDevice()) {
-      var _isSprinting = false;
-      document.addEventListener('keydown', function (e) {
-        if (e.code === 'Space' && !_isSprinting) {
-          window.deltaplane.toggleSprint(true);
-          _isSprinting = true;
-        }
-      });
-      document.addEventListener('keyup', function (e) {
-        if (e.code === 'Space') {
-          window.deltaplane.toggleSprint(false);
-          _isSprinting = false;
-        }
-      });
-    }
-  } catch (error) {
-    console.error('Error during initialization:', error);
-  }
-}
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-function resetPosition() {
-  // Reset hang glider position and velocity
-  window.deltaplane.resetPosition();
-}
-function onKeyDown(event) {
-  // If game hasn't started, ignore keys
-  if (!gameStarted) return;
-
-  // Reset position with R key
-  if (event.code === 'KeyR') {
-    resetPosition();
-    return;
-  }
-
-  // Update hang glider controls
-  switch (event.code) {
-    case 'ArrowLeft':
-      window.deltaplane.setControl('rollLeft', true);
-      break;
-    case 'ArrowRight':
-      window.deltaplane.setControl('rollRight', true);
-      break;
-  }
-}
-function onKeyUp(event) {
-  // If game hasn't started, ignore keys
-  if (!gameStarted) return;
-
-  // Update hang glider controls
-  switch (event.code) {
-    case 'ArrowLeft':
-      window.deltaplane.setControl('rollLeft', false);
-      break;
-    case 'ArrowRight':
-      window.deltaplane.setControl('rollRight', false);
-      break;
-  }
-}
-function updateInfoPanel() {
-  var infoPanel = document.getElementById('info-panel');
-  if (infoPanel && window.deltaplane) {
-    infoPanel.innerHTML = "\n            <div>Online: ".concat(window.deltaplane.playerCount, "</div>\n            <div>Controls: \u2190 \u2192</div>\n        ");
-  }
-}
-function animate() {
-  // If game hasn't started, don't animate
-  if (!gameStarted) return;
-  try {
-    requestAnimationFrame(animate);
-
-    // Get elapsed time
-    var delta = clock.getDelta();
-
-    // Update hang glider
-    window.deltaplane.update(delta, null);
-
-    // Update AI planeurs
-    if (aiManager && window.deltaplane.mesh) {
-      aiManager.update(delta, window.deltaplane.mesh.position, window.deltaplane.thermalPositions);
-    }
-
-    // Update clouds with player position
-    if (cloudSystem && window.deltaplane.mesh) {
-      cloudSystem.update(delta, window.deltaplane.mesh.position);
-    }
-
-    // Update camera to follow hang glider
-    window.deltaplane.updateCamera(camera);
-
-    // Update info panel
-    updateInfoPanel();
-
-    // Render scene
-    renderer.render(scene, camera);
-  } catch (error) {
-    console.error('Error during animation:', error);
-  }
-}
-
-// Fonction pour détecter si on est sur mobile
-function isMobileDevice() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 800;
-}
-})();
-
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__("./src/index.js");
+/******/ 	
 /******/ })()
 ;
 //# sourceMappingURL=bundle.js.map
