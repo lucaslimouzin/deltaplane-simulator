@@ -58094,10 +58094,10 @@ var Minimap = /*#__PURE__*/function () {
 
       // Dessiner les ballons (représentant les îles)
       if (window.balloons) {
-        window.balloons.forEach(function (balloon) {
-          // Calculer la position relative par rapport au joueur
-          var worldX = balloon.userData.initialX;
-          var worldZ = balloon.userData.initialZ;
+        window.balloons.forEach(function (portal) {
+          // Utiliser directement la position du portail
+          var worldX = portal.position.x;
+          var worldZ = portal.position.z;
           var relativeX = (worldX - position.x) * _this2.scale;
           var relativeZ = (worldZ - position.z) * _this2.scale;
 
@@ -58108,10 +58108,10 @@ var Minimap = /*#__PURE__*/function () {
           // Calculer la taille du point en fonction de la taille du canvas
           var pointSize = Math.max(2, _this2.canvas.width / 30);
 
-          // Dessiner un petit cercle rouge pour représenter le ballon
+          // Dessiner un petit cercle cyan pour représenter le portail
           _this2.ctx.beginPath();
           _this2.ctx.arc(x, y, pointSize, 0, Math.PI * 2);
-          _this2.ctx.fillStyle = '#FF4444';
+          _this2.ctx.fillStyle = '#00FFFF';
           _this2.ctx.fill();
           _this2.ctx.strokeStyle = 'white';
           _this2.ctx.lineWidth = Math.max(0.5, pointSize / 4);
@@ -59860,18 +59860,64 @@ function animate() {
     }
   }
 
-  // Animer les ballons
+  // Animer les portails
   if (window.balloons) {
-    window.balloons.forEach(function (balloon) {
-      balloon.userData.angle += balloon.userData.rotationSpeed;
+    window.balloons.forEach(function (portal) {
+      if (portal.userData.mainParticles) {
+        var time = Date.now() * 0.001;
+        var positions = portal.userData.mainParticles.geometry.attributes.position.array;
 
-      // Calculer la nouvelle position
-      var newX = balloon.userData.initialX + Math.cos(balloon.userData.angle) * balloon.userData.rotationRadius;
-      var newZ = balloon.userData.initialZ + Math.sin(balloon.userData.angle) * balloon.userData.rotationRadius;
+        // Animer les particules principales (effet électrique)
+        for (var i = 0; i < positions.length; i += 3) {
+          var angle = Math.atan2(positions[i + 2], positions[i + 1]);
+          var radius = Math.sqrt(positions[i + 1] * positions[i + 1] + positions[i + 2] * positions[i + 2]);
+          var newAngle = angle + 0.3 * Math.sin(time + radius);
+          positions[i] = (Math.random() - 0.5) * 4; // X (profondeur) fluctuante
+          positions[i + 1] = Math.cos(newAngle) * radius; // Y (hauteur)
+          positions[i + 2] = Math.sin(newAngle) * radius; // Z (largeur)
+        }
+        portal.userData.mainParticles.geometry.attributes.position.needsUpdate = true;
+      }
+      if (portal.userData.secondaryParticles) {
+        var _time = Date.now() * 0.001;
+        var _positions = portal.userData.secondaryParticles.geometry.attributes.position.array;
 
-      // Mettre à jour la position du groupe
-      balloon.position.x = newX - balloon.userData.initialX;
-      balloon.position.z = newZ - balloon.userData.initialZ;
+        // Animer les particules secondaires (effet de brume)
+        for (var _i = 0; _i < _positions.length; _i += 3) {
+          var _angle = Math.atan2(_positions[_i + 2], _positions[_i + 1]);
+          var _radius = Math.sqrt(_positions[_i + 1] * _positions[_i + 1] + _positions[_i + 2] * _positions[_i + 2]);
+          var _newAngle = _angle + 0.2;
+          _positions[_i] = (Math.random() - 0.5) * 8; // X (profondeur) fluctuante
+          _positions[_i + 1] = Math.cos(_newAngle) * _radius; // Y (hauteur)
+          _positions[_i + 2] = Math.sin(_newAngle) * _radius; // Z (largeur)
+        }
+        portal.userData.secondaryParticles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      // Animer les roches flottantes
+      if (portal.userData.rocks) {
+        var _time2 = Date.now() * 0.001;
+        portal.userData.rocks.forEach(function (rock, index) {
+          var offset = index * (Math.PI * 2 / portal.userData.rocks.length);
+          rock.position.x = Math.sin(_time2 + offset) * 3; // Oscillation en profondeur
+          rock.rotation.x += 0.002;
+          rock.rotation.y += 0.003;
+        });
+      }
+
+      // Animation de l'anneau
+      if (portal.userData.ring) {
+        var _time3 = Date.now() * 0.001;
+        portal.userData.ring.material.emissiveIntensity = 0.5 + Math.sin(_time3 * 2) * 0.3;
+        portal.userData.ring.material.opacity = 0.8 + Math.sin(_time3 * 3) * 0.2;
+      }
+
+      // Mettre à jour la rotation du texte
+      if (window.portalTextUpdates) {
+        window.portalTextUpdates.forEach(function (update) {
+          return update();
+        });
+      }
     });
   }
   renderer.render(scene, camera);
@@ -60070,7 +60116,7 @@ function createChunk(chunkX, chunkZ, callback) {
 
   // Ajouter un ballon pour chaque île
   chunk.islands.forEach(function (island) {
-    addBalloonToIsland(island, chunk);
+    addPortalToIsland(island, chunk);
   });
 
   // Calculer la distance au chunk
@@ -60625,63 +60671,251 @@ function addHouses() {
 /**
  * Ajoute un ballon flottant au-dessus d'une île
  */
-function addBalloonToIsland(island, chunk) {
-  // Hauteur du ballon (augmentée)
-  var balloonHeight = 150;
+function addPortalToIsland(island, chunk) {
+  // Chance aléatoire de 25% d'avoir un portail
+  if (Math.random() > 0.25) {
+    return;
+  }
 
-  // Créer le ballon (sphère plus grande)
-  var balloonGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.SphereGeometry(15, 16, 16);
-  var balloonMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
-    color: 0xFF4444,
-    roughness: 0.7,
-    metalness: 0.3
+  // Vérifier la distance avec les autres portails existants
+  if (window.balloons) {
+    var MIN_PORTAL_DISTANCE = 300;
+    var _iterator10 = _createForOfIteratorHelper(window.balloons),
+      _step10;
+    try {
+      for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
+        var existingPortal = _step10.value;
+        var distance = Math.sqrt(Math.pow(existingPortal.position.x - island.center.x, 2) + Math.pow(existingPortal.position.z - island.center.z, 2));
+        if (distance < MIN_PORTAL_DISTANCE) {
+          return;
+        }
+      }
+    } catch (err) {
+      _iterator10.e(err);
+    } finally {
+      _iterator10.f();
+    }
+  }
+  var portalGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
+
+  // Créer le texte du portail
+  var canvas = document.createElement('canvas');
+  var context = canvas.getContext('2d');
+  canvas.width = 1024;
+  canvas.height = 256;
+
+  // Style du texte
+  context.fillStyle = 'rgba(0, 0, 0, 0)';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.font = 'bold 80px Arial'; // Taille de police réduite
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  var text = "Your portal promote";
+
+  // Mesurer la largeur du texte
+  var textMetrics = context.measureText(text);
+  var textWidth = textMetrics.width;
+  var padding = 60; // Plus de padding pour éviter le rognage
+
+  // Calculer les dimensions du plan en fonction du texte
+  var planeWidth = textWidth * 0.25 + padding; // Facteur d'échelle augmenté pour éviter le rognage
+  var planeHeight = 25; // Hauteur légèrement augmentée
+
+  // Ajouter la bordure noire
+  context.strokeStyle = 'black';
+  context.lineWidth = 16;
+  context.strokeText(text, canvas.width / 2, canvas.height / 2);
+
+  // Texte blanc pur
+  context.fillStyle = '#FFFFFF';
+  context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  // Créer la texture à partir du canvas
+  var texture = new three__WEBPACK_IMPORTED_MODULE_2__.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+
+  // Créer le matériau pour le texte
+  var textMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    side: three__WEBPACK_IMPORTED_MODULE_2__.DoubleSide,
+    depthWrite: false,
+    depthTest: false,
+    fog: false,
+    opacity: 1.0,
+    alphaTest: 0.1
   });
-  var balloon = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(balloonGeometry, balloonMaterial);
 
-  // Position du ballon
-  balloon.position.set(island.center.x, balloonHeight, island.center.z);
+  // Créer le plan avec les dimensions calculées
+  var textGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.PlaneGeometry(planeWidth, planeHeight);
+  var textMesh = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(textGeometry, textMaterial);
 
-  // Créer la corde
-  var ropeGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
-  var ropePoints = [];
+  // Positionner le texte
+  textMesh.position.set(0, 60, 0);
+  textMesh.renderOrder = 999;
 
-  // Point de départ (sur l'île)
-  var startPoint = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x, getTerrainHeightAtPosition(island.center.x, island.center.z) + 1, island.center.z);
+  // Créer les particules principales (effet électrique)
+  var mainParticleCount = 800;
+  var mainParticlesGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
+  var mainPositions = new Float32Array(mainParticleCount * 3);
+  var mainColors = new Float32Array(mainParticleCount * 3);
+  for (var i = 0; i < mainParticleCount; i++) {
+    var angle = i / mainParticleCount * Math.PI * 2;
+    var radius = 35 + Math.random() * 8; // Rayon augmenté
 
-  // Point d'arrivée (au ballon)
-  var endPoint = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x, balloonHeight, island.center.z);
+    // Positionner les particules dans le plan vertical (Y-Z au lieu de X-Y)
+    mainPositions[i * 3] = (Math.random() - 0.5) * 4; // X (profondeur)
+    mainPositions[i * 3 + 1] = Math.cos(angle) * radius; // Y (hauteur)
+    mainPositions[i * 3 + 2] = Math.sin(angle) * radius; // Z (largeur)
 
-  // Créer une courbe légèrement ondulée pour la corde
-  var curve = new three__WEBPACK_IMPORTED_MODULE_2__.CatmullRomCurve3([startPoint, new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x + 4, (startPoint.y + endPoint.y) * 0.3, island.center.z + 4), new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(island.center.x - 4, (startPoint.y + endPoint.y) * 0.6, island.center.z - 4), endPoint]);
-
-  // Générer les points de la courbe
-  var points = curve.getPoints(50);
-  ropeGeometry.setFromPoints(points);
-  var ropeMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.LineBasicMaterial({
-    color: 0x8B4513,
-    linewidth: 3
+    // Couleur variable des particules (blanc-bleu électrique)
+    mainColors[i * 3] = 0.7 + Math.random() * 0.3; // Plus lumineux
+    mainColors[i * 3 + 1] = 0.8 + Math.random() * 0.2; // Plus lumineux
+    mainColors[i * 3 + 2] = 1;
+  }
+  mainParticlesGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(mainPositions, 3));
+  mainParticlesGeometry.setAttribute('color', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(mainColors, 3));
+  var mainParticlesMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.PointsMaterial({
+    size: 1.2,
+    // Taille augmentée
+    transparent: true,
+    opacity: 0.8,
+    vertexColors: true,
+    blending: three__WEBPACK_IMPORTED_MODULE_2__.AdditiveBlending
   });
-  var rope = new three__WEBPACK_IMPORTED_MODULE_2__.Line(ropeGeometry, ropeMaterial);
+  var mainParticles = new three__WEBPACK_IMPORTED_MODULE_2__.Points(mainParticlesGeometry, mainParticlesMaterial);
 
-  // Ajouter l'animation de rotation
-  var balloonGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
-  balloonGroup.add(balloon);
-  balloonGroup.add(rope);
+  // Créer les particules secondaires (effet de brume)
+  var secondaryParticleCount = 500;
+  var secondaryParticlesGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
+  var secondaryPositions = new Float32Array(secondaryParticleCount * 3);
+  var secondaryColors = new Float32Array(secondaryParticleCount * 3);
+  for (var _i2 = 0; _i2 < secondaryParticleCount; _i2++) {
+    var _angle2 = Math.random() * Math.PI * 2;
+    var _radius2 = Math.random() * 35; // Rayon augmenté
 
-  // Ajouter une propriété pour l'animation
-  balloonGroup.userData.rotationSpeed = 0.005;
-  balloonGroup.userData.rotationRadius = 8;
-  balloonGroup.userData.initialX = island.center.x;
-  balloonGroup.userData.initialZ = island.center.z;
-  balloonGroup.userData.angle = Math.random() * Math.PI * 2;
+    // Positionner les particules dans le plan vertical (Y-Z au lieu de X-Y)
+    secondaryPositions[_i2 * 3] = (Math.random() - 0.5) * 8; // X (profondeur)
+    secondaryPositions[_i2 * 3 + 1] = Math.cos(_angle2) * _radius2; // Y (hauteur)
+    secondaryPositions[_i2 * 3 + 2] = Math.sin(_angle2) * _radius2; // Z (largeur)
 
-  // Ajouter au chunk
-  scene.add(balloonGroup);
-  chunk.objects.push(balloonGroup);
+    // Couleur bleutée plus claire
+    secondaryColors[_i2 * 3] = 0.8;
+    secondaryColors[_i2 * 3 + 1] = 0.9;
+    secondaryColors[_i2 * 3 + 2] = 1;
+  }
+  secondaryParticlesGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(secondaryPositions, 3));
+  secondaryParticlesGeometry.setAttribute('color', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(secondaryColors, 3));
+  var secondaryParticlesMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.PointsMaterial({
+    size: 2.0,
+    // Taille augmentée
+    transparent: true,
+    opacity: 0.3,
+    vertexColors: true,
+    blending: three__WEBPACK_IMPORTED_MODULE_2__.AdditiveBlending
+  });
+  var secondaryParticles = new three__WEBPACK_IMPORTED_MODULE_2__.Points(secondaryParticlesGeometry, secondaryParticlesMaterial);
 
-  // Ajouter l'animation à la boucle d'animation
+  // Créer les roches flottantes
+  var numRocks = 16; // Plus de roches
+  var rockGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.TetrahedronGeometry(3.5, 0); // Taille augmentée
+  var rockMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+    color: 0x808080,
+    // Gris pierre
+    roughness: 0.8,
+    metalness: 0.1,
+    flatShading: true
+  });
+  for (var _i3 = 0; _i3 < numRocks; _i3++) {
+    var rock = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(rockGeometry, rockMaterial);
+    var _angle3 = _i3 / numRocks * Math.PI * 2;
+    var _radius3 = 42; // Rayon augmenté
+
+    // Positionner les roches autour du portail vertical
+    rock.position.set((Math.random() - 0.5) * 5,
+    // X (profondeur)
+    Math.cos(_angle3) * _radius3,
+    // Y (hauteur)
+    Math.sin(_angle3) * _radius3 // Z (largeur)
+    );
+    rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+
+    // Varier légèrement la couleur de chaque roche pour plus de naturel
+    var rockColor = new three__WEBPACK_IMPORTED_MODULE_2__.Color(0x808080);
+    var variation = (Math.random() - 0.5) * 0.2; // Variation de ±20%
+    rockColor.r += variation;
+    rockColor.g += variation;
+    rockColor.b += variation;
+    rock.material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+      color: rockColor,
+      roughness: 0.8,
+      metalness: 0.1,
+      flatShading: true
+    });
+    rock.scale.set(0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4);
+    portalGroup.add(rock);
+  }
+
+  // Ajouter tous les éléments au groupe
+  portalGroup.add(mainParticles);
+  portalGroup.add(secondaryParticles);
+  portalGroup.add(textMesh); // Ajouter le texte au groupe
+
+  // Obtenir la hauteur du terrain
+  var terrainHeight = getTerrainHeightAtPosition(island.center.x, island.center.z);
+
+  // Positionner le portail
+  portalGroup.position.set(island.center.x, terrainHeight + 150, island.center.z);
+
+  // Rotation pour que le portail soit vertical (pas besoin de rotation car déjà créé verticalement)
+  portalGroup.rotation.set(0, 0, 0);
+
+  // Ajouter au chunk et à la scène
+  scene.add(portalGroup);
+  chunk.objects.push(portalGroup);
+
+  // Ajouter à la liste des portails pour l'animation
   if (!window.balloons) window.balloons = [];
-  window.balloons.push(balloonGroup);
+  window.balloons.push(portalGroup);
+
+  // Ajouter les propriétés d'animation
+  portalGroup.userData = {
+    mainParticles: mainParticles,
+    secondaryParticles: secondaryParticles,
+    rocks: portalGroup.children.filter(function (child) {
+      return child.geometry === rockGeometry;
+    }),
+    initialRotation: portalGroup.rotation.clone(),
+    textMesh: textMesh
+  };
+
+  // Modifier la fonction animate pour faire face à la caméra
+  var updateTextRotation = function updateTextRotation() {
+    if (textMesh && camera) {
+      // Calculer la direction de la caméra au texte
+      var direction = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3();
+      direction.subVectors(camera.position, portalGroup.position);
+
+      // Calculer l'angle dans le plan XZ (horizontal)
+      var _angle4 = Math.atan2(direction.x, direction.z);
+
+      // Appliquer la rotation pour faire face à la caméra
+      textMesh.rotation.y = _angle4;
+
+      // Garder le texte vertical
+      textMesh.rotation.x = 0;
+      textMesh.rotation.z = 0;
+
+      // Ajuster l'échelle en fonction de la distance avec une échelle minimale plus grande
+      var _distance = camera.position.distanceTo(portalGroup.position);
+      var scale = Math.max(0.8, Math.min(1.8, _distance / 400)); // Échelles minimale et maximale ajustées
+      textMesh.scale.set(scale, scale, 1);
+    }
+  };
+
+  // Ajouter la fonction de mise à jour à la boucle d'animation
+  if (!window.portalTextUpdates) window.portalTextUpdates = [];
+  window.portalTextUpdates.push(updateTextRotation);
 }
 
 /***/ }),

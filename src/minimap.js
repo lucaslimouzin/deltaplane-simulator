@@ -62,10 +62,10 @@ export class Minimap {
 
         // Dessiner les ballons (représentant les îles)
         if (window.balloons) {
-            window.balloons.forEach(balloon => {
-                // Calculer la position relative par rapport au joueur
-                const worldX = balloon.userData.initialX;
-                const worldZ = balloon.userData.initialZ;
+            window.balloons.forEach(portal => {
+                // Utiliser directement la position du portail
+                const worldX = portal.position.x;
+                const worldZ = portal.position.z;
                 
                 const relativeX = (worldX - position.x) * this.scale;
                 const relativeZ = (worldZ - position.z) * this.scale;
@@ -77,10 +77,10 @@ export class Minimap {
                 // Calculer la taille du point en fonction de la taille du canvas
                 const pointSize = Math.max(2, this.canvas.width / 30);
                 
-                // Dessiner un petit cercle rouge pour représenter le ballon
+                // Dessiner un petit cercle cyan pour représenter le portail
                 this.ctx.beginPath();
                 this.ctx.arc(x, y, pointSize, 0, Math.PI * 2);
-                this.ctx.fillStyle = '#FF4444';
+                this.ctx.fillStyle = '#00FFFF';
                 this.ctx.fill();
                 this.ctx.strokeStyle = 'white';
                 this.ctx.lineWidth = Math.max(0.5, pointSize / 4);
