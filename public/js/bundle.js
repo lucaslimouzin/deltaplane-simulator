@@ -57073,6 +57073,7 @@ var Deltaplane = /*#__PURE__*/function () {
     this.mesh = null;
     this.voile = null; // Reference to the sail for separate manipulation
     this.isRemotePlayer = isRemotePlayer;
+    this.lightspeedParticles = null; // Pour stocker le système de particules
 
     // Ces propriétés ne sont nécessaires que pour le joueur local
     if (!isRemotePlayer) {
@@ -57154,6 +57155,53 @@ var Deltaplane = /*#__PURE__*/function () {
         descendDown: false,
         ascendUp: false
       };
+
+      // Liste des couleurs possibles pour la voile
+      this.availableColors = [0xFF0000,
+      // Rouge
+      0x00FF00,
+      // Vert
+      0x0000FF,
+      // Bleu
+      0xFFFF00,
+      // Jaune
+      0xFF00FF,
+      // Magenta
+      0x00FFFF,
+      // Cyan
+      0xFF8000,
+      // Orange
+      0x8000FF,
+      // Violet
+      0x0080FF,
+      // Bleu clair
+      0xFF0080 // Rose
+      ];
+
+      // Liste des couleurs pour le personnage
+      this.pilotColors = [0x2244aa,
+      // Bleu original
+      0x22aa44,
+      // Vert forêt
+      0xaa2244,
+      // Rouge foncé
+      0x8822aa,
+      // Violet foncé
+      0xaa8822,
+      // Or foncé
+      0x227788,
+      // Bleu canard
+      0x884422,
+      // Marron
+      0x442288,
+      // Indigo
+      0x228844,
+      // Vert émeraude
+      0x882244 // Bordeaux
+      ];
+
+      // Appliquer les paramètres d'URL si disponibles
+      this.applyUrlParameters();
     }
 
     // Create the hang glider model
@@ -57167,15 +57215,70 @@ var Deltaplane = /*#__PURE__*/function () {
     // Création de la boîte de collision pour le deltaplane
     var collisionGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BoxGeometry(20, 10, 20);
     this.collisionBox = new three__WEBPACK_IMPORTED_MODULE_2__.Box3();
+
+    // Ajouter une propriété pour le portail de retour
+    this.returnPortal = null;
+
+    // Vérifier si on arrive d'un autre jeu
+    if (!isRemotePlayer) {
+      this.createStartPortalIfNeeded();
+    }
   }
 
   /**
-   * Crée le modèle 3D du deltaplane
+   * Applique les paramètres d'URL au deltaplane
    */
   return _createClass(Deltaplane, [{
+    key: "applyUrlParameters",
+    value: function applyUrlParameters() {
+      var _this = this;
+      var urlParams = new URLSearchParams(window.location.search);
+
+      // Appliquer la vitesse si spécifiée
+      var speed = parseFloat(urlParams.get('speed'));
+      if (!isNaN(speed)) {
+        // Convertir la vitesse en vecteur de vélocité
+        var direction = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(0, 0, -1);
+        this.velocity.copy(direction.multiplyScalar(speed));
+      }
+
+      // Appliquer la couleur si spécifiée
+      var color = urlParams.get('color');
+      if (color) {
+        // Attendre que le mesh soit créé
+        var _applyColor = function applyColor() {
+          if (_this.voile) {
+            var colorValue;
+            if (color.startsWith('#')) {
+              colorValue = color;
+            } else {
+              // Convertir les noms de couleur en valeurs hexadécimales
+              var colorMap = {
+                'red': '#FF0000',
+                'green': '#00FF00',
+                'blue': '#0000FF',
+                'yellow': '#FFFF00'
+                // Ajouter d'autres couleurs si nécessaire
+              };
+              colorValue = colorMap[color.toLowerCase()] || '#FFFFFF';
+            }
+            _this.voile.material.color.set(colorValue);
+          } else {
+            // Si le mesh n'est pas encore créé, réessayer dans 100ms
+            setTimeout(_applyColor, 100);
+          }
+        };
+        _applyColor();
+      }
+    }
+
+    /**
+     * Crée le modèle 3D du deltaplane
+     */
+  }, {
     key: "createModel",
     value: function createModel() {
-      var _this = this;
+      var _this2 = this;
       try {
         // Création d'un groupe pour contenir tous les éléments du deltaplane
         this.mesh = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
@@ -57194,8 +57297,11 @@ var Deltaplane = /*#__PURE__*/function () {
         ]);
         voileGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(voileVertices, 3));
         voileGeometry.computeVertexNormals();
+
+        // Sélection aléatoire d'une couleur pour la voile
+        var randomColor = this.availableColors[Math.floor(Math.random() * this.availableColors.length)];
         var voileMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
-          color: 0x00ff00,
+          color: randomColor,
           side: three__WEBPACK_IMPORTED_MODULE_2__.DoubleSide,
           flatShading: true,
           roughness: 0.7,
@@ -57241,10 +57347,13 @@ var Deltaplane = /*#__PURE__*/function () {
         // Création du personnage (pilote)
         var piloteGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
 
+        // Sélection aléatoire d'une couleur pour le pilote
+        var randomPilotColor = this.pilotColors[Math.floor(Math.random() * this.pilotColors.length)];
+
         // Corps du pilote - plus vertical
         var corpsGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.CylinderGeometry(1.2, 1.2, 6, 4);
         var corpsMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
-          color: 0x2244aa,
+          color: randomPilotColor,
           flatShading: true,
           roughness: 0.8
         });
@@ -57269,7 +57378,8 @@ var Deltaplane = /*#__PURE__*/function () {
         // Bras du pilote en U
         var brasGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.CylinderGeometry(0.45, 0.45, 3.6, 3);
         var brasMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
-          color: 0x2244aa,
+          color: randomPilotColor,
+          // Utiliser la même couleur que le corps
           flatShading: true,
           roughness: 0.8
         });
@@ -57375,7 +57485,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
           // Convertir en coordonnées locales de la voile
           var localPos = worldPos.clone();
-          _this.voile.worldToLocal(localPos);
+          _this2.voile.worldToLocal(localPos);
 
           // Si la tête est au-dessus de la voile (y > 0), la ramener en dessous
           if (localPos.y > -1) {
@@ -57386,7 +57496,7 @@ var Deltaplane = /*#__PURE__*/function () {
             var newWorldPos = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3(worldPos.x, worldPos.y + (newLocalY - localPos.y), worldPos.z);
 
             // Mettre à jour la position du groupe du pilote
-            _this.piloteGroup.position.y += newLocalY - localPos.y;
+            _this2.piloteGroup.position.y += newLocalY - localPos.y;
           }
         };
 
@@ -57416,7 +57526,7 @@ var Deltaplane = /*#__PURE__*/function () {
 
         // Fonction pour mettre à jour la texture de la jauge
         this.updateSprintBarTexture = function (ratio, isSprinting) {
-          var ctx = _this.sprintBarContext;
+          var ctx = _this2.sprintBarContext;
 
           // Sauvegarder le contexte
           ctx.save();
@@ -57443,7 +57553,7 @@ var Deltaplane = /*#__PURE__*/function () {
           ctx.restore();
 
           // Mettre à jour la texture
-          _this.sprintBarSprite.material.map.needsUpdate = true;
+          _this2.sprintBarSprite.material.map.needsUpdate = true;
         };
       } catch (error) {
         console.error('Erreur lors de la création du deltaplane:', error);
@@ -58038,6 +58148,43 @@ var Deltaplane = /*#__PURE__*/function () {
       }
     }
   }, {
+    key: "createStartPortalIfNeeded",
+    value: function createStartPortalIfNeeded() {
+      var urlParams = new URLSearchParams(window.location.search);
+      var fromPortal = urlParams.get('portal') === 'true';
+      var refUrl = urlParams.get('ref');
+      if (fromPortal && refUrl) {
+        // Créer un portail de retour près du point de spawn
+        var portalGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.TorusGeometry(10, 1, 16, 100);
+        var portalMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+          color: 0x4444ff,
+          metalness: 0.8,
+          roughness: 0.2,
+          emissive: 0x0000ff,
+          emissiveIntensity: 0.5
+        });
+        this.returnPortal = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(portalGeometry, portalMaterial);
+        this.returnPortal.position.set(this.mesh.position.x + 20,
+        // Légèrement à droite du point de spawn
+        this.mesh.position.y,
+        // Même hauteur
+        this.mesh.position.z + 20 // Légèrement devant
+        );
+
+        // Stocker l'URL de retour et les paramètres dans les données du portail
+        this.returnPortal.userData = {
+          isReturnPortal: true,
+          returnUrl: refUrl,
+          originalParams: Object.fromEntries(urlParams)
+        };
+        this.scene.add(this.returnPortal);
+
+        // Ajouter le portail de retour à la liste des portails
+        if (!window.balloons) window.balloons = [];
+        window.balloons.push(this.returnPortal);
+      }
+    }
+  }, {
     key: "checkPortalCollisions",
     value: function checkPortalCollisions() {
       if (!window.balloons) return;
@@ -58049,19 +58196,40 @@ var Deltaplane = /*#__PURE__*/function () {
           var distance = Math.sqrt(Math.pow(portal.position.x - this.mesh.position.x, 2) + Math.pow(portal.position.z - this.mesh.position.z, 2));
           if (distance < 35) {
             if (portal.userData.isGoldenPortal) {
-              // Effet spécial pour le Golden Portal
+              // Calculer la vitesse actuelle en mètres par seconde
               var currentSpeed = Math.sqrt(Math.pow(this.velocity.x, 2) + Math.pow(this.velocity.y, 2) + Math.pow(this.velocity.z, 2));
 
-              // Doubler la vitesse actuelle
-              var speedMultiplier = 2;
-              this.velocity.x *= speedMultiplier;
-              this.velocity.y *= speedMultiplier;
-              this.velocity.z *= speedMultiplier;
+              // Récupérer le nom du joueur depuis le système multiplayer
+              var username = window.multiplayerManager ? window.multiplayerManager.playerName : 'player';
 
-              // Effet visuel de boost (à implémenter plus tard si souhaité)
-              console.log("Golden Portal activated! Speed boost applied!");
+              // Construire l'URL avec les paramètres
+              var params = new URLSearchParams({
+                username: username,
+                color: 'yellow',
+                speed: currentSpeed.toFixed(2),
+                portal: 'true',
+                ref: window.location.href
+              });
+
+              // Redirection instantanée
+              window.location.href = "http://portal.pieter.com/?".concat(params.toString());
+            } else if (portal.userData.isReturnPortal) {
+              // Récupérer l'URL de retour et les paramètres originaux
+              var returnUrl = portal.userData.returnUrl;
+              var originalParams = portal.userData.originalParams;
+
+              // Construire les paramètres de retour
+              var _params = new URLSearchParams(originalParams);
+              _params.set('portal', 'true'); // Indiquer qu'on vient d'un portail
+
+              // Redirection vers l'URL de retour avec les paramètres
+              window.location.href = "".concat(returnUrl).concat(returnUrl.includes('?') ? '&' : '?').concat(_params.toString());
             } else if (portal.userData.portalData && portal.userData.portalData.url) {
-              window.open(portal.userData.portalData.url, '_blank');
+              // Ajouter les paramètres nécessaires pour les portails normaux
+              var url = new URL(portal.userData.portalData.url);
+              url.searchParams.set('portal', 'true');
+              url.searchParams.set('ref', window.location.href);
+              window.open(url.toString(), '_blank');
             }
           }
         }
@@ -58669,6 +58837,18 @@ var MultiplayerManager = /*#__PURE__*/function () {
     }
 
     /**
+     * Check URL parameters for auto-login
+     * @returns {string|null} The username from URL parameters, or null if not present
+     */
+  }, {
+    key: "checkUrlParameters",
+    value: function checkUrlParameters() {
+      var urlParams = new URLSearchParams(window.location.search);
+      var username = urlParams.get('username');
+      return username && username.length >= 3 ? username : null;
+    }
+
+    /**
      * Creates a multiplayer manager instance
      * @param {THREE.Scene} scene - The Three.js scene
      * @param {Deltaplane} localPlayer - The local player's hang glider
@@ -58677,119 +58857,143 @@ var MultiplayerManager = /*#__PURE__*/function () {
     key: "createLoginUI",
     value: function createLoginUI() {
       var _this = this;
-      return new Promise(function (resolve) {
-        // Créer l'élément de fond
-        var overlay = document.createElement('div');
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        overlay.style.display = 'flex';
-        overlay.style.justifyContent = 'center';
-        overlay.style.alignItems = 'center';
-        overlay.style.zIndex = '1000';
+      return new Promise(/*#__PURE__*/function () {
+        var _ref = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(resolve) {
+          var autoUsername, overlay, loginForm, title, creditLine, subtitle, nameInput, playButton, errorMessage;
+          return _regeneratorRuntime().wrap(function _callee$(_context) {
+            while (1) switch (_context.prev = _context.next) {
+              case 0:
+                // Vérifier d'abord les paramètres d'URL
+                autoUsername = _this.checkUrlParameters();
+                if (!autoUsername) {
+                  _context.next = 5;
+                  break;
+                }
+                _this.playerName = autoUsername;
+                resolve(autoUsername);
+                return _context.abrupt("return");
+              case 5:
+                // Si pas d'auto-login, afficher l'interface normale
+                overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                overlay.style.display = 'flex';
+                overlay.style.justifyContent = 'center';
+                overlay.style.alignItems = 'center';
+                overlay.style.zIndex = '1000';
 
-        // Créer le formulaire de connexion
-        var loginForm = document.createElement('div');
-        loginForm.style.backgroundColor = 'white';
-        loginForm.style.padding = '20px';
-        loginForm.style.borderRadius = '10px';
-        loginForm.style.width = '300px';
-        loginForm.style.textAlign = 'center';
+                // Créer le formulaire de connexion
+                loginForm = document.createElement('div');
+                loginForm.style.backgroundColor = 'white';
+                loginForm.style.padding = '20px';
+                loginForm.style.borderRadius = '10px';
+                loginForm.style.width = '300px';
+                loginForm.style.textAlign = 'center';
 
-        // Title
-        var title = document.createElement('h2');
-        title.textContent = 'Glider Simulator';
-        title.style.marginBottom = '10px';
-        title.style.color = '#333';
+                // Title
+                title = document.createElement('h2');
+                title.textContent = 'Glider Simulator';
+                title.style.marginBottom = '10px';
+                title.style.color = '#333';
 
-        // Credit line
-        var creditLine = document.createElement('div');
-        creditLine.style.marginBottom = '20px';
-        creditLine.style.color = '#666';
-        creditLine.style.fontSize = '14px';
-        creditLine.innerHTML = 'Created by <a href="https://x.com/givros" target="_blank" style="color: #4CAF50; text-decoration: none;">Givros</a>';
+                // Credit line
+                creditLine = document.createElement('div');
+                creditLine.style.marginBottom = '20px';
+                creditLine.style.color = '#666';
+                creditLine.style.fontSize = '14px';
+                creditLine.innerHTML = 'Created by <a href="https://x.com/givros" target="_blank" style="color: #4CAF50; text-decoration: none;">Givros</a>';
 
-        // Subtitle
-        var subtitle = document.createElement('p');
-        subtitle.textContent = '';
-        subtitle.style.marginBottom = '20px';
-        subtitle.style.color = '#666';
+                // Subtitle
+                subtitle = document.createElement('p');
+                subtitle.textContent = '';
+                subtitle.style.marginBottom = '20px';
+                subtitle.style.color = '#666';
 
-        // Input field for username
-        var nameInput = document.createElement('input');
-        nameInput.type = 'text';
-        nameInput.placeholder = 'Enter your username';
-        nameInput.style.width = '100%';
-        nameInput.style.padding = '10px';
-        nameInput.style.marginBottom = '20px';
-        nameInput.style.boxSizing = 'border-box';
-        nameInput.style.border = '1px solid #ddd';
-        nameInput.style.borderRadius = '5px';
+                // Input field for username
+                nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.placeholder = 'Enter your username';
+                nameInput.style.width = '100%';
+                nameInput.style.padding = '10px';
+                nameInput.style.marginBottom = '20px';
+                nameInput.style.boxSizing = 'border-box';
+                nameInput.style.border = '1px solid #ddd';
+                nameInput.style.borderRadius = '5px';
 
-        // Connect button
-        var playButton = document.createElement('button');
-        playButton.textContent = 'Play';
-        playButton.style.backgroundColor = '#4CAF50';
-        playButton.style.color = 'white';
-        playButton.style.padding = '10px 20px';
-        playButton.style.border = 'none';
-        playButton.style.borderRadius = '5px';
-        playButton.style.cursor = 'pointer';
-        playButton.style.fontSize = '16px';
-        playButton.style.width = '100%';
+                // Connect button
+                playButton = document.createElement('button');
+                playButton.textContent = 'Play';
+                playButton.style.backgroundColor = '#4CAF50';
+                playButton.style.color = 'white';
+                playButton.style.padding = '10px 20px';
+                playButton.style.border = 'none';
+                playButton.style.borderRadius = '5px';
+                playButton.style.cursor = 'pointer';
+                playButton.style.fontSize = '16px';
+                playButton.style.width = '100%';
 
-        // Message d'erreur
-        var errorMessage = document.createElement('p');
-        errorMessage.style.color = 'red';
-        errorMessage.style.marginTop = '10px';
-        errorMessage.style.display = 'none';
+                // Message d'erreur
+                errorMessage = document.createElement('p');
+                errorMessage.style.color = 'red';
+                errorMessage.style.marginTop = '10px';
+                errorMessage.style.display = 'none';
 
-        // Ajouter les éléments au formulaire
-        loginForm.appendChild(title);
-        loginForm.appendChild(creditLine);
-        loginForm.appendChild(subtitle);
-        loginForm.appendChild(nameInput);
-        loginForm.appendChild(playButton);
-        loginForm.appendChild(errorMessage);
+                // Ajouter les éléments au formulaire
+                loginForm.appendChild(title);
+                loginForm.appendChild(creditLine);
+                loginForm.appendChild(subtitle);
+                loginForm.appendChild(nameInput);
+                loginForm.appendChild(playButton);
+                loginForm.appendChild(errorMessage);
 
-        // Ajouter le formulaire à l'overlay
-        overlay.appendChild(loginForm);
+                // Ajouter le formulaire à l'overlay
+                overlay.appendChild(loginForm);
 
-        // Ajouter l'overlay au document
-        document.body.appendChild(overlay);
+                // Ajouter l'overlay au document
+                document.body.appendChild(overlay);
 
-        // Focus sur le champ de saisie
-        nameInput.focus();
+                // Focus sur le champ de saisie
+                nameInput.focus();
 
-        // Gérer le clic sur le bouton de connexion
-        playButton.addEventListener('click', function () {
-          var name = nameInput.value.trim();
-          if (name.length < 3) {
-            errorMessage.textContent = 'Username must be at least 3 characters long';
-            errorMessage.style.display = 'block';
-            return;
-          }
+                // Gérer le clic sur le bouton de connexion
+                playButton.addEventListener('click', function () {
+                  var name = nameInput.value.trim();
+                  if (name.length < 3) {
+                    errorMessage.textContent = 'Username must be at least 3 characters long';
+                    errorMessage.style.display = 'block';
+                    return;
+                  }
 
-          // Stocker le nom du joueur
-          _this.playerName = name;
+                  // Stocker le nom du joueur
+                  _this.playerName = name;
 
-          // Supprimer l'overlay
-          document.body.removeChild(overlay);
+                  // Supprimer l'overlay
+                  document.body.removeChild(overlay);
 
-          // Résoudre la promesse
-          resolve(name);
-        });
+                  // Résoudre la promesse
+                  resolve(name);
+                });
 
-        // Gérer la touche Entrée
-        nameInput.addEventListener('keypress', function (event) {
-          if (event.key === 'Enter') {
-            playButton.click();
-          }
-        });
-      });
+                // Gérer la touche Entrée
+                nameInput.addEventListener('keypress', function (event) {
+                  if (event.key === 'Enter') {
+                    playButton.click();
+                  }
+                });
+              case 69:
+              case "end":
+                return _context.stop();
+            }
+          }, _callee);
+        }));
+        return function (_x) {
+          return _ref.apply(this, arguments);
+        };
+      }());
     }
 
     /**
@@ -58798,14 +59002,14 @@ var MultiplayerManager = /*#__PURE__*/function () {
   }, {
     key: "connect",
     value: (function () {
-      var _connect = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
+      var _connect = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
         var _this2 = this;
         var wsProtocol, wsHost, wsPath, wsUrl;
-        return _regeneratorRuntime().wrap(function _callee$(_context) {
-          while (1) switch (_context.prev = _context.next) {
+        return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+          while (1) switch (_context2.prev = _context2.next) {
             case 0:
-              _context.prev = 0;
-              _context.next = 3;
+              _context2.prev = 0;
+              _context2.next = 3;
               return this.createLoginUI();
             case 3:
               // Connect to WebSocket server using configuration
@@ -58814,7 +59018,7 @@ var MultiplayerManager = /*#__PURE__*/function () {
               wsPath = '/ws';
               wsUrl = "".concat(wsProtocol, "//").concat(wsHost).concat(wsPath);
               console.log('Connecting to WebSocket server at:', wsUrl);
-              return _context.abrupt("return", new Promise(function (resolve, reject) {
+              return _context2.abrupt("return", new Promise(function (resolve, reject) {
                 try {
                   _this2.socket = new WebSocket(wsUrl);
 
@@ -58907,15 +59111,15 @@ var MultiplayerManager = /*#__PURE__*/function () {
                 }
               }));
             case 11:
-              _context.prev = 11;
-              _context.t0 = _context["catch"](0);
-              console.error('Connection error:', _context.t0);
-              throw _context.t0;
+              _context2.prev = 11;
+              _context2.t0 = _context2["catch"](0);
+              console.error('Connection error:', _context2.t0);
+              throw _context2.t0;
             case 15:
             case "end":
-              return _context.stop();
+              return _context2.stop();
           }
-        }, _callee, this, [[0, 11]]);
+        }, _callee2, this, [[0, 11]]);
       }));
       function connect() {
         return _connect.apply(this, arguments);

@@ -49,13 +49,31 @@ export class MultiplayerManager {
     }
     
     /**
+     * Check URL parameters for auto-login
+     * @returns {string|null} The username from URL parameters, or null if not present
+     */
+    checkUrlParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username');
+        return username && username.length >= 3 ? username : null;
+    }
+    
+    /**
      * Creates a multiplayer manager instance
      * @param {THREE.Scene} scene - The Three.js scene
      * @param {Deltaplane} localPlayer - The local player's hang glider
      */
     createLoginUI() {
-        return new Promise((resolve) => {
-            // Créer l'élément de fond
+        return new Promise(async (resolve) => {
+            // Vérifier d'abord les paramètres d'URL
+            const autoUsername = this.checkUrlParameters();
+            if (autoUsername) {
+                this.playerName = autoUsername;
+                resolve(autoUsername);
+                return;
+            }
+
+            // Si pas d'auto-login, afficher l'interface normale
             const overlay = document.createElement('div');
             overlay.style.position = 'fixed';
             overlay.style.top = '0';
