@@ -111,6 +111,10 @@ export class Deltaplane {
         if (!isRemotePlayer) {
             this.createThermals();
         }
+
+        // Création de la boîte de collision pour le deltaplane
+        const collisionGeometry = new THREE.BoxGeometry(20, 10, 20);
+        this.collisionBox = new THREE.Box3();
     }
     
     /**
@@ -722,6 +726,12 @@ export class Deltaplane {
                 // Appliquer la rotation du deltaplane à la jauge (sens inversé)
                 this.sprintBarSprite.material.rotation = this.mesh.rotation.z;
             }
+
+            // Mise à jour de la boîte de collision
+            this.collisionBox.setFromObject(this.mesh);
+
+            // Vérification des collisions avec les portails
+            this.checkPortalCollisions();
         } catch (error) {
             console.error('Error in deltaplane update:', error);
         }
@@ -997,6 +1007,24 @@ export class Deltaplane {
             this.sprinting = true;
         } else {
             this.sprinting = false;
+        }
+    }
+
+    checkPortalCollisions() {
+        if (!window.balloons) return;
+
+        for (const portal of window.balloons) {
+            const distance = portal.position.distanceTo(this.mesh.position);
+            // Zone de collision du portail (rayon de 35 unités)
+            const collisionRadius = 35;
+
+            // Si le joueur est dans la zone de collision
+            if (distance < collisionRadius) {
+                // Utiliser les données stockées dans le portail
+                if (portal.userData.portalData) {
+                    window.open(portal.userData.portalData.url, '_blank');
+                }
+            }
         }
     }
 } 

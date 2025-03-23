@@ -1,0 +1,16 @@
+{
+  "portals": [
+    {
+      "titre": "Google",
+      "url": "https://google.fr"
+    },
+    {
+      "titre": "YouTube",
+      "url": "https://youtube.com"
+    },
+    {
+      "titre": "GitHub",
+      "url": "https://github.com"
+    }
+  ]
+} 

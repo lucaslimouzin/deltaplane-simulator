@@ -1711,242 +1711,260 @@ function addPortalToIsland(island, chunk) {
         }
     }
 
+    // Créer le groupe du portail
     const portalGroup = new THREE.Group();
+    portalGroup.userData.isPortal = true;
 
-    // Créer le texte du portail
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 1024;
-    canvas.height = 256;
+    // Charger le fichier JSON pour obtenir un portail aléatoire
+    fetch('/data/portals.json')
+        .then(response => response.json())
+        .then(data => {
+            const portals = data.portals;
+            const randomPortal = portals[Math.floor(Math.random() * portals.length)];
+            
+            // Stocker les données du portail
+            portalGroup.userData.portalData = randomPortal;
 
-    // Style du texte
-    context.fillStyle = 'rgba(0, 0, 0, 0)';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.font = 'bold 80px Arial'; // Taille de police réduite
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
+            // Créer le texte du portail
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 1024;
+            canvas.height = 256;
 
-    const text = "Your portal promote";
-    
-    // Mesurer la largeur du texte
-    const textMetrics = context.measureText(text);
-    const textWidth = textMetrics.width;
-    const padding = 60; // Plus de padding pour éviter le rognage
-    
-    // Calculer les dimensions du plan en fonction du texte
-    const planeWidth = textWidth * 0.25 + padding; // Facteur d'échelle augmenté pour éviter le rognage
-    const planeHeight = 25; // Hauteur légèrement augmentée
+            // Style du texte
+            context.fillStyle = 'rgba(0, 0, 0, 0)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.font = 'bold 80px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
 
-    // Ajouter la bordure noire
-    context.strokeStyle = 'black';
-    context.lineWidth = 16;
-    context.strokeText(text, canvas.width/2, canvas.height/2);
+            const text = randomPortal.titre;
 
-    // Texte blanc pur
-    context.fillStyle = '#FFFFFF';
-    context.fillText(text, canvas.width/2, canvas.height/2);
+            // Mesurer la largeur du texte
+            const textMetrics = context.measureText(text);
+            const textWidth = textMetrics.width;
+            const padding = 60;
 
-    // Créer la texture à partir du canvas
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
+            // Calculer les dimensions du plan en fonction du texte
+            const planeWidth = textWidth * 0.25 + padding;
+            const planeHeight = 25;
 
-    // Créer le matériau pour le texte
-    const textMaterial = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        depthTest: false,
-        fog: false,
-        opacity: 1.0,
-        alphaTest: 0.1
-    });
+            // Ajouter la bordure noire
+            context.strokeStyle = 'black';
+            context.lineWidth = 16;
+            context.strokeText(text, canvas.width/2, canvas.height/2);
 
-    // Créer le plan avec les dimensions calculées
-    const textGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
-    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-    
-    // Positionner le texte
-    textMesh.position.set(0, 60, 0);
-    textMesh.renderOrder = 999;
+            // Texte blanc pur
+            context.fillStyle = '#FFFFFF';
+            context.fillText(text, canvas.width/2, canvas.height/2);
 
-    // Créer les particules principales (effet électrique)
-    const mainParticleCount = 800;
-    const mainParticlesGeometry = new THREE.BufferGeometry();
-    const mainPositions = new Float32Array(mainParticleCount * 3);
-    const mainColors = new Float32Array(mainParticleCount * 3);
+            // Créer la texture à partir du canvas
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
 
-    for (let i = 0; i < mainParticleCount; i++) {
-        const angle = (i / mainParticleCount) * Math.PI * 2;
-        const radius = 35 + Math.random() * 8; // Rayon augmenté
-        
-        // Positionner les particules dans le plan vertical (Y-Z au lieu de X-Y)
-        mainPositions[i * 3] = (Math.random() - 0.5) * 4; // X (profondeur)
-        mainPositions[i * 3 + 1] = Math.cos(angle) * radius; // Y (hauteur)
-        mainPositions[i * 3 + 2] = Math.sin(angle) * radius; // Z (largeur)
+            // Créer le matériau pour le texte
+            const textMaterial = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                depthTest: false,
+                fog: false,
+                opacity: 1.0,
+                alphaTest: 0.1
+            });
 
-        // Couleur variable des particules (blanc-bleu électrique)
-        mainColors[i * 3] = 0.7 + Math.random() * 0.3; // Plus lumineux
-        mainColors[i * 3 + 1] = 0.8 + Math.random() * 0.2; // Plus lumineux
-        mainColors[i * 3 + 2] = 1;
-    }
+            // Créer le plan avec les dimensions calculées
+            const textGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            
+            // Positionner le texte
+            textMesh.position.set(0, 60, 0);
+            textMesh.renderOrder = 999;
+            portalGroup.add(textMesh);
 
-    mainParticlesGeometry.setAttribute('position', new THREE.BufferAttribute(mainPositions, 3));
-    mainParticlesGeometry.setAttribute('color', new THREE.BufferAttribute(mainColors, 3));
+            // Créer les particules principales (effet électrique)
+            const mainParticleCount = 800;
+            const mainParticlesGeometry = new THREE.BufferGeometry();
+            const mainPositions = new Float32Array(mainParticleCount * 3);
+            const mainColors = new Float32Array(mainParticleCount * 3);
 
-    const mainParticlesMaterial = new THREE.PointsMaterial({
-        size: 1.2, // Taille augmentée
-        transparent: true,
-        opacity: 0.8,
-        vertexColors: true,
-        blending: THREE.AdditiveBlending
-    });
+            for (let i = 0; i < mainParticleCount; i++) {
+                const angle = (i / mainParticleCount) * Math.PI * 2;
+                const radius = 35 + Math.random() * 8;
+                
+                mainPositions[i * 3] = (Math.random() - 0.5) * 4;
+                mainPositions[i * 3 + 1] = Math.cos(angle) * radius;
+                mainPositions[i * 3 + 2] = Math.sin(angle) * radius;
 
-    const mainParticles = new THREE.Points(mainParticlesGeometry, mainParticlesMaterial);
+                mainColors[i * 3] = 0.7 + Math.random() * 0.3;
+                mainColors[i * 3 + 1] = 0.8 + Math.random() * 0.2;
+                mainColors[i * 3 + 2] = 1;
+            }
 
-    // Créer les particules secondaires (effet de brume)
-    const secondaryParticleCount = 500;
-    const secondaryParticlesGeometry = new THREE.BufferGeometry();
-    const secondaryPositions = new Float32Array(secondaryParticleCount * 3);
-    const secondaryColors = new Float32Array(secondaryParticleCount * 3);
+            mainParticlesGeometry.setAttribute('position', new THREE.BufferAttribute(mainPositions, 3));
+            mainParticlesGeometry.setAttribute('color', new THREE.BufferAttribute(mainColors, 3));
 
-    for (let i = 0; i < secondaryParticleCount; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 35; // Rayon augmenté
-        
-        // Positionner les particules dans le plan vertical (Y-Z au lieu de X-Y)
-        secondaryPositions[i * 3] = (Math.random() - 0.5) * 8; // X (profondeur)
-        secondaryPositions[i * 3 + 1] = Math.cos(angle) * radius; // Y (hauteur)
-        secondaryPositions[i * 3 + 2] = Math.sin(angle) * radius; // Z (largeur)
+            const mainParticlesMaterial = new THREE.PointsMaterial({
+                size: 1.2,
+                transparent: true,
+                opacity: 0.8,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending
+            });
 
-        // Couleur bleutée plus claire
-        secondaryColors[i * 3] = 0.8;
-        secondaryColors[i * 3 + 1] = 0.9;
-        secondaryColors[i * 3 + 2] = 1;
-    }
+            const mainParticles = new THREE.Points(mainParticlesGeometry, mainParticlesMaterial);
 
-    secondaryParticlesGeometry.setAttribute('position', new THREE.BufferAttribute(secondaryPositions, 3));
-    secondaryParticlesGeometry.setAttribute('color', new THREE.BufferAttribute(secondaryColors, 3));
+            // Créer les particules secondaires (effet de brume)
+            const secondaryParticleCount = 500;
+            const secondaryParticlesGeometry = new THREE.BufferGeometry();
+            const secondaryPositions = new Float32Array(secondaryParticleCount * 3);
+            const secondaryColors = new Float32Array(secondaryParticleCount * 3);
 
-    const secondaryParticlesMaterial = new THREE.PointsMaterial({
-        size: 2.0, // Taille augmentée
-        transparent: true,
-        opacity: 0.3,
-        vertexColors: true,
-        blending: THREE.AdditiveBlending
-    });
+            for (let i = 0; i < secondaryParticleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 35;
+                
+                secondaryPositions[i * 3] = (Math.random() - 0.5) * 8;
+                secondaryPositions[i * 3 + 1] = Math.cos(angle) * radius;
+                secondaryPositions[i * 3 + 2] = Math.sin(angle) * radius;
 
-    const secondaryParticles = new THREE.Points(secondaryParticlesGeometry, secondaryParticlesMaterial);
+                secondaryColors[i * 3] = 0.8;
+                secondaryColors[i * 3 + 1] = 0.9;
+                secondaryColors[i * 3 + 2] = 1;
+            }
 
-    // Créer les roches flottantes
-    const numRocks = 16; // Plus de roches
-    const rockGeometry = new THREE.TetrahedronGeometry(3.5, 0); // Taille augmentée
-    const rockMaterial = new THREE.MeshStandardMaterial({
-        color: 0x808080, // Gris pierre
-        roughness: 0.8,
-        metalness: 0.1,
-        flatShading: true
-    });
+            secondaryParticlesGeometry.setAttribute('position', new THREE.BufferAttribute(secondaryPositions, 3));
+            secondaryParticlesGeometry.setAttribute('color', new THREE.BufferAttribute(secondaryColors, 3));
 
-    for (let i = 0; i < numRocks; i++) {
-        const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-        const angle = (i / numRocks) * Math.PI * 2;
-        const radius = 42; // Rayon augmenté
-        
-        // Positionner les roches autour du portail vertical
-        rock.position.set(
-            (Math.random() - 0.5) * 5, // X (profondeur)
-            Math.cos(angle) * radius,   // Y (hauteur)
-            Math.sin(angle) * radius    // Z (largeur)
-        );
-        
-        rock.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-        
-        // Varier légèrement la couleur de chaque roche pour plus de naturel
-        const rockColor = new THREE.Color(0x808080);
-        const variation = (Math.random() - 0.5) * 0.2; // Variation de ±20%
-        rockColor.r += variation;
-        rockColor.g += variation;
-        rockColor.b += variation;
-        rock.material = new THREE.MeshStandardMaterial({
-            color: rockColor,
-            roughness: 0.8,
-            metalness: 0.1,
-            flatShading: true
+            const secondaryParticlesMaterial = new THREE.PointsMaterial({
+                size: 2.0,
+                transparent: true,
+                opacity: 0.3,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending
+            });
+
+            const secondaryParticles = new THREE.Points(secondaryParticlesGeometry, secondaryParticlesMaterial);
+
+            // Créer les roches flottantes
+            const numRocks = 16;
+            const rockGeometry = new THREE.TetrahedronGeometry(3.5, 0);
+            const rockMaterial = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                roughness: 0.8,
+                metalness: 0.1,
+                flatShading: true
+            });
+
+            const rocks = [];
+            for (let i = 0; i < numRocks; i++) {
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                const angle = (i / numRocks) * Math.PI * 2;
+                const radius = 42;
+                
+                rock.position.set(
+                    (Math.random() - 0.5) * 5,
+                    Math.cos(angle) * radius,
+                    Math.sin(angle) * radius
+                );
+                
+                rock.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+                
+                const rockColor = new THREE.Color(0x808080);
+                const variation = (Math.random() - 0.5) * 0.2;
+                rockColor.r += variation;
+                rockColor.g += variation;
+                rockColor.b += variation;
+                rock.material = new THREE.MeshStandardMaterial({
+                    color: rockColor,
+                    roughness: 0.8,
+                    metalness: 0.1,
+                    flatShading: true
+                });
+                
+                rock.scale.set(
+                    0.8 + Math.random() * 0.4,
+                    0.8 + Math.random() * 0.4,
+                    0.8 + Math.random() * 0.4
+                );
+                portalGroup.add(rock);
+                rocks.push(rock);
+            }
+
+            // Ajouter tous les éléments au groupe
+            portalGroup.add(mainParticles);
+            portalGroup.add(secondaryParticles);
+
+            // Obtenir la hauteur du terrain
+            const terrainHeight = getTerrainHeightAtPosition(island.center.x, island.center.z);
+            
+            // Positionner le portail
+            portalGroup.position.set(
+                island.center.x,
+                terrainHeight + 150,
+                island.center.z
+            );
+
+            // Ajouter au chunk et à la scène
+            scene.add(portalGroup);
+            chunk.objects.push(portalGroup);
+
+            // Ajouter à la liste des portails pour l'animation
+            if (!window.balloons) window.balloons = [];
+            window.balloons.push(portalGroup);
+
+            // Ajouter les propriétés d'animation
+            portalGroup.userData = {
+                ...portalGroup.userData,
+                mainParticles: mainParticles,
+                secondaryParticles: secondaryParticles,
+                rocks: rocks,
+                initialRotation: portalGroup.rotation.clone(),
+                textMesh: textMesh
+            };
+
+            // Modifier la fonction animate pour faire face à la caméra
+            const updatePortalRotation = () => {
+                if (camera) {
+                    const direction = new THREE.Vector3();
+                    direction.subVectors(camera.position, portalGroup.position);
+                    const angle = Math.atan2(direction.x, direction.z);
+                    
+                    // Rotation du groupe entier pour faire face à la caméra
+                    portalGroup.rotation.y = angle + Math.PI / 2;
+
+                    // Rotation du texte pour qu'il reste droit et lisible
+                    if (textMesh) {
+                        textMesh.rotation.y = -angle - Math.PI / 2;
+                        const distance = camera.position.distanceTo(portalGroup.position);
+                        const scale = Math.max(0.8, Math.min(1.8, distance / 400));
+                        textMesh.scale.set(scale, scale, 1);
+                    }
+                }
+            };
+
+            // Ajouter la fonction de mise à jour à la boucle d'animation
+            if (!window.portalTextUpdates) window.portalTextUpdates = [];
+            window.portalTextUpdates.push(updatePortalRotation);
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des portails:', error);
+            // En cas d'erreur, on supprime le groupe du portail
+            scene.remove(portalGroup);
+            const index = chunk.objects.indexOf(portalGroup);
+            if (index > -1) {
+                chunk.objects.splice(index, 1);
+            }
+            if (window.balloons) {
+                const balloonIndex = window.balloons.indexOf(portalGroup);
+                if (balloonIndex > -1) {
+                    window.balloons.splice(balloonIndex, 1);
+                }
+            }
         });
-        
-        rock.scale.set(
-            0.8 + Math.random() * 0.4,
-            0.8 + Math.random() * 0.4,
-            0.8 + Math.random() * 0.4
-        );
-        portalGroup.add(rock);
-    }
-
-    // Ajouter tous les éléments au groupe
-    portalGroup.add(mainParticles);
-    portalGroup.add(secondaryParticles);
-    portalGroup.add(textMesh); // Ajouter le texte au groupe
-
-    // Obtenir la hauteur du terrain
-    const terrainHeight = getTerrainHeightAtPosition(island.center.x, island.center.z);
-    
-    // Positionner le portail
-    portalGroup.position.set(
-        island.center.x,
-        terrainHeight + 150,
-        island.center.z
-    );
-
-    // Rotation pour que le portail soit vertical (pas besoin de rotation car déjà créé verticalement)
-    portalGroup.rotation.set(0, 0, 0);
-
-    // Ajouter au chunk et à la scène
-    scene.add(portalGroup);
-    chunk.objects.push(portalGroup);
-
-    // Ajouter à la liste des portails pour l'animation
-    if (!window.balloons) window.balloons = [];
-    window.balloons.push(portalGroup);
-
-    // Ajouter les propriétés d'animation
-    portalGroup.userData = {
-        mainParticles: mainParticles,
-        secondaryParticles: secondaryParticles,
-        rocks: portalGroup.children.filter(child => child.geometry === rockGeometry),
-        initialRotation: portalGroup.rotation.clone(),
-        textMesh: textMesh
-    };
-
-    // Modifier la fonction animate pour faire face à la caméra
-    const updateTextRotation = () => {
-        if (textMesh && camera) {
-            // Calculer la direction de la caméra au texte
-            const direction = new THREE.Vector3();
-            direction.subVectors(camera.position, portalGroup.position);
-
-            // Calculer l'angle dans le plan XZ (horizontal)
-            const angle = Math.atan2(direction.x, direction.z);
-
-            // Appliquer la rotation pour faire face à la caméra
-            textMesh.rotation.y = angle;
-
-            // Garder le texte vertical
-            textMesh.rotation.x = 0;
-            textMesh.rotation.z = 0;
-
-            // Ajuster l'échelle en fonction de la distance avec une échelle minimale plus grande
-            const distance = camera.position.distanceTo(portalGroup.position);
-            const scale = Math.max(0.8, Math.min(1.8, distance / 400)); // Échelles minimale et maximale ajustées
-            textMesh.scale.set(scale, scale, 1);
-        }
-    };
-
-    // Ajouter la fonction de mise à jour à la boucle d'animation
-    if (!window.portalTextUpdates) window.portalTextUpdates = [];
-    window.portalTextUpdates.push(updateTextRotation);
 } 
