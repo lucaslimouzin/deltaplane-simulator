@@ -12,5 +12,9 @@
       "titre": "GitHub",
       "url": "https://github.com"
     }
-  ]
+  ],
+  "goldenPortal": {
+    "titre": "Golden Portal",
+    "isGolden": true
+  }
 } 

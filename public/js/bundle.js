@@ -58046,14 +58046,21 @@ var Deltaplane = /*#__PURE__*/function () {
       try {
         for (_iterator.s(); !(_step = _iterator.n()).done;) {
           var portal = _step.value;
-          var distance = portal.position.distanceTo(this.mesh.position);
-          // Zone de collision du portail (rayon de 35 unités)
-          var collisionRadius = 35;
+          var distance = Math.sqrt(Math.pow(portal.position.x - this.mesh.position.x, 2) + Math.pow(portal.position.z - this.mesh.position.z, 2));
+          if (distance < 35) {
+            if (portal.userData.isGoldenPortal) {
+              // Effet spécial pour le Golden Portal
+              var currentSpeed = Math.sqrt(Math.pow(this.velocity.x, 2) + Math.pow(this.velocity.y, 2) + Math.pow(this.velocity.z, 2));
 
-          // Si le joueur est dans la zone de collision
-          if (distance < collisionRadius) {
-            // Utiliser les données stockées dans le portail
-            if (portal.userData.portalData) {
+              // Doubler la vitesse actuelle
+              var speedMultiplier = 2;
+              this.velocity.x *= speedMultiplier;
+              this.velocity.y *= speedMultiplier;
+              this.velocity.z *= speedMultiplier;
+
+              // Effet visuel de boost (à implémenter plus tard si souhaité)
+              console.log("Golden Portal activated! Speed boost applied!");
+            } else if (portal.userData.portalData && portal.userData.portalData.url) {
               window.open(portal.userData.portalData.url, '_blank');
             }
           }
@@ -61078,7 +61085,18 @@ function addHouses() {
  * Ajoute un ballon flottant au-dessus d'une île
  */
 function addPortalToIsland(island, chunk) {
-  // Chance aléatoire de 25% d'avoir un portail
+  // Vérifier si c'est le chunk central (0,0) et la deuxième île
+  var isCentralChunk = chunk.offset.x === 0 && chunk.offset.z === 0;
+  var isSecondIsland = chunk.islands.indexOf(island) === 1;
+
+  // Si c'est la deuxième île du chunk central et qu'on n'a pas encore de Golden Portal
+  if (isCentralChunk && isSecondIsland) {
+    // Créer le Golden Portal
+    createPortal(true);
+    return;
+  }
+
+  // Pour les autres portails, chance de 25% comme avant
   if (Math.random() > 0.25) {
     return;
   }
@@ -61103,226 +61121,263 @@ function addPortalToIsland(island, chunk) {
     }
   }
 
-  // Créer le groupe du portail
-  var portalGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
-  portalGroup.userData.isPortal = true;
+  // Créer un portail normal
+  createPortal(false);
+  function createPortal(isGolden) {
+    // Créer le groupe du portail
+    var portalGroup = new three__WEBPACK_IMPORTED_MODULE_2__.Group();
+    portalGroup.userData.isPortal = true;
 
-  // Charger le fichier JSON pour obtenir un portail aléatoire
-  fetch('/data/portals.json').then(function (response) {
-    return response.json();
-  }).then(function (data) {
-    var portals = data.portals;
-    var randomPortal = portals[Math.floor(Math.random() * portals.length)];
+    // Charger le fichier JSON pour obtenir un portail aléatoire
+    fetch('/data/portals.json').then(function (response) {
+      return response.json();
+    }).then(function (data) {
+      var portalData;
+      if (isGolden) {
+        portalData = data.goldenPortal;
+        window.hasGoldenPortal = true;
+        portalGroup.userData.isGoldenPortal = true;
+      } else {
+        var portals = data.portals;
+        portalData = portals[Math.floor(Math.random() * portals.length)];
+      }
 
-    // Stocker les données du portail
-    portalGroup.userData.portalData = randomPortal;
+      // Stocker les données du portail
+      portalGroup.userData.portalData = portalData;
 
-    // Créer le texte du portail
-    var canvas = document.createElement('canvas');
-    var context = canvas.getContext('2d');
-    canvas.width = 1024;
-    canvas.height = 256;
-
-    // Style du texte
-    context.fillStyle = 'rgba(0, 0, 0, 0)';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.font = 'bold 80px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    var text = randomPortal.titre;
-
-    // Mesurer la largeur du texte
-    var textMetrics = context.measureText(text);
-    var textWidth = textMetrics.width;
-    var padding = 60;
-
-    // Calculer les dimensions du plan en fonction du texte
-    var planeWidth = textWidth * 0.25 + padding;
-    var planeHeight = 25;
-
-    // Ajouter la bordure noire
-    context.strokeStyle = 'black';
-    context.lineWidth = 16;
-    context.strokeText(text, canvas.width / 2, canvas.height / 2);
-
-    // Texte blanc pur
-    context.fillStyle = '#FFFFFF';
-    context.fillText(text, canvas.width / 2, canvas.height / 2);
-
-    // Créer la texture à partir du canvas
-    var texture = new three__WEBPACK_IMPORTED_MODULE_2__.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-
-    // Créer le matériau pour le texte
-    var textMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      side: three__WEBPACK_IMPORTED_MODULE_2__.DoubleSide,
-      depthWrite: false,
-      depthTest: false,
-      fog: false,
-      opacity: 1.0,
-      alphaTest: 0.1
-    });
-
-    // Créer le plan avec les dimensions calculées
-    var textGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.PlaneGeometry(planeWidth, planeHeight);
-    var textMesh = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(textGeometry, textMaterial);
-
-    // Positionner le texte
-    textMesh.position.set(0, 60, 0);
-    textMesh.renderOrder = 999;
-    portalGroup.add(textMesh);
-
-    // Créer les particules principales (effet électrique)
-    var mainParticleCount = 800;
-    var mainParticlesGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
-    var mainPositions = new Float32Array(mainParticleCount * 3);
-    var mainColors = new Float32Array(mainParticleCount * 3);
-    for (var i = 0; i < mainParticleCount; i++) {
-      var angle = i / mainParticleCount * Math.PI * 2;
-      var radius = 35 + Math.random() * 8;
-      mainPositions[i * 3] = (Math.random() - 0.5) * 4;
-      mainPositions[i * 3 + 1] = Math.cos(angle) * radius;
-      mainPositions[i * 3 + 2] = Math.sin(angle) * radius;
-      mainColors[i * 3] = 0.7 + Math.random() * 0.3;
-      mainColors[i * 3 + 1] = 0.8 + Math.random() * 0.2;
-      mainColors[i * 3 + 2] = 1;
-    }
-    mainParticlesGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(mainPositions, 3));
-    mainParticlesGeometry.setAttribute('color', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(mainColors, 3));
-    var mainParticlesMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.PointsMaterial({
-      size: 1.2,
-      transparent: true,
-      opacity: 0.8,
-      vertexColors: true,
-      blending: three__WEBPACK_IMPORTED_MODULE_2__.AdditiveBlending
-    });
-    var mainParticles = new three__WEBPACK_IMPORTED_MODULE_2__.Points(mainParticlesGeometry, mainParticlesMaterial);
-
-    // Créer les particules secondaires (effet de brume)
-    var secondaryParticleCount = 500;
-    var secondaryParticlesGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
-    var secondaryPositions = new Float32Array(secondaryParticleCount * 3);
-    var secondaryColors = new Float32Array(secondaryParticleCount * 3);
-    for (var _i2 = 0; _i2 < secondaryParticleCount; _i2++) {
-      var _angle2 = Math.random() * Math.PI * 2;
-      var _radius2 = Math.random() * 35;
-      secondaryPositions[_i2 * 3] = (Math.random() - 0.5) * 8;
-      secondaryPositions[_i2 * 3 + 1] = Math.cos(_angle2) * _radius2;
-      secondaryPositions[_i2 * 3 + 2] = Math.sin(_angle2) * _radius2;
-      secondaryColors[_i2 * 3] = 0.8;
-      secondaryColors[_i2 * 3 + 1] = 0.9;
-      secondaryColors[_i2 * 3 + 2] = 1;
-    }
-    secondaryParticlesGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(secondaryPositions, 3));
-    secondaryParticlesGeometry.setAttribute('color', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(secondaryColors, 3));
-    var secondaryParticlesMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.PointsMaterial({
-      size: 2.0,
-      transparent: true,
-      opacity: 0.3,
-      vertexColors: true,
-      blending: three__WEBPACK_IMPORTED_MODULE_2__.AdditiveBlending
-    });
-    var secondaryParticles = new three__WEBPACK_IMPORTED_MODULE_2__.Points(secondaryParticlesGeometry, secondaryParticlesMaterial);
-
-    // Créer les roches flottantes
-    var numRocks = 16;
-    var rockGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.TetrahedronGeometry(3.5, 0);
-    var rockMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
-      color: 0x808080,
-      roughness: 0.8,
-      metalness: 0.1,
-      flatShading: true
-    });
-    var rocks = [];
-    for (var _i3 = 0; _i3 < numRocks; _i3++) {
-      var rock = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(rockGeometry, rockMaterial);
-      var _angle3 = _i3 / numRocks * Math.PI * 2;
-      var _radius3 = 42;
-      rock.position.set((Math.random() - 0.5) * 5, Math.cos(_angle3) * _radius3, Math.sin(_angle3) * _radius3);
-      rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      var rockColor = new three__WEBPACK_IMPORTED_MODULE_2__.Color(0x808080);
-      var variation = (Math.random() - 0.5) * 0.2;
-      rockColor.r += variation;
-      rockColor.g += variation;
-      rockColor.b += variation;
-      rock.material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
-        color: rockColor,
-        roughness: 0.8,
-        metalness: 0.1,
-        flatShading: true
+      // Créer le texte du portail
+      var canvas = document.createElement('canvas');
+      var context = canvas.getContext('2d', {
+        alpha: true
       });
-      rock.scale.set(0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4);
-      portalGroup.add(rock);
-      rocks.push(rock);
-    }
+      canvas.width = 2048; // Augmenté pour plus de netteté
+      canvas.height = 512; // Augmenté pour plus de netteté
 
-    // Ajouter tous les éléments au groupe
-    portalGroup.add(mainParticles);
-    portalGroup.add(secondaryParticles);
+      // Style du texte
+      context.fillStyle = 'rgba(0, 0, 0, 0)';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.font = 'bold 160px Arial'; // Taille de police doublée
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.imageSmoothingEnabled = false; // Désactiver le lissage
 
-    // Obtenir la hauteur du terrain
-    var terrainHeight = getTerrainHeightAtPosition(island.center.x, island.center.z);
+      var text = portalData.titre;
 
-    // Positionner le portail
-    portalGroup.position.set(island.center.x, terrainHeight + 150, island.center.z);
+      // Mesurer la largeur du texte
+      var textMetrics = context.measureText(text);
+      var textWidth = textMetrics.width;
+      var padding = 120; // Padding doublé
 
-    // Ajouter au chunk et à la scène
-    scene.add(portalGroup);
-    chunk.objects.push(portalGroup);
+      // Calculer les dimensions du plan en fonction du texte
+      var planeWidth = textWidth * 0.125 + padding * 0.5; // Ajusté pour la nouvelle taille de canvas
+      var planeHeight = 25;
 
-    // Ajouter à la liste des portails pour l'animation
-    if (!window.balloons) window.balloons = [];
-    window.balloons.push(portalGroup);
+      // Ajouter la bordure noire ou dorée
+      context.strokeStyle = isGolden ? '#000000' : 'black'; // Bordure noire pour le Golden Portal
+      context.lineWidth = 32; // Bordure plus épaisse
+      context.strokeText(text, canvas.width / 2, canvas.height / 2);
 
-    // Ajouter les propriétés d'animation
-    portalGroup.userData = _objectSpread(_objectSpread({}, portalGroup.userData), {}, {
-      mainParticles: mainParticles,
-      secondaryParticles: secondaryParticles,
-      rocks: rocks,
-      initialRotation: portalGroup.rotation.clone(),
-      textMesh: textMesh
-    });
+      // Texte blanc ou doré
+      context.fillStyle = isGolden ? '#FFD700' : '#FFFFFF';
+      context.fillText(text, canvas.width / 2, canvas.height / 2);
 
-    // Modifier la fonction animate pour faire face à la caméra
-    var updatePortalRotation = function updatePortalRotation() {
-      if (camera) {
-        var direction = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3();
-        direction.subVectors(camera.position, portalGroup.position);
-        var _angle4 = Math.atan2(direction.x, direction.z);
+      // Créer la texture à partir du canvas
+      var texture = new three__WEBPACK_IMPORTED_MODULE_2__.CanvasTexture(canvas);
+      texture.minFilter = three__WEBPACK_IMPORTED_MODULE_2__.LinearFilter;
+      texture.magFilter = three__WEBPACK_IMPORTED_MODULE_2__.LinearFilter;
+      texture.needsUpdate = true;
 
-        // Rotation du groupe entier pour faire face à la caméra
-        portalGroup.rotation.y = _angle4 + Math.PI / 2;
+      // Créer le matériau pour le texte
+      var textMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: three__WEBPACK_IMPORTED_MODULE_2__.DoubleSide,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        opacity: 1.0,
+        alphaTest: 0.1
+      });
 
-        // Rotation du texte pour qu'il reste droit et lisible
-        if (textMesh) {
-          textMesh.rotation.y = -_angle4 - Math.PI / 2;
-          var _distance = camera.position.distanceTo(portalGroup.position);
-          var scale = Math.max(0.8, Math.min(1.8, _distance / 400));
-          textMesh.scale.set(scale, scale, 1);
+      // Créer le plan avec les dimensions calculées
+      var textGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.PlaneGeometry(planeWidth, planeHeight);
+      var textMesh = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(textGeometry, textMaterial);
+
+      // Positionner le texte
+      textMesh.position.set(0, 60, 0);
+      textMesh.renderOrder = 999;
+      portalGroup.add(textMesh);
+
+      // Créer les particules principales (effet électrique)
+      var mainParticleCount = 800;
+      var mainParticlesGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
+      var mainPositions = new Float32Array(mainParticleCount * 3);
+      var mainColors = new Float32Array(mainParticleCount * 3);
+      for (var i = 0; i < mainParticleCount; i++) {
+        var angle = i / mainParticleCount * Math.PI * 2;
+        var radius = 35 + Math.random() * 8;
+        mainPositions[i * 3] = (Math.random() - 0.5) * 4;
+        mainPositions[i * 3 + 1] = Math.cos(angle) * radius;
+        mainPositions[i * 3 + 2] = Math.sin(angle) * radius;
+        if (isGolden) {
+          // Toutes les particules en jaune vif pour le Golden Portal
+          mainColors[i * 3] = 1.0; // R - Rouge à 100%
+          mainColors[i * 3 + 1] = 1.0; // G - Vert à 100%
+          mainColors[i * 3 + 2] = 0.0; // B - Bleu à 0%
+        } else {
+          // Couleurs normales pour les autres portails
+          mainColors[i * 3] = 0.7 + Math.random() * 0.3;
+          mainColors[i * 3 + 1] = 0.8 + Math.random() * 0.2;
+          mainColors[i * 3 + 2] = 1;
         }
       }
-    };
+      mainParticlesGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(mainPositions, 3));
+      mainParticlesGeometry.setAttribute('color', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(mainColors, 3));
+      var mainParticlesMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.PointsMaterial({
+        size: isGolden ? 1.5 : 1.2,
+        transparent: true,
+        opacity: 0.8,
+        vertexColors: true,
+        blending: three__WEBPACK_IMPORTED_MODULE_2__.AdditiveBlending
+      });
+      var mainParticles = new three__WEBPACK_IMPORTED_MODULE_2__.Points(mainParticlesGeometry, mainParticlesMaterial);
 
-    // Ajouter la fonction de mise à jour à la boucle d'animation
-    if (!window.portalTextUpdates) window.portalTextUpdates = [];
-    window.portalTextUpdates.push(updatePortalRotation);
-  })["catch"](function (error) {
-    console.error('Erreur lors du chargement des portails:', error);
-    // En cas d'erreur, on supprime le groupe du portail
-    scene.remove(portalGroup);
-    var index = chunk.objects.indexOf(portalGroup);
-    if (index > -1) {
-      chunk.objects.splice(index, 1);
-    }
-    if (window.balloons) {
-      var balloonIndex = window.balloons.indexOf(portalGroup);
-      if (balloonIndex > -1) {
-        window.balloons.splice(balloonIndex, 1);
+      // Créer les particules secondaires (effet de brume)
+      var secondaryParticleCount = 500;
+      var secondaryParticlesGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.BufferGeometry();
+      var secondaryPositions = new Float32Array(secondaryParticleCount * 3);
+      var secondaryColors = new Float32Array(secondaryParticleCount * 3);
+      for (var _i2 = 0; _i2 < secondaryParticleCount; _i2++) {
+        var _angle2 = Math.random() * Math.PI * 2;
+        var _radius2 = Math.random() * 35;
+        secondaryPositions[_i2 * 3] = (Math.random() - 0.5) * 8;
+        secondaryPositions[_i2 * 3 + 1] = Math.cos(_angle2) * _radius2;
+        secondaryPositions[_i2 * 3 + 2] = Math.sin(_angle2) * _radius2;
+        if (isGolden) {
+          // Brume intérieure en jaune vif pour le Golden Portal
+          secondaryColors[_i2 * 3] = 1.0; // R - Rouge à 100%
+          secondaryColors[_i2 * 3 + 1] = 1.0; // G - Vert à 100%
+          secondaryColors[_i2 * 3 + 2] = 0.0; // B - Bleu à 0%
+        } else {
+          // Brume normale pour les autres portails
+          secondaryColors[_i2 * 3] = 0.8;
+          secondaryColors[_i2 * 3 + 1] = 0.9;
+          secondaryColors[_i2 * 3 + 2] = 1;
+        }
       }
-    }
-  });
+      secondaryParticlesGeometry.setAttribute('position', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(secondaryPositions, 3));
+      secondaryParticlesGeometry.setAttribute('color', new three__WEBPACK_IMPORTED_MODULE_2__.BufferAttribute(secondaryColors, 3));
+      var secondaryParticlesMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.PointsMaterial({
+        size: isGolden ? 2.5 : 2.0,
+        transparent: true,
+        opacity: 0.3,
+        vertexColors: true,
+        blending: three__WEBPACK_IMPORTED_MODULE_2__.AdditiveBlending
+      });
+      var secondaryParticles = new three__WEBPACK_IMPORTED_MODULE_2__.Points(secondaryParticlesGeometry, secondaryParticlesMaterial);
+
+      // Créer les roches flottantes
+      var numRocks = 16;
+      var rockGeometry = new three__WEBPACK_IMPORTED_MODULE_2__.TetrahedronGeometry(3.5, 0);
+      var rockMaterial = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+        color: isGolden ? 0xFFD700 : 0x808080,
+        roughness: isGolden ? 0.3 : 0.8,
+        metalness: isGolden ? 0.8 : 0.1,
+        flatShading: true
+      });
+      var rocks = [];
+      for (var _i3 = 0; _i3 < numRocks; _i3++) {
+        var rock = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(rockGeometry, rockMaterial);
+        var _angle3 = _i3 / numRocks * Math.PI * 2;
+        var _radius3 = 42;
+        rock.position.set((Math.random() - 0.5) * 5, Math.cos(_angle3) * _radius3, Math.sin(_angle3) * _radius3);
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        var rockColor = new three__WEBPACK_IMPORTED_MODULE_2__.Color(isGolden ? 0xFFD700 : 0x808080);
+        var variation = (Math.random() - 0.5) * (isGolden ? 0.1 : 0.2);
+        rockColor.r += variation;
+        rockColor.g += variation;
+        rockColor.b += variation;
+        rock.material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshStandardMaterial({
+          color: rockColor,
+          roughness: isGolden ? 0.3 : 0.8,
+          metalness: isGolden ? 0.8 : 0.1,
+          flatShading: true
+        });
+        rock.scale.set(0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4);
+        portalGroup.add(rock);
+        rocks.push(rock);
+      }
+
+      // Ajouter tous les éléments au groupe
+      portalGroup.add(mainParticles);
+      portalGroup.add(secondaryParticles);
+
+      // Position du portail
+      if (isGolden) {
+        // Positionner le Golden Portal sur la première île
+        var terrainHeight = getTerrainHeightAtPosition(island.center.x, island.center.z);
+        portalGroup.position.set(island.center.x, terrainHeight + 150, island.center.z);
+      } else {
+        // Position normale pour les autres portails
+        var _terrainHeight = getTerrainHeightAtPosition(island.center.x, island.center.z);
+        portalGroup.position.set(island.center.x, _terrainHeight + 150, island.center.z);
+      }
+
+      // Ajouter au chunk et à la scène
+      scene.add(portalGroup);
+      chunk.objects.push(portalGroup);
+
+      // Ajouter à la liste des portails pour l'animation
+      if (!window.balloons) window.balloons = [];
+      window.balloons.push(portalGroup);
+
+      // Ajouter les propriétés d'animation
+      portalGroup.userData = _objectSpread(_objectSpread({}, portalGroup.userData), {}, {
+        mainParticles: mainParticles,
+        secondaryParticles: secondaryParticles,
+        rocks: rocks,
+        initialRotation: portalGroup.rotation.clone(),
+        textMesh: textMesh
+      });
+
+      // Modifier la fonction animate pour faire face à la caméra
+      var updatePortalRotation = function updatePortalRotation() {
+        if (camera) {
+          var direction = new three__WEBPACK_IMPORTED_MODULE_2__.Vector3();
+          direction.subVectors(camera.position, portalGroup.position);
+          var _angle4 = Math.atan2(direction.x, direction.z);
+
+          // Rotation du groupe entier pour faire face à la caméra
+          portalGroup.rotation.y = _angle4 + Math.PI / 2;
+
+          // Rotation du texte pour qu'il reste droit et lisible
+          if (textMesh) {
+            textMesh.rotation.y = -_angle4 - Math.PI / 2;
+            var _distance = camera.position.distanceTo(portalGroup.position);
+            var scale = Math.max(0.8, Math.min(1.8, _distance / 400));
+            textMesh.scale.set(scale, scale, 1);
+          }
+        }
+      };
+
+      // Ajouter la fonction de mise à jour à la boucle d'animation
+      if (!window.portalTextUpdates) window.portalTextUpdates = [];
+      window.portalTextUpdates.push(updatePortalRotation);
+    })["catch"](function (error) {
+      console.error('Erreur lors du chargement des portails:', error);
+      scene.remove(portalGroup);
+      var index = chunk.objects.indexOf(portalGroup);
+      if (index > -1) {
+        chunk.objects.splice(index, 1);
+      }
+      if (window.balloons) {
+        var balloonIndex = window.balloons.indexOf(portalGroup);
+        if (balloonIndex > -1) {
+          window.balloons.splice(balloonIndex, 1);
+        }
+      }
+    });
+  }
 }
 
 /***/ }),

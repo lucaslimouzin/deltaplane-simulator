@@ -1014,14 +1014,29 @@ export class Deltaplane {
         if (!window.balloons) return;
 
         for (const portal of window.balloons) {
-            const distance = portal.position.distanceTo(this.mesh.position);
-            // Zone de collision du portail (rayon de 35 unités)
-            const collisionRadius = 35;
+            const distance = Math.sqrt(
+                Math.pow(portal.position.x - this.mesh.position.x, 2) +
+                Math.pow(portal.position.z - this.mesh.position.z, 2)
+            );
 
-            // Si le joueur est dans la zone de collision
-            if (distance < collisionRadius) {
-                // Utiliser les données stockées dans le portail
-                if (portal.userData.portalData) {
+            if (distance < 35) {
+                if (portal.userData.isGoldenPortal) {
+                    // Effet spécial pour le Golden Portal
+                    const currentSpeed = Math.sqrt(
+                        Math.pow(this.velocity.x, 2) +
+                        Math.pow(this.velocity.y, 2) +
+                        Math.pow(this.velocity.z, 2)
+                    );
+                    
+                    // Doubler la vitesse actuelle
+                    const speedMultiplier = 2;
+                    this.velocity.x *= speedMultiplier;
+                    this.velocity.y *= speedMultiplier;
+                    this.velocity.z *= speedMultiplier;
+
+                    // Effet visuel de boost (à implémenter plus tard si souhaité)
+                    console.log("Golden Portal activated! Speed boost applied!");
+                } else if (portal.userData.portalData && portal.userData.portalData.url) {
                     window.open(portal.userData.portalData.url, '_blank');
                 }
             }
