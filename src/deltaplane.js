@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { Minimap } from './minimap.js';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
+import { INITIAL_ALTITUDE } from './index.js';
 
 // Variables globales
 let minimap;
@@ -38,6 +41,8 @@ export class Deltaplane {
             this.yawLeft = false;    // Turn left
             this.yawRight = false;   // Turn right
             this.sprinting = false;  // Nouvel état pour le sprint
+            this.descendDown = false; // Nouvelle propriété pour la descente
+            this.ascendUp = false;   // Nouvelle propriété pour la montée
             
             // Flight parameters
             this.airDensity = 1.2; // kg/m³
@@ -46,7 +51,7 @@ export class Deltaplane {
             this.dragCoefficient = 0.001;
             this.weight = 100; // kg (pilot + hang glider)
             this.lastYaw = 0; // To track yaw rotation
-            this.minAltitude = 250; // Minimum altitude in meters
+            this.minAltitude = 50; // Minimum altitude in meters
             this.maxAltitude = 500; // Maximum altitude in meters
             
             // Wind parameters
@@ -89,6 +94,14 @@ export class Deltaplane {
             this.sprintDrain = 30;  // Vitesse de consommation de l'énergie (unités par seconde)
             this.sprintRecharge = 15;  // Vitesse de recharge de l'énergie (unités par seconde)
             this.minEnergyToSprint = 20;  // Énergie minimale requise pour sprinter
+
+            // Control states
+            this.controls = {
+                rollLeft: false,
+                rollRight: false,
+                descendDown: false,
+                ascendUp: false
+            };
         }
         
         // Create the hang glider model
@@ -109,7 +122,7 @@ export class Deltaplane {
             this.mesh = new THREE.Group();
             
             // Position initiale différente selon le type de joueur
-            this.mesh.position.y = this.minAltitude;
+            this.mesh.position.y = INITIAL_ALTITUDE;
             
             this.scene.add(this.mesh);
             
@@ -295,7 +308,7 @@ export class Deltaplane {
             });
             
             // Orientation initiale du deltaplane
-            this.mesh.rotation.x = Math.PI / 12;
+            this.mesh.rotation.x = Math.PI / 24;
             
             // Ajout d'une caméra seulement pour le joueur local
             if (!this.isRemotePlayer) {
@@ -394,10 +407,10 @@ export class Deltaplane {
      * Réinitialise la position et la vitesse du deltaplane
      */
     resetPosition() {
-        this.mesh.position.set(0, this.minAltitude, 0); // Hauteur de réinitialisation à l'altitude minimum
+        this.mesh.position.set(0, INITIAL_ALTITUDE, 0);
         
         // Réinitialiser la rotation avec des quaternions
-        this.mesh.rotation.set(Math.PI / 12, 0, 0);
+        this.mesh.rotation.set(Math.PI / 24, 0, 0);
         this.mesh.quaternion.setFromEuler(this.mesh.rotation);
         
         this.velocity.set(0, 0, 0);
@@ -465,10 +478,10 @@ export class Deltaplane {
                 }
             }
             
-            if (this.rollLeft) {
+            if (this.controls.rollLeft) {
                 // Roll left
                 this.mesh.rotation.z += 0.5 * delta;
-            } else if (this.rollRight) {
+            } else if (this.controls.rollRight) {
                 // Roll right
                 this.mesh.rotation.z -= 0.5 * delta;
             } else {
@@ -512,6 +525,16 @@ export class Deltaplane {
             // Sauvegarder la rotation en lacet pour le prochain frame
             this.lastYaw = this.mesh.rotation.y;
             
+            // Application de la descente
+            if (this.controls.descendDown) {
+                this.velocity.y -= 200 * delta;
+            }
+
+            // Apply ascent if ascendUp is active
+            if (this.controls.ascendUp) {
+                this.velocity.y += 200 * delta;
+            }
+
             // Calcul de la direction du deltaplane basée sur son orientation
             const direction = new THREE.Vector3(0, 0, -1);
             direction.applyQuaternion(this.mesh.quaternion);
@@ -770,8 +793,8 @@ export class Deltaplane {
      * @param {boolean} state - Le nouvel état du contrôle
      */
     setControl(control, state) {
-        if (this[control] !== undefined) {
-            this[control] = state;
+        if (control in this.controls) {
+            this.controls[control] = state;
         }
     }
     
