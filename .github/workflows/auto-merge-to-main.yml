@@ -48,8 +48,19 @@ jobs:
           # Basculer sur main
           git checkout main
           
+          # S'assurer que le dossier data est présent
+          if [ ! -d "public/data" ]; then
+            mkdir -p public/data
+          fi
+          
           # Merger dev dans main
           git merge --no-ff origin/dev -m "Auto-merge dev into main"
+          
+          # Vérifier que le dossier data est bien inclus
+          if [ ! -f "public/data/portals.json" ]; then
+            echo "Error: portals.json is missing after merge"
+            exit 1
+          fi
           
           # Pousser les changements
           git push origin main 
