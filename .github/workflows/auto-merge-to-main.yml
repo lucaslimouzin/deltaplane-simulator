@@ -1,6 +1,6 @@
 name: Auto-merge dev to main
 
-# Workflow to automatically merge dev into main when dev receives a merge
+# Workflow to automatically merge dev into main when dev receives a merge from ai-planeurs
 on:
   push:
     branches:
@@ -27,12 +27,12 @@ jobs:
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
       
-      - name: Check if dev was merged into
+      - name: Check if ai-planeurs was merged into dev
         id: check-merge
         run: |
-          # Vérifier si le dernier commit est un merge
+          # Vérifier si le dernier commit est un merge de ai-planeurs
           LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
-          if [[ $LAST_COMMIT_MSG == "Merge"* ]] || [[ $LAST_COMMIT_MSG == "feat: merge"* ]]; then
+          if [[ $LAST_COMMIT_MSG == "feat: merge ai-planeurs into dev"* ]]; then
             echo "is_merge=true" >> $GITHUB_OUTPUT
           else
             echo "is_merge=false" >> $GITHUB_OUTPUT
